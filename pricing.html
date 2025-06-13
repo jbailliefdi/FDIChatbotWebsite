@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FDI AI - Pricing & Signup</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .back-btn {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .back-btn:hover {
+            color: #764ba2;
+        }
+
+        /* Main Content */
+        .signup-container {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .signup-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .signup-subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        /* Pricing Display */
+        .pricing-summary {
+            background: linear-gradient(145deg, #f8f9ff, #e8ecff);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .price-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .price-details {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .license-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .license-input {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .license-input input {
+            width: 80px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .license-input button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.3s;
+        }
+
+        .license-input button:hover {
+            background: #764ba2;
+        }
+
+        /* Form Styles */
+        .signup-form {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"] {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        /* Summary Section */
+        .order-summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-total {
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-top: 2px solid #e0e0e0;
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Security Notice */
+        .security-notice {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .security-notice i {
+            color: #4CAF50;
+            margin-right: 5px;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 10px;
+            }
+
+            .signup-container {
+                padding: 2rem 1.5rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .license-selector {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-robot"></i> FDI AI
+                </div>
+                <a href="/" class="back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Signup Form -->
+        <div class="signup-container">
+            <h1 class="signup-title">Get Started with FDI AI</h1>
+            <p class="signup-subtitle">Join thousands of businesses already using our AI chatbot solution</p>
+
+            <!-- Pricing Summary -->
+            <div class="pricing-summary">
+                <div class="price-display" id="totalPrice">£50</div>
+                <div class="price-details">per month • billed monthly</div>
+                
+                <div class="license-selector">
+                    <label for="licenseCount">Number of users:</label>
+                    <div class="license-input">
+                        <button type="button" onclick="updateLicenses(-1)">-</button>
+                        <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
+                        <button type="button" onclick="updateLicenses(1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signup Form -->
+            <form id="signupForm" class="signup-form">
+                <div class="form-group">
+                    <label for="companyName">Company Name <span class="required">*</span></label>
+                    <input type="text" id="companyName" name="companyName" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name <span class="required">*</span></label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name <span class="required">*</span></label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Business Email <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div class="summary-row">
+                        <span>FDI AI Professional (<span id="summaryLicenses">1</span> user<span id="summaryPlural"></span>)</span>
+                        <span id="summaryPrice">£50.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>VAT (20%)</span>
+                        <span id="summaryVAT">£10.00</span>
+                    </div>
+                    <div class="summary-row summary-total">
+                        <span>Total per month</span>
+                        <span id="summaryTotal">£60.00</span>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <i class="fas fa-credit-card"></i> Start 14-Day Free Trial
+                </button>
+
+                <div class="loading" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Setting up your account...</p>
+                </div>
+
+                <div class="security-notice">
+                    <i class="fas fa-shield-alt"></i> Secure payment processing by Stripe
+                    <br>
+                    <i class="fas fa-clock"></i> 14-day free trial • No setup fees • Cancel anytime
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Stripe (Replace with your publishable key)
+        const stripe = Stripe('pk_test_your_stripe_publishable_key_here');
+
+        let currentLicenses = 1;
+        const pricePerLicense = 50;
+        const vatRate = 0.20;
+
+        function updateLicenses(change) {
+            const input = document.getElementById('licenseCount');
+            const newValue = parseInt(input.value) + change;
+            if (newValue >= 1 && newValue <= 100) {
+                input.value = newValue;
+                updatePrice();
+            }
+        }
+
+        function updatePrice() {
+            const licenseCount = parseInt(document.getElementById('licenseCount').value) || 1;
+            currentLicenses = licenseCount;
+            
+            const subtotal = licenseCount * pricePerLicense;
+            const vat = subtotal * vatRate;
+            const total = subtotal + vat;
+
+            // Update main price display
+            document.getElementById('totalPrice').textContent = `£${subtotal}`;
+
+            // Update summary
+            document.getElementById('summaryLicenses').textContent = licenseCount;
+            document.getElementById('summaryPlural').textContent = licenseCount > 1 ? 's' : '';
+            document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
+            document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
+            document.getElementById('summaryTotal').textContent = `£${total.toFixed(2)}`;
+        }
+
+        // Form submission
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            // Disable form and show loading
+            submitBtn.disabled = true;
+            submitBtn.style.display = 'none';
+            loadingSpinner.style.display = 'block';
+
+            // Collect form data
+            const formData = {
+                companyName: document.getElementById('companyName').value,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                licenseCount: currentLicenses,
+                pricePerLicense: pricePerLicense
+            };
+
+            try {
+                // Create checkout session
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const session = await response.json();
+
+                if (session.error) {
+                    throw new Error(session.error);
+                }
+
+                // Redirect to Stripe Checkout
+                const result = await stripe.redirectToCheckout({
+                    sessionId: session.sessionId
+                });
+
+                if (result.error) {
+                    throw new Error(result.error.message);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('There was an error processing your request. Please try again.');
+                
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.style.display = 'block';
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        // Initialize price display
+        updatePrice();
+
+        // Handle URL parameters (for returning from Stripe)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'true') {
+            alert('Payment successful! Welcome to FDI AI. Check your email for login details.');
+            window.location.href = '/app';
+        } else if (urlParams.get('canceled') === 'true') {
+            alert('Payment canceled. You can try again anytime.');
+        }
+    </script>
+</body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FDI AI - Pricing & Signup</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .back-btn {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .back-btn:hover {
+            color: #764ba2;
+        }
+
+        /* Main Content */
+        .signup-container {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .signup-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .signup-subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        /* Pricing Display */
+        .pricing-summary {
+            background: linear-gradient(145deg, #f8f9ff, #e8ecff);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .price-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .price-details {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .license-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .license-input {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .license-input input {
+            width: 80px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .license-input button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.3s;
+        }
+
+        .license-input button:hover {
+            background: #764ba2;
+        }
+
+        /* Form Styles */
+        .signup-form {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"] {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        /* Summary Section */
+        .order-summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-total {
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-top: 2px solid #e0e0e0;
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Security Notice */
+        .security-notice {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .security-notice i {
+            color: #4CAF50;
+            margin-right: 5px;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 10px;
+            }
+
+            .signup-container {
+                padding: 2rem 1.5rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .license-selector {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-robot"></i> FDI AI
+                </div>
+                <a href="/" class="back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Signup Form -->
+        <div class="signup-container">
+            <h1 class="signup-title">Get Started with FDI AI</h1>
+            <p class="signup-subtitle">Join thousands of businesses already using our AI chatbot solution</p>
+
+            <!-- Pricing Summary -->
+            <div class="pricing-summary">
+                <div class="price-display" id="totalPrice">£50</div>
+                <div class="price-details">per month • billed monthly</div>
+                
+                <div class="license-selector">
+                    <label for="licenseCount">Number of users:</label>
+                    <div class="license-input">
+                        <button type="button" onclick="updateLicenses(-1)">-</button>
+                        <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
+                        <button type="button" onclick="updateLicenses(1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signup Form -->
+            <form id="signupForm" class="signup-form">
+                <div class="form-group">
+                    <label for="companyName">Company Name <span class="required">*</span></label>
+                    <input type="text" id="companyName" name="companyName" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name <span class="required">*</span></label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name <span class="required">*</span></label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Business Email <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div class="summary-row">
+                        <span>FDI AI Professional (<span id="summaryLicenses">1</span> user<span id="summaryPlural"></span>)</span>
+                        <span id="summaryPrice">£50.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>VAT (20%)</span>
+                        <span id="summaryVAT">£10.00</span>
+                    </div>
+                    <div class="summary-row summary-total">
+                        <span>Total per month</span>
+                        <span id="summaryTotal">£60.00</span>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <i class="fas fa-credit-card"></i> Start 14-Day Free Trial
+                </button>
+
+                <div class="loading" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Setting up your account...</p>
+                </div>
+
+                <div class="security-notice">
+                    <i class="fas fa-shield-alt"></i> Secure payment processing by Stripe
+                    <br>
+                    <i class="fas fa-clock"></i> 14-day free trial • No setup fees • Cancel anytime
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Stripe (Replace with your publishable key)
+        const stripe = Stripe('pk_test_your_stripe_publishable_key_here');
+
+        let currentLicenses = 1;
+        const pricePerLicense = 50;
+        const vatRate = 0.20;
+
+        function updateLicenses(change) {
+            const input = document.getElementById('licenseCount');
+            const newValue = parseInt(input.value) + change;
+            if (newValue >= 1 && newValue <= 100) {
+                input.value = newValue;
+                updatePrice();
+            }
+        }
+
+        function updatePrice() {
+            const licenseCount = parseInt(document.getElementById('licenseCount').value) || 1;
+            currentLicenses = licenseCount;
+            
+            const subtotal = licenseCount * pricePerLicense;
+            const vat = subtotal * vatRate;
+            const total = subtotal + vat;
+
+            // Update main price display
+            document.getElementById('totalPrice').textContent = `£${subtotal}`;
+
+            // Update summary
+            document.getElementById('summaryLicenses').textContent = licenseCount;
+            document.getElementById('summaryPlural').textContent = licenseCount > 1 ? 's' : '';
+            document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
+            document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
+            document.getElementById('summaryTotal').textContent = `£${total.toFixed(2)}`;
+        }
+
+        // Form submission
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            // Disable form and show loading
+            submitBtn.disabled = true;
+            submitBtn.style.display = 'none';
+            loadingSpinner.style.display = 'block';
+
+            // Collect form data
+            const formData = {
+                companyName: document.getElementById('companyName').value,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                licenseCount: currentLicenses,
+                pricePerLicense: pricePerLicense
+            };
+
+            try {
+                // Create checkout session
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const session = await response.json();
+
+                if (session.error) {
+                    throw new Error(session.error);
+                }
+
+                // Redirect to Stripe Checkout
+                const result = await stripe.redirectToCheckout({
+                    sessionId: session.sessionId
+                });
+
+                if (result.error) {
+                    throw new Error(result.error.message);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('There was an error processing your request. Please try again.');
+                
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.style.display = 'block';
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        // Initialize price display
+        updatePrice();
+
+        // Handle URL parameters (for returning from Stripe)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'true') {
+            alert('Payment successful! Welcome to FDI AI. Check your email for login details.');
+            window.location.href = '/app';
+        } else if (urlParams.get('canceled') === 'true') {
+            alert('Payment canceled. You can try again anytime.');
+        }
+    </script>
+</body>
+</html>

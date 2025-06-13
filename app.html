@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FDI Chatbot - TIA</title>
+  <link rel="icon" href="FDi_Logo_Device_Transparent_Outer.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* --- Light Mode Variables (Defaults) --- */
+    :root {
+      --primary-color: #005a9e;
+      --primary-color-dark: #004080;
+      --secondary-color-light: #f0f4f8;
+      --secondary-color-dark: #1a202c;
+      --content-bg-light: #ffffff;
+      --content-bg-dark: #2d3748;
+      --sidebar-bg-light: #2c3e50;
+      --sidebar-bg-dark: #1f2937;
+      --sidebar-text-light: #ecf0f1;
+      --sidebar-text-dark: #d1d5db;
+      --sidebar-hover-bg-light: #34495e;
+      --sidebar-hover-bg-dark: #374151;
+      --text-color-light: #333;
+      --text-color-dark: #e2e8f0;
+      --text-muted-light: #555;
+      --text-muted-dark: #a0aec0;
+      --border-color-light: #dde4e9;
+      --border-color-dark: #4a5568;
+      --button-text-color: white;
+      --header-height: 70px; /* Adjusted height for potentially larger logo */
+      --footer-height: 60px;
+      --sidebar-width: 260px;
+      --base-font-size: 16px;
+      --border-radius: 6px;
+      --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      --box-shadow-dark: 0 2px 10px rgba(0, 0, 0, 0.4);
+      --transition-speed: 0.3s;
+
+    /* Input specific vars */
+    --webchat-input-bg-light: var(--content-bg-light);
+    --webchat-input-bg-dark: #3b475c;
+    --webchat-input-text-light: var(--text-color-light);
+    --webchat-input-text-dark: var(--text-color-dark);
+    --webchat-input-border-light: var(--border-color-light);
+    --webchat-input-border-dark: #5a6981;
+
+    /* Default Theme Assignment */
+    --bg-color: var(--secondary-color-light);
+    --content-bg-color: var(--content-bg-light);
+    --text-color: var(--text-color-light);
+    --text-muted-color: var(--text-muted-light);
+    --border-color: var(--border-color-light);
+    --sidebar-bg: var(--sidebar-bg-light);
+    --sidebar-text: var(--sidebar-text-light);
+    --sidebar-hover-bg: var(--sidebar-hover-bg-light);
+    --shadow-color: var(--box-shadow);
+    --webchat-bot-bubble-bg: #eef1f5;
+    --webchat-bot-bubble-text: var(--text-color-light);
+    --webchat-user-bubble-bg: var(--primary-color);
+    --webchat-user-bubble-text: var(--button-text-color);
+    --webchat-sendbox-bg: var(--secondary-color-light);
+    --webchat-input-bg: var(--webchat-input-bg-light);
+    --webchat-input-text: var(--webchat-input-text-light);
+    --webchat-input-border: var(--webchat-input-border-light);
+    }
+
+    /* --- Dark Mode Variable Overrides --- */
+    body.dark-mode {
+    --bg-color: var(--secondary-color-dark);
+    --content-bg-color: var(--content-bg-dark);
+    --text-color: var(--text-color-dark);
+    --text-muted-color: var(--text-muted-dark);
+    --border-color: var(--border-color-dark);
+    --sidebar-bg: var(--sidebar-bg-dark);
+    --sidebar-text: var(--sidebar-text-dark);
+    --sidebar-hover-bg: var(--sidebar-hover-bg-dark);
+    --shadow-color: var(--box-shadow-dark);
+    --webchat-bot-bubble-bg: #374151;
+    --webchat-bot-bubble-text: var(--text-color-dark);
+    --webchat-user-bubble-bg: var(--primary-color);
+    --webchat-user-bubble-text: var(--button-text-color);
+    --webchat-sendbox-bg: var(--content-bg-dark);
+    --webchat-input-bg: var(--webchat-input-bg-dark);
+    --webchat-input-text: var(--webchat-input-text-dark);
+    --webchat-input-border: var(--webchat-input-border-dark);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: var(--base-font-size); }
+    body { font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; height: 100vh; overflow: hidden; transition: background-color var(--transition-speed), color var(--transition-speed); }
+    .sidebar { width: var(--sidebar-width); height: 100vh; background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; flex-shrink: 0; position: fixed; top: 0; left: 0; transform: translateX(calc(-1 * var(--sidebar-width))); z-index: 1001; transition: transform var(--transition-speed) ease-in-out, background-color var(--transition-speed), color var(--transition-speed); overflow-y: auto; padding-top: var(--header-height); box-shadow: 3px 0 15px var(--shadow-color); }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-no-chats-message { padding: 20px; text-align: center; color: var(--text-muted-color); font-style: italic; }
+    .chat-tab { position: relative; display: flex; align-items: center; border-bottom: 1px solid var(--border-color); }
+    .chat-tab button { background: none; color: var(--sidebar-text); border: none; padding: 16px 20px; text-align: left; font-size: 0.95rem; font-weight: 400; cursor: pointer; width: 100%; transition: background-color var(--transition-speed), color var(--transition-speed), font-weight var(--transition-speed); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-tab button.active { background-color: var(--sidebar-hover-bg); font-weight: 600; }
+    .chat-tab button:hover, .chat-tab button:focus { background-color: var(--sidebar-hover-bg); outline: none; }
+    .delete-chat { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; display: none; font-size: 1.1rem; color: var(--text-muted-color); transition: color var(--transition-speed); padding: 5px; }
+    .chat-tab:hover .delete-chat { display: block; }
+    .delete-chat:hover { color: #e74c3c; }
+    .chat-container { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; width: 100%; position: relative; transition: margin-left var(--transition-speed) ease-in-out, filter var(--transition-speed); margin-left: 0; }
+    .chat-container.disabled { filter: blur(5px); pointer-events: none; user-select: none; }
+    .sidebar.open ~ .chat-container { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); }
+    header.chat-header { height: var(--header-height); background: var(--content-bg-color); display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; position: relative; z-index: 10; transition: background-color var(--transition-speed), border-color var(--transition-speed); gap: 15px; }
+    .toggle-sidebar-btn { background: none; border: none; color: var(--primary-color); font-size: 1.5rem; cursor: pointer; padding: 10px; z-index: 1002; transition: color var(--transition-speed); grid-column: 1 / 2; }
+    .toggle-sidebar-btn:hover { color: var(--primary-color-dark); }
+    .chat-header a.header-logo-link { display: flex; align-items: center; line-height: 0; grid-column: 2 / 3; height: 100%; }
+    .chat-header img { max-height: 60px; width: auto; transition: filter var(--transition-speed); }
+    body.dark-mode .chat-header a.header-logo-link img { filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6)); }
+    .login-container { display: flex; align-items: center; gap: 12px; grid-column: 4 / 5; justify-self: end; }
+    #user-status { font-size: 0.85rem; color: var(--text-muted-color); transition: color var(--transition-speed); text-align: right; }
+    #authBtn { padding: 8px 15px; background: var(--primary-color); color: var(--button-text-color); border: none; border-radius: var(--border-radius); cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: background-color var(--transition-speed); }
+    #authBtn:hover { background: var(--primary-color-dark); }
+    main#webchat { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; background-color: var(--content-bg-color); padding: 15px; transition: background-color var(--transition-speed); }
+    #webchat > div { min-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+    .webchat__bubble { border-radius: 12px; box-shadow: var(--shadow-color); max-width: 85%; border: none; }
+    .webchat__bubble__content { white-space: pre-wrap; padding: 10px 14px !important; font-size: 0.95rem; line-height: 1.5; background-color: transparent !important; border: none !important; margin: 0; }
+    .webchat__bubble__content p { margin: 0 0 0.5em 0; padding: 0; background-color: transparent !important; color: inherit; }
+    .webchat__bubble__content p:last-child { margin-bottom: 0; }
+    .webchat__bubble__content a { color: var(--primary-color); text-decoration: underline; word-break: break-all; }
+    .webchat__bubble__content a:hover { color: var(--primary-color-dark); }
+    body.dark-mode .webchat__bubble__content a { color: #80bfff; }
+    body.dark-mode .webchat__bubble__content a:hover { color: #a8d8ff; }
+    .webchat__bubble:not(.webchat__bubble--from-user) { background-color: var(--webchat-bot-bubble-bg) !important; color: var(--webchat-bot-bubble-text) !important; align-self: flex-start; transition: background-color var(--transition-speed), color var(--transition-speed); }
+    .webchat__bubble:not(.webchat__bubble--from-user) .webchat__bubble__content, .webchat__bubble:not(.webchat__bubble--from-user) .webchat__bubble__content p { color: var(--webchat-bot-bubble-text) !important; }
+    .webchat__bubble--from-user { background-color: var(--webchat-user-bubble-bg) !important; color: var(--webchat-user-bubble-text) !important; align-self: flex-end; transition: background-color var(--transition-speed), color var(--transition-speed); }
+    .webchat__bubble--from-user .webchat__bubble__content, .webchat__bubble--from-user .webchat__bubble__content p, .webchat__bubble--from-user .webchat__bubble__content span { color: var(--webchat-user-bubble-text) !important; background-color: transparent !important; }
+    .webchat__send-box { border-top: 1px solid var(--border-color); padding: 10px 15px !important; min-height: 54px !important; max-height: 150px !important; background-color: var(--webchat-sendbox-bg); transition: background-color var(--transition-speed), border-color var(--transition-speed); }
+    .webchat__send-box-text-box { align-items: center; }
+    .webchat__send-box-text-box__textarea { min-height: 38px !important; max-height: 130px !important; border-radius: var(--border-radius) !important; border: 1px solid var(--webchat-input-border) !important; padding: 8px 12px !important; font-family: 'Poppins', sans-serif !important; font-size: 0.95rem !important; line-height: 1.5 !important; white-space: pre-wrap !important; resize: none; background-color: var(--webchat-input-bg); color: var(--webchat-input-text); transition: background-color var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed); }
+    .webchat__send-box-text-box__textarea:focus { border-color: var(--primary-color) !important; box-shadow: 0 0 0 2px rgba(0, 90, 158, 0.2) !important; }
+    .webchat__send-box__send-button { background-color: var(--primary-color) !important; border-radius: 50% !important; width: 40px !important; height: 40px !important; padding: 0 !important; margin-left: 10px !important; transition: background-color var(--transition-speed) !important; flex-shrink: 0; align-self: flex-end !important; margin-bottom: 0 !important; }
+    .webchat__send-box__send-button:hover { background-color: var(--primary-color-dark) !important; }
+    .webchat__send-box__send-button svg { fill: white !important; }
+    footer.chat-footer { height: var(--footer-height); background: var(--content-bg-color); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; gap: 15px; padding: 0 20px; flex-shrink: 0; z-index: 10; transition: background-color var(--transition-speed), border-color var(--transition-speed); }
+    .footer-btn { padding: 8px 18px; font-size: 0.9rem; font-weight: 500; background: var(--primary-color); color: var(--button-text-color); border: none; border-radius: var(--border-radius); cursor: pointer; transition: background-color var(--transition-speed), box-shadow var(--transition-speed); display: inline-flex; align-items: center; gap: 8px; }
+    .footer-btn:hover { background: var(--primary-color-dark); box-shadow: 0 2px 5px rgba(0, 90, 158, 0.3); }
+    .footer-btn:focus { outline: 2px solid var(--primary-color-dark); outline-offset: 2px; }
+    .dark-mode-btn { padding: 8px 10px; font-size: 1.1rem; }
+    .save-btn, .new-convo-btn, .change-font-btn {}
+    .change-font-btn { padding: 8px 10px; font-size: 1.1rem; }
+    body.dark-mode .webchat__basic-transcript, body.dark-mode main#webchat > div[id^='webchat_'] { background-color: var(--content-bg-color) !important; }
+    
+    /* --- NEW: Subscription Overlay Styles --- */
+    .subscription-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s; }
+    .subscription-overlay.visible { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
+    .subscription-modal { background: var(--content-bg-color); color: var(--text-color); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); width: 90%; max-width: 550px; padding: 30px 40px; text-align: center; transform: scale(0.95); transition: transform 0.3s ease, background-color var(--transition-speed), color var(--transition-speed); border: 1px solid var(--border-color); }
+    .subscription-overlay.visible .subscription-modal { transform: scale(1); }
+    .subscription-modal h2 { font-size: 1.8rem; font-weight: 600; color: var(--primary-color); margin-bottom: 15px; }
+    body.dark-mode .subscription-modal h2 { color: #80bfff; }
+    .subscription-modal .price { font-size: 2.5rem; font-weight: 600; margin-bottom: 5px; }
+    .subscription-modal .price-desc { font-size: 1rem; color: var(--text-muted-color); margin-bottom: 25px; }
+    .subscription-modal .features-list { list-style: none; padding: 0; margin: 0 0 30px 0; text-align: left; }
+    .subscription-modal .features-list li { font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; }
+    .subscription-modal .features-list i { color: #27ae60; margin-right: 12px; font-size: 1.2rem; }
+    .subscription-modal .modal-button { display: block; width: 100%; padding: 14px 20px; font-size: 1rem; font-weight: 600; border-radius: var(--border-radius); cursor: pointer; text-decoration: none; transition: all 0.2s ease; margin-bottom: 12px; border: none; }
+    .modal-button.primary { background-color: var(--primary-color); color: var(--button-text-color); }
+    .modal-button.primary:hover { background-color: var(--primary-color-dark); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 90, 158, 0.3); }
+    .modal-button.secondary { background-color: transparent; color: var(--primary-color); border: 2px solid var(--primary-color); }
+    .modal-button.secondary:hover { background-color: var(--primary-color); color: var(--button-text-color); }
+    #subscription-status { margin-top: 15px; color: var(--text-muted-color); font-size: 0.9rem; min-height: 1.2em; }
+
+
+    @media (max-width: 768px) {
+        :root { --sidebar-width: 220px; --header-height: 65px; --footer-height: 55px; }
+        .sidebar { padding-top: var(--header-height); box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1010; }
+        .sidebar.open ~ .chat-container { margin-left: 0; width: 100%; }
+        header.chat-header { padding: 0 10px; grid-template-columns: auto auto 1fr auto; gap: 10px; }
+        .chat-header .toggle-sidebar-btn { padding: 8px; font-size: 1.3rem; }
+        .chat-header img { max-height: 50px; }
+        .login-container { gap: 8px; }
+        #user-status { font-size: 0.75rem; max-width: 100px; }
+        #authBtn { padding: 6px 10px; font-size: 0.8rem; }
+        footer.chat-footer { padding: 0 15px; gap: 10px; }
+        .footer-btn { padding: 6px 12px; font-size: 0.85rem; gap: 5px; }
+        .save-btn span, .new-convo-btn span { display: none; }
+        .save-btn, .new-convo-btn { padding: 6px 10px; }
+        .change-font-btn { padding: 6px 8px; font-size: 1rem; }
+        .dark-mode-btn { padding: 6px 8px; font-size: 1rem; }
+        main#webchat { padding: 10px; }
+        .webchat__bubble { max-width: 90%; }
+        .webchat__bubble__content { font-size: 0.9rem; }
+        .subscription-modal { padding: 20px; width: 95%; }
+        .subscription-modal h2 { font-size: 1.5rem; }
+        .subscription-modal .price { font-size: 2rem; }
+        .subscription-modal .features-list li { font-size: 0.9rem; }
+    }
+  </style>
+  <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar"> </aside>
+  <div class="chat-container" id="chat-container">
+    <header class="chat-header" id="chat-header">
+      <button class="toggle-sidebar-btn" aria-label="Toggle chat history" onclick="toggleSidebar()">☰</button>
+      <a href="https://www.fdintelligence.co.uk/" target="_blank" rel="noopener noreferrer" class="header-logo-link">
+        <img src="FDi_Logo_Final.png" alt="FD Intelligence Logo" />
+      </a>
+      <div class="login-container" id="auth-container">
+        <span id="user-status">User not signed in</span>
+        <button id="authBtn" onclick="handleAuth()">Sign In</button>
+      </div>
+    </header>
+    <main id="webchat" role="main"> <!-- Web Chat content goes here --> </main>
+    <footer class="chat-footer">
+      <button class="footer-btn save-btn" onclick="saveChatTranscript()"> <i class="fas fa-save"></i> <span>Save PDF</span> </button>
+      <button class="footer-btn new-convo-btn" onclick="newchat()"> <i class="fas fa-plus-circle"></i> <span>New Chat</span> </button>
+      <button class="footer-btn change-font-btn" onclick="changeFontSize('increase')" aria-label="Increase font size"> <i class="fas fa-search-plus"></i> </button>
+      <button class="footer-btn change-font-btn" onclick="changeFontSize('decrease')" aria-label="Decrease font size"> <i class="fas fa-search-minus"></i> </button>
+      <button id="darkModeBtn" class="footer-btn dark-mode-btn" onclick="toggleDarkMode()" aria-label="Toggle Dark Mode"> <i class="fas fa-moon"></i> </button>
+    </footer>
+  </div><!-- end .chat-container -->
+
+  <!-- ====================================================== -->
+  <!-- ============ NEW: Subscription Overlay =============== -->
+  <!-- ====================================================== -->
+  <div id="subscription-overlay" class="subscription-overlay">
+    <div class="subscription-modal">
+        <h2>Unlock Full Access</h2>
+        <p class="price">£50<span style="font-size: 1.2rem; font-weight: 500;">/month</span></p>
+        <p class="price-desc">per user, billed annually</p>
+        <ul class="features-list">
+            <li><i class="fas fa-check-circle"></i> Unlimited AI-powered conversations</li>
+            <li><i class="fas fa-check-circle"></i> Access to all historical chat data</li>
+            <li><i class="fas fa-check-circle"></i> Secure team & license management</li>
+            <li><i class="fas fa-check-circle"></i> Priority email and chat support</li>
+            <li><i class="fas fa-check-circle"></i> Continuous feature updates</li>
+        </ul>
+        <button id="start-trial-btn" class="modal-button primary">Start 14-Day Free Trial</button>
+        <button id="recheck-sub-btn" class="modal-button secondary">I Already Have a Subscription</button>
+        <p id="subscription-status"></p>
+    </div>
+  </div>
+
+
+  <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script>
+let subscriptionData = null; // Global state for user's subscription
+
+/**********************
+ * Subscription Management
+ **********************/
+function showSubscriptionOverlay() {
+    const overlay = document.getElementById('subscription-overlay');
+    const container = document.getElementById('chat-container');
+    if (overlay) overlay.classList.add('visible');
+    if (container) container.classList.add('disabled');
+}
+
+function hideSubscriptionOverlay() {
+    const overlay = document.getElementById('subscription-overlay');
+    const container = document.getElementById('chat-container');
+    if (overlay) overlay.classList.remove('visible');
+    if (container) container.classList.remove('disabled');
+}
+
+async function checkUserSubscription(account) {
+    const subStatusElem = document.getElementById('subscription-status');
+    if (!account) {
+        console.warn("checkUserSubscription called without an account.");
+        return { active: false, error: "Not logged in." };
+    }
+    
+    if (subStatusElem) subStatusElem.textContent = 'Verifying subscription...';
+
+    // In a real application, you would fetch this from your secure backend.
+    // The backend would validate the MSAL token, look up the user's email in your database (e.g., Cosmos DB),
+    // and check their subscription status (e.g., via Stripe API).
+    try {
+        const response = await fetch('/api/check-subscription', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: JSON.stringify({ email: account.username })
+        });
+
+        if (!response.ok) {
+            // This handles cases like 404 (API not found), 401 (Unauthorized), 500 (Server error)
+            const errorData = await response.json().catch(() => ({ message: 'Failed to check subscription status.' }));
+            console.error('Subscription check failed:', response.status, errorData.message);
+            if (subStatusElem) subStatusElem.textContent = `Error: ${errorData.message || 'Could not verify.'}`;
+            return { active: false, error: errorData.message };
+        }
+        
+        const data = await response.json();
+        if (subStatusElem) subStatusElem.textContent = '';
+        return data; // Expected format: { active: boolean, companyName?: string, usedLicenses?: number, totalLicenses?: number }
+
+    } catch (error) {
+        // This catches network errors or if the API endpoint doesn't exist.
+        // FOR DEMONSTRATION: We simulate a "no subscription" response.
+        // In production, you'd want to handle this as a server error.
+        console.warn("API call to /api/check-subscription failed. Simulating 'no subscription'. Error:", error);
+        if (subStatusElem) subStatusElem.textContent = 'Could not reach subscription server.';
+        // In a real scenario, you might want to return { active: false, error: "Network error" }
+        // For this demo, we will consistently show the overlay if the API fails.
+        return { active: false, message: "Simulation: User does not have an active subscription." };
+    }
+}
+
+async function verifySubscriptionAndInitialize(account) {
+    if (!account) {
+        updateAuthUI(); // Show "Sign In" button
+        return;
+    }
+
+    const result = await checkUserSubscription(account);
+    subscriptionData = result; // Store subscription details globally
+
+    if (result && result.active) {
+        console.log("Subscription active. Initializing chat.");
+        hideSubscriptionOverlay();
+        updateAuthUI(); // Update UI with subscription details
+        initializeChat(); // This will call newchat() and load history
+    } else {
+        console.log("No active subscription. Showing overlay.");
+        showSubscriptionOverlay();
+        updateAuthUI(); // Update UI to show user is logged in but has no subscription
+    }
+}
+
+function initializeChat() {
+    // This function now centralizes the start of the chat experience
+    try {
+        newchat(); 
+        console.log("Initial newchat() called after subscription verification.");
+    } catch (chatInitError) { 
+        alert("Failed to initialize the chat interface. Please refresh the page."); 
+        console.error("Error initializing chat on load:", chatInitError);
+        const webchatArea = document.getElementById("webchat"); 
+        if (webchatArea) webchatArea.innerHTML = "<p style='padding: 20px; color: red; text-align: center;'>Error loading chat interface.</p>"; 
+    }
+}
+
+/**********************
+ * MSAL & Authentication Setup
+ **********************/
+const msalConfig = { auth: { clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2", authority: "https://login.microsoftonline.com/common", redirectUri: window.location.origin + window.location.pathname, }, cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false, } };
+let msalInstance; try { msalInstance = new msal.PublicClientApplication(msalConfig); } catch (e) { alert("Critical error initializing authentication library. Please refresh the page or contact support."); throw new Error("MSAL Initialization Failed"); }
+function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
+function updateAuthUI() {
+    const authBtn = document.getElementById("authBtn");
+    const userStatus = document.getElementById("user-status");
+    if (!authBtn || !userStatus) return;
+
+    const account = msalInstance.getActiveAccount();
+    if (account) {
+        authBtn.textContent = "Sign Out";
+        if (subscriptionData && subscriptionData.active) {
+            const companyInfo = subscriptionData.companyName || (account.name ? account.name.split(" ")[0] : "User");
+            const licenseInfo = subscriptionData.usedLicenses && subscriptionData.totalLicenses ? ` (${subscriptionData.usedLicenses}/${subscriptionData.totalLicenses} users)` : '';
+            userStatus.innerHTML = `${companyInfo}${licenseInfo}<br><small>${account.username}</small>`;
+        } else {
+             userStatus.innerHTML = `${account.name || account.username}<br><small>No active subscription</small>`;
+        }
+    } else {
+        authBtn.textContent = "Sign In";
+        userStatus.textContent = "User not signed in";
+    }
+}
+function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
+async function signIn() { const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; try { await msalInstance.loginRedirect(loginRequest); } catch (error) { alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); } }
+async function signOut() { clearAuthToken(); try { const currentAccount = msalInstance.getActiveAccount(); const logoutRequest = { account: currentAccount, postLogoutRedirectUri: window.location.origin + window.location.pathname }; if (currentAccount) { await msalInstance.logoutRedirect(logoutRequest); } else { await msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.origin + window.location.pathname }); } } catch (error) { updateAuthUI(); alert("An error occurred initiating sign-out. You might need to clear site data manually."); } }
+
+function postSignInEvent() {
+    const token = getAuthToken();
+    const account = msalInstance.getActiveAccount();
+    if (token && account && window.directLine && window.directLine.connectionStatus$.value === 2) {
+        window.directLine.postActivity({
+            type: "event",
+            name: "signin/verifyState",
+            from: { id: "user", name: account.name || account.username, role: "user" },
+            value: { 
+                token: token,
+                email: account.username,
+                firstName: account.name ? account.name.split(" ")[0] : "User",
+                subscription: subscriptionData // Pass subscription data to the bot
+            }
+        }).subscribe(id => console.log("Generic signin/verifyState sent, client ID:", id),
+            error => console.error("Error sending generic signin/verifyState:", error));
+    }
+}
+
+/**********************
+ * Chatbot & Web Chat Setup
+ **********************/
+let currentchat = null; const chats = {}; let fontSize = 16; let prepopulatedChats = {}; let initialSidebarLoaded = false; const DIRECT_LINE_TOKEN = "95yFvDSvcJbU9w7KPugSBmVU4YoF9K9slvbda1Vi2MsSlTsWCPkpJQQJ99BBACYeBjFAArohAAABAZBS3H3w.8S73IKZ4DivJDHCUZF2zChWUS3k8VBBBTaVEYgV6xFqWfGC1NTSqJQQJ99BEAC5T7U2AArohAAABAZBS2lZK"; let isInjectingHistory = false; window.directLine = null; let currentDirectLineSubscription = null; const webChatStyleOptions = { bubbleBorderRadius: 12, bubbleFromUserBorderRadius: 12, botAvatarImage: "FDi_Logo_Device_Transparent_Outer.png", userAvatarImage: "Unknown.png", botAvatarInitials: "TIA", sendBoxTextWrap: true, hideUploadButton: true, sendBoxButtonAlignment: 'end', };
+function getScrollableTranscript(container) { return container?.querySelector('.webchat__basic-transcript__scrollable') || container?.querySelector('.webchat__basic-transcript'); } function scrollToBottom(container) { setTimeout(() => { const scrollable = getScrollableTranscript(container); if (scrollable) { scrollable.scrollTop = scrollable.scrollHeight; } else { console.warn("Could not find scrollable element in scrollToBottom for container:", container); } }, 250); } function parseMemory(memoryStr) { const activities = []; if (!memoryStr) return activities; const lines = memoryStr.split("\n"); let currentActivity = null; const regex = /^(User(?: Query)?|Bot(?: Answer)?)\s*\d*\s*:\s*(.*)$/i; lines.forEach(line => { const trimmed = line.trim(); if (!trimmed) return; const match = trimmed.match(regex); if (match) { if (currentActivity) activities.push(currentActivity); const marker = match[1].toLowerCase(); const text = match[2]; const isUser = marker.startsWith("user"); const from = isUser ? { id: "user", name: "User", role: "user" } : { id: "bot", name: "FDI Chatbot", role: "bot" }; currentActivity = { type: "message", from: from, text: text.trim(), timestamp: new Date(Date.now() - ((lines.length - activities.length) * 100)).toISOString() }; } else if (currentActivity) { currentActivity.text += "\n" + trimmed; } }); if (currentActivity) activities.push(currentActivity); activities.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); return activities; } function truncateTitle(title) { if (title.length > 25) { return title.slice(0, 22) + "..."; } return title; }
+function updateSidebar(memories) { const sidebar = document.querySelector(".sidebar"); if (!sidebar) { return; } let tempPrepopulatedChats = {}; let hasValidChatsInUpdate = false; const updatedChatIds = new Set(); if (memories && typeof memories === 'object' && Object.keys(memories).length > 0) { const conversationIds = Object.keys(memories); conversationIds.forEach(convId => { updatedChatIds.add(convId); try { if (!memories[convId]) { return; } const memoryDataStr = memories[convId]; const memoryData = (typeof memoryDataStr === 'string') ? JSON.parse(memoryDataStr) : memoryDataStr; const transcript = memoryData.memory || ""; const title = memoryData.title ? memoryData.title.trim() : ""; const activities = parseMemory(transcript); const hasTitle = title.length > 0; const hasUserMessages = activities.some(act => act.from.role === 'user'); if (hasTitle || hasUserMessages) { hasValidChatsInUpdate = true; tempPrepopulatedChats[convId] = transcript; let label = "Untitled Chat"; if (hasTitle && title !== "New Chat...") { label = truncateTitle(title); } else if (hasUserMessages) { const firstUserActivity = activities.find(a => a.from.role === "user"); label = firstUserActivity?.text ? truncateTitle(firstUserActivity.text.split('\n')[0]) : "Chat " + convId.substring(convId.length - 5); } else { label = "Chat " + convId.substring(convId.length - 5); } addchatTab(convId, label); } } catch (e) { console.error("Failed to process memory for sidebar update:", convId, e); } }); }
+Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebar.querySelectorAll('.chat-tab').length; if (currentTabCount === 0 && !noChatsMsg) { sidebar.innerHTML = '<p class="sidebar-no-chats-message">No previous chats found.</p>'; } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } initialSidebarLoaded = true; }
+function toggleSidebar() { const sidebar = document.querySelector(".sidebar"); sidebar?.classList.toggle('open'); }
+function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatch, getState }) => next => action => { if ((action.type === "WEB_CHAT/SEND_MESSAGE" || action.type === "DIRECT_LINE/POST_ACTIVITY") && action.payload?.activity?.type === "message") { const token = getAuthToken(); if (token) { if (!action.payload.activity.channelData) action.payload.activity.channelData = {}; action.payload.activity.channelData.token = token; action.payload.activity.channelData.subscription = subscriptionData; } if (!action.payload.activity.from) action.payload.activity.from = {}; if (!action.payload.activity.from.role) action.payload.activity.from.role = 'user'; } if ((action.type === 'DIRECT_LINE/INCOMING_ACTIVITY' && action.payload?.activity?.type === 'message') || action.type === 'WEB_CHAT/SEND_MESSAGE_FULFILLED') { const container = document.getElementById('webchat_' + currentchat); if(container) scrollToBottom(container); } if (action.type === 'DIRECT_LINE/CONNECT_FULFILLED') { if (!isInjectingHistory) { const welcomeActivity = { type: 'message', id: `welcome_${action.payload.directLine.conversationId}_${Date.now()}`, timestamp: new Date(1).toISOString(), channelId: 'webchat', from: { id: 'bot', name: 'FDI Chatbot', role: 'bot' }, text: 'Hi! I am Tia, the FDI Chatbot!' }; dispatch({ type: 'DIRECT_LINE/INCOMING_ACTIVITY', payload: { activity: welcomeActivity } }); }
+dispatch({ type: 'WEB_CHAT/SEND_EVENT', payload: { name: 'webchat/join', value: { language: window.navigator.language } } }); } return next(action); }); }
+function endCurrentDirectLine() { if (currentDirectLineSubscription) { currentDirectLineSubscription.unsubscribe(); currentDirectLineSubscription = null; } if (window.directLine) { window.directLine.end(); window.directLine = null; } }
+
+function loadExistingChat(chatId, memoryStr) {
+    console.log("loadExistingChat called for chatId:", chatId);
+    isInjectingHistory = true;
+    const mainWebchatArea = document.getElementById("webchat"); 
+    if (!mainWebchatArea) { console.error("Main webchat area not found in loadExistingChat"); return; }
+    const containerId = "webchat_" + chatId; 
+    let container = document.getElementById(containerId);
+    if (!container) { container = document.createElement("div"); container.id = containerId; container.style.display = "none"; container.style.minHeight = "100%"; mainWebchatArea.appendChild(container); } else { container.innerHTML = ''; }
+    endCurrentDirectLine();
+    try { window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: DIRECT_LINE_TOKEN }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
+    const store = createWebChatStore();
+    try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
+    currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
+    const historyInjectionTimeout = setTimeout(() => { const activities = parseMemory(memoryStr); const historyActivities = activities.filter(act => !act.id?.startsWith('welcome_')); const historyBaseTime = Date.now() - (24 * 60 * 60 * 1000); historyActivities.forEach((activity, index) => { activity.id = activity.id || `memory-${chatId}-${index}`; activity.timestamp = new Date(historyBaseTime + index * 100).toISOString(); try { store.dispatch({ type: 'DIRECT_LINE/INCOMING_ACTIVITY', payload: { activity } }); } catch (dispatchError) { console.error("Error dispatching history activity:", dispatchError); } }); scrollToBottom(container); isInjectingHistory = false; console.log("History injected for chat:", chatId); }, 250);
+    let authSent = false;
+    const connSub = window.directLine.connectionStatus$.subscribe(status => {
+        if (status === 2 && !authSent) {
+            authSent = true;
+            const actualDlConversationId = window.directLine.conversationId;
+            if (actualDlConversationId && actualDlConversationId !== chatId) {
+                window.directLine.postActivity({ type: 'event', name: 'mapOldConversation', value: { originalConversationId: chatId, currentConversationId: actualDlConversationId }, from: { id: 'user-client', role: 'user' } }).subscribe({ next: id => { console.log("mapOldConversation event sent", id); }, error: err => { console.error("Error sending mapOldConversation event:", err); } });
+            }
+            setTimeout(() => {
+                const token = getAuthToken(); const account = msalInstance.getActiveAccount();
+                if (token && account) {
+                    window.directLine.postActivity({ type: "event", name: "signin/verifyState", from: { id: "user", name: account.name || account.username, role: "user" }, value: { token: token, originalConversationIdHint: chatId, email: account.username, firstName: account.name ? account.name.split(" ")[0] : "User", subscription: subscriptionData } }).subscribe(id => console.log("signin/verifyState with hint sent from loadExistingChat, client ID:", id), error => console.error("Error sending signin/verifyState with hint from loadExistingChat:", error));
+                } else { console.warn("Cannot send signin/verifyState with hint: No token or account."); alert("Please sign in to access this chat."); }
+            }, 100);
+            connSub.unsubscribe();
+        } else if (status === 3 || status === 4 || status === 5) { clearTimeout(historyInjectionTimeout); connSub.unsubscribe(); isInjectingHistory = false; console.error(`Failed to connect to existing chat "${chatId}". Status: ${status}.`); alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`); }
+    });
+}
+function showchat(chatId) {
+    const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in showchat"); return; }
+    if (currentchat === chatId && document.getElementById("webchat_" + chatId)?.style.display !== 'none') { const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); } return; }
+    const containers = mainWebchatArea.querySelectorAll(":scope > div[id^='webchat_']"); containers.forEach(container => { container.style.display = "none"; });
+    let previousChatId = currentchat;
+    currentchat = chatId;
+    let container = document.getElementById("webchat_" + chatId);
+    if (!container) {
+        if (prepopulatedChats.hasOwnProperty(chatId)) { loadExistingChat(chatId, prepopulatedChats[chatId]); container = document.getElementById("webchat_" + chatId); if (!container) { alert("Error loading chat. Please try refreshing."); console.error(`Container for ${chatId} still not found after loadExistingChat.`); currentchat = previousChatId; return; }
+        } else { console.warn(`Chat ID ${chatId} not found in prepopulatedChats.`); alert(`Cannot show chat: ${chatId}.`); currentchat = previousChatId; if (Object.keys(chats).length > 0) { showchat(Object.keys(chats)[0]); } else { newchat(); } return; }
+    }
+    container.style.display = "flex";
+    document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${chatId}`); });
+    const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
+    applyCurrentFontSize(container);
+    scrollToBottom(container);
+    setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); } else { console.warn("Textarea not found to focus in showchat for container:", container); } }, 150);
+}
+function newchat() {
+    if (!subscriptionData?.active) { showSubscriptionOverlay(); return; }
+    console.log("newchat called");
+    isInjectingHistory = false; endCurrentDirectLine();
+    const tempChatId = "new_" + Date.now();
+    const tempLabel = "New Chat...";
+    const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in newchat"); return; }
+    const otherContainers = mainWebchatArea.querySelectorAll(":scope > div[id^='webchat_']"); otherContainers.forEach(cont => cont.style.display = "none");
+    const containerId = "webchat_" + tempChatId; const container = document.createElement("div"); container.id = containerId; container.style.minHeight = "100%"; container.style.display = "flex"; mainWebchatArea.appendChild(container);
+    currentchat = tempChatId;
+    const tempTabElement = addchatTab(tempChatId, tempLabel); if (!tempTabElement) { console.error("Failed to add temp tab for new chat"); }
+    document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${tempChatId}`); });
+    const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
+    try { window.directLine = window.WebChat.createDirectLine({ token: DIRECT_LINE_TOKEN }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    const store = createWebChatStore();
+    try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); } catch(e) { alert("Error displaying new chat interface."); console.error("Error rendering WebChat for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    applyCurrentFontSize(container);
+    let connectionEstablished = false; let finalConversationId = null;
+    currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => {console.error("Error in DL activity sub for new chat:", error);}, complete: () => {} });
+    const connSub = window.directLine.connectionStatus$.subscribe({
+        next: status => {
+            if (status === 2 && !connectionEstablished) {
+                connectionEstablished = true; finalConversationId = window.directLine.conversationId;
+                if (finalConversationId && finalConversationId !== tempChatId) {
+                    if (currentchat === tempChatId) { currentchat = finalConversationId; }
+                    container.id = "webchat_" + finalConversationId;
+                    const tabButton = tempTabElement?.querySelector('button');
+                    if (tabButton && tabButton.id === `chat-${tempChatId}`) {
+                        tabButton.id = `chat-${finalConversationId}`; tabButton.onclick = () => showchat(finalConversationId);
+                        if (chats[tempChatId]) { chats[finalConversationId] = chats[tempChatId]; delete chats[tempChatId]; }
+                    }
+                }
+                postSignInEvent();
+                if (window.directLine) { window.directLine.postActivity({ type: "event", name: "requestSidebarUpdate", from: { id: "user-client" } }).subscribe(id => {}, err => {console.error("Error requesting sidebar update on new chat connect:", err);}); }
+                connSub.unsubscribe();
+            } else if (status === 4 || status === 5) {
+                alert("Could not start a new chat session."); console.error("Connection error/expired for new chat."); endCurrentDirectLine(); connSub.unsubscribe(); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); if (currentchat === tempChatId) currentchat = null; 
+            }
+        }, error: err => {console.error("Error in DL connection status sub for new chat:", err);}
+    });
+}
+function createChatTabElement(chatId, label) { const container = document.createElement("div"); container.className = "chat-tab"; const button = document.createElement("button"); button.id = "chat-" + chatId; button.textContent = label; button.onclick = () => showchat(chatId); button.setAttribute("title", label); container.appendChild(button); const deleteButton = document.createElement("span"); deleteButton.className = "delete-chat"; deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>'; deleteButton.setAttribute("aria-label", "Delete chat"); deleteButton.onclick = (event) => { event.stopPropagation(); const capturedChatId = chatId; if (confirm(`Are you sure you want to delete "${label}"? This action cannot be undone.`)) { deleteChat(capturedChatId); } }; container.appendChild(deleteButton); return container; }
+function addchatTab(chatId, newLabel) {
+    const sidebar = document.querySelector(".sidebar"); if (!sidebar) return null;
+    let existingTabElement = chats[chatId]; let existingButton = existingTabElement?.querySelector('button');
+    if (existingButton) { const currentButtonLabel = existingButton.textContent; if ((currentButtonLabel === "New Chat..." || currentButtonLabel === "Untitled Chat" || currentButtonLabel.startsWith("Chat ")) && newLabel && newLabel.trim() !== "" && newLabel !== "New Chat...") { existingButton.textContent = newLabel; existingButton.setAttribute("title", newLabel); } return existingTabElement;
+    } else { const tabElement = createChatTabElement(chatId, newLabel); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); if (noChatsMsg) noChatsMsg.remove(); sidebar.insertBefore(tabElement, sidebar.firstChild); chats[chatId] = tabElement; return tabElement; }
+}
+function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const currentTabCount = sidebar?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg) { sidebar.innerHTML = '<p class="sidebar-no-chats-message">No previous chats found.</p>'; } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => console.log("deleteChat event sent for", chatId), error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); } }
+
+// --- PDF Saving, Font Size, Dark Mode (Unchanged) ---
+const addPdfPage = (docInstance, topMargin) => { docInstance.addPage(); return topMargin; };
+function drawContentNode(doc, node, bubbleStartX, currentY, styles, bubbleUsableWidth, pageMargin, pageHeight, currentX_ref, isFirstElementOnLine_ref) { let y = currentY; const textContentUsableWidth = bubbleUsableWidth - (styles.boxPadding * 2); const textStartX = bubbleStartX + styles.boxPadding; doc.setFont(styles.fontName, styles.fontStyle || 'normal'); doc.setFontSize(styles.fontSize); const baseLineHeight = doc.getLineHeight() / doc.internal.scaleFactor; const lineHeight = baseLineHeight * 1.25; const textVerticalOffset = baseLineHeight * 0.8; if (node.nodeType === Node.TEXT_NODE) { let text = node.nodeValue; const textSegments = text.split(/(\n)/); for (const segment of textSegments) { if (segment === '\n') { y += lineHeight; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) { y = addPdfPage(doc, pageMargin); currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; } continue; } const cleanedSegment = segment.replace(/\s+/g, ' '); if (!cleanedSegment.trim()) continue; let words = cleanedSegment.split(/(\s)/).filter(s => s.length > 0); for (const word of words) { if (!word) continue; doc.setFont(styles.fontName, styles.fontStyle || 'normal'); doc.setFontSize(styles.fontSize); let wordWidth = doc.getStringUnitWidth(word) * styles.fontSize / doc.internal.scaleFactor; if (currentX_ref.value > textStartX && (currentX_ref.value + wordWidth) > (textStartX + textContentUsableWidth)) { y += lineHeight; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) { y = addPdfPage(doc, pageMargin); } } if (isFirstElementOnLine_ref.value && styles.backgroundColor) { doc.setFillColor(styles.backgroundColor[0], styles.backgroundColor[1], styles.backgroundColor[2]); doc.rect(bubbleStartX, y, bubbleUsableWidth, lineHeight, 'F'); isFirstElementOnLine_ref.value = false; } doc.setTextColor(styles.textColor[0], styles.textColor[1], styles.textColor[2]); doc.text(word, currentX_ref.value, y + textVerticalOffset); currentX_ref.value += wordWidth; } } } else if (node.nodeType === Node.ELEMENT_NODE) { const tagName = node.tagName.toUpperCase(); let childStyles = { ...styles }; let originalFontStyle = childStyles.fontStyle; if (tagName === 'STRONG' || tagName === 'B') { childStyles.fontStyle = 'bold'; } else if (tagName === 'EM' || tagName === 'I') { childStyles.fontStyle = 'italic'; } if (tagName === 'P' || tagName === 'DIV' || tagName === 'LI') { if (currentX_ref.value > textStartX && node.previousSibling) { y += lineHeight; if (y + lineHeight > pageHeight - pageMargin) y = addPdfPage(doc, pageMargin); } currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (tagName === 'LI') { if (isFirstElementOnLine_ref.value && styles.backgroundColor) { doc.setFillColor(styles.backgroundColor[0], styles.backgroundColor[1], styles.backgroundColor[2]); doc.rect(bubbleStartX, y, bubbleUsableWidth, lineHeight, 'F'); } doc.setTextColor(childStyles.textColor[0], childStyles.textColor[1], childStyles.textColor[2]); doc.text("- ", currentX_ref.value, y + textVerticalOffset); currentX_ref.value += doc.getStringUnitWidth("- ") * childStyles.fontSize / doc.internal.scaleFactor; isFirstElementOnLine_ref.value = false; } for (let k = 0; k < node.childNodes.length; k++) { y = drawContentNode(doc, node.childNodes[k], bubbleStartX, y, childStyles, bubbleUsableWidth, pageMargin, pageHeight, currentX_ref, isFirstElementOnLine_ref); } if (node.childNodes.length > 0 || tagName === 'P' || tagName === 'LI') { if(currentX_ref.value > textStartX) { y += lineHeight; } else if (node.childNodes.length === 0) { y += lineHeight; } y += lineHeight * 0.3; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) { y = addPdfPage(doc, pageMargin); } } } else if (tagName === 'UL' || tagName === 'OL') { for (let k = 0; k < node.childNodes.length; k++) { if (k > 0 || currentX_ref.value > textStartX) { if (currentX_ref.value > textStartX) y += lineHeight; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) y = addPdfPage(doc, pageMargin); } y = drawContentNode(doc, node.childNodes[k], bubbleStartX, y, childStyles, bubbleUsableWidth, pageMargin, pageHeight, currentX_ref, isFirstElementOnLine_ref); } y += lineHeight * 0.3; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) y = addPdfPage(doc, pageMargin); } else if (tagName === 'A') { const originalLinkColor = childStyles.textColor; childStyles.textColor = [0, 102, 204]; let linkText = node.textContent || ""; let href = node.getAttribute('href') || ""; const linkTextSegments = linkText.split(/(\n)/); for (const segment of linkTextSegments) { if (segment === '\n') { y += lineHeight; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) y = addPdfPage(doc, pageMargin); continue; } const cleanedSegment = segment.replace(/\s+/g, ' '); if (!cleanedSegment.trim()) continue; let words = cleanedSegment.split(/(\s)/).filter(s => s.length > 0); for (const word of words) { if (!word) continue; doc.setFont(childStyles.fontName, childStyles.fontStyle || 'normal'); doc.setFontSize(childStyles.fontSize); let wordWidth = doc.getStringUnitWidth(word) * childStyles.fontSize / doc.internal.scaleFactor; if (currentX_ref.value > textStartX && (currentX_ref.value + wordWidth) > (textStartX + textContentUsableWidth)) { y += lineHeight; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) y = addPdfPage(doc, pageMargin); } if (isFirstElementOnLine_ref.value && styles.backgroundColor) { doc.setFillColor(styles.backgroundColor[0], styles.backgroundColor[1], styles.backgroundColor[2]); doc.rect(bubbleStartX, y, bubbleUsableWidth, lineHeight, 'F'); isFirstElementOnLine_ref.value = false; } doc.setTextColor(childStyles.textColor[0], childStyles.textColor[1], childStyles.textColor[2]); try { doc.textWithLink(word, currentX_ref.value, y + textVerticalOffset, { url: href }); } catch (e) { doc.text(word + (href ? ` (${href})` : ""), currentX_ref.value, y + textVerticalOffset); } currentX_ref.value += wordWidth; } } childStyles.textColor = originalLinkColor; } else if (tagName === 'BR') { y += lineHeight; currentX_ref.value = textStartX; isFirstElementOnLine_ref.value = true; if (y + lineHeight > pageHeight - pageMargin) { y = addPdfPage(doc, pageMargin); } } else { for (let k = 0; k < node.childNodes.length; k++) { y = drawContentNode(doc, node.childNodes[k], bubbleStartX, y, childStyles, bubbleUsableWidth, pageMargin, pageHeight, currentX_ref, isFirstElementOnLine_ref); } } childStyles.fontStyle = originalFontStyle; } return y; }
+function saveChatTranscript() { const chatContainer = document.getElementById("webchat_" + currentchat); if (!chatContainer) { alert("Could not find chat content to save."); return; } const activityElements = chatContainer.querySelectorAll('.webchat__bubble'); if (activityElements.length === 0) { alert("No messages to save."); return; } try { const { jsPDF } = window.jspdf; const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }); const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight(); const pageMargin = 15; const usableWidth = pageWidth - pageMargin * 2; let y = pageMargin; doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text("Chat Transcript (Beta Demonstration)", pageWidth / 2, y, { align: "center" }); y += 7; doc.setLineWidth(0.3); doc.line(pageMargin, y, pageWidth - pageMargin, y); y += 10; const boxPadding = 4; activityElements.forEach(bubble => { const activityContentElement = bubble.querySelector('.webchat__bubble__content'); if (!activityContentElement) return; const isUser = bubble.classList.contains('webchat__bubble--from-user'); const senderLabel = isUser ? "User" : "FDI Chatbot"; doc.setFont("helvetica", "bold"); doc.setFontSize(10); const senderBaseLineHeight = doc.getLineHeight() / doc.internal.scaleFactor; const senderLineHeight = senderBaseLineHeight * 1.2; const senderTextVerticalOffset = senderBaseLineHeight * 0.8; if (y + senderLineHeight > pageHeight - pageMargin) { y = addPdfPage(doc, pageMargin); } const senderBgColor = isUser ? [200, 220, 250] : [210, 210, 210]; doc.setFillColor(senderBgColor[0], senderBgColor[1], senderBgColor[2]); doc.rect(pageMargin, y, usableWidth, senderLineHeight, 'F'); doc.setTextColor(50, 50, 50); doc.text(senderLabel, pageMargin + boxPadding, y + senderTextVerticalOffset); y += senderLineHeight; y += 2; const tempEstLineHeight = (doc.setFontSize(9.5).getLineHeight() / doc.internal.scaleFactor) * 1.25; if (y + tempEstLineHeight > pageHeight - pageMargin) { y = addPdfPage(doc, pageMargin); } const contentStyles = { fontName: "helvetica", fontSize: 9.5, fontStyle: "normal", textColor: isUser ? [255, 255, 255] : [30, 30, 30], backgroundColor: isUser ? [0, 90, 158] : [225, 239, 247], boxPadding: boxPadding }; let currentX_ref = { value: pageMargin + contentStyles.boxPadding }; let isFirstElementOnLine_ref = { value: true }; y = drawContentNode(doc, activityContentElement, pageMargin, y, contentStyles, usableWidth, pageMargin, pageHeight, currentX_ref, isFirstElementOnLine_ref); if (currentX_ref.value > (pageMargin + contentStyles.boxPadding) || isFirstElementOnLine_ref.value === false) { y += (doc.setFontSize(contentStyles.fontSize).getLineHeight() / doc.internal.scaleFactor) * 1.25; } y += 6; if (y > pageHeight - pageMargin - 10) { y = addPdfPage(doc, pageMargin); } }); const pageCount = doc.internal.getNumberOfPages(); for (let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150); doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - (pageMargin / 2), { align: 'center' }); doc.text(`Saved: ${new Date().toLocaleString()}`, pageMargin, pageHeight - (pageMargin / 2)); } doc.save(`TIA-Chat-Transcript-${new Date().toISOString().split('T')[0]}.pdf`); } catch (error) { alert("An error occurred while saving the transcript as PDF."); console.error("Error in saveChatTranscript:", error); } }
+function applyCurrentFontSize(containerElement) { if (!containerElement) return; const webchatContentElements = containerElement.querySelectorAll(".webchat__bubble__content"); webchatContentElements.forEach(content => { content.style.fontSize = fontSize + "px"; }); }
+function changeFontSize(action) { const currentWebChatContainer = document.getElementById('webchat_' + currentchat); if (!currentWebChatContainer) return; if (action === "increase") { fontSize = Math.min(24, fontSize + 1); } else if (action === "decrease") { fontSize = Math.max(12, fontSize - 1); } applyCurrentFontSize(currentWebChatContainer); }
+function setDarkMode(isDark) { const darkModeBtn = document.getElementById('darkModeBtn'); const icon = darkModeBtn?.querySelector('i'); if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); } if (darkModeBtn) darkModeBtn.setAttribute('aria-label', 'Switch to Light Mode'); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); } if (darkModeBtn) darkModeBtn.setAttribute('aria-label', 'Switch to Dark Mode'); } } function toggleDarkMode() { setDarkMode(!document.body.classList.contains('dark-mode')); }
+
+// --- Global Event Listeners / Initial Setup ---
+window.signIn = signIn; window.signOut = signOut; window.handleAuth = handleAuth; window.toggleSidebar = toggleSidebar; window.newchat = newchat; window.changeFontSize = changeFontSize; window.saveChatTranscript = saveChatTranscript; window.showchat = showchat; window.toggleDarkMode = toggleDarkMode;
+
+window.onload = async () => {
+    console.log("Window onload started.");
+    
+    // Setup theme
+    const preferredTheme = localStorage.getItem('theme');
+    setDarkMode(preferredTheme === 'dark');
+
+    // Setup subscription modal buttons
+    document.getElementById('start-trial-btn').onclick = () => { window.location.href = '/pricing'; };
+    document.getElementById('recheck-sub-btn').onclick = () => { verifySubscriptionAndInitialize(msalInstance.getActiveAccount()); };
+
+    try {
+        await msalInstance.handleRedirectPromise();
+        let account = msalInstance.getActiveAccount();
+        if (!account && msalInstance.getAllAccounts().length > 0) {
+            account = msalInstance.getAllAccounts()[0];
+            msalInstance.setActiveAccount(account);
+        }
+
+        if (account) {
+            console.log("MSAL Account found:", account.username);
+            const tokenRequest = { scopes: ["openid", "profile", "User.Read"], account: account };
+            try {
+                const tokenResponse = await msalInstance.acquireTokenSilent(tokenRequest);
+                saveAuthToken(tokenResponse.accessToken);
+                console.log("MSAL token acquired silently.");
+                // Token is ready, now check subscription
+                await verifySubscriptionAndInitialize(account);
+            } catch (error) {
+                if (error instanceof msal.InteractionRequiredAuthError) {
+                    await msalInstance.acquireTokenRedirect(tokenRequest);
+                } else {
+                    console.error("MSAL silent token acquisition error:", error);
+                    clearAuthToken();
+                    updateAuthUI();
+                }
+            }
+        } else {
+            console.log("No MSAL account found. User needs to sign in.");
+            clearAuthToken();
+            updateAuthUI();
+            // Optional: show overlay with a message to sign in, but current UI is clear.
+        }
+    } catch (msalError) {
+        console.error("MSAL error during startup:", msalError);
+        clearAuthToken();
+        updateAuthUI();
+    }
+    
+    setInterval(() => { 
+        const token = getAuthToken(); 
+        const isActiveConnection = window.directLine && window.directLine.connectionStatus$.value === 2; 
+        // Only request updates if subscription is active
+        if (token && isActiveConnection && subscriptionData?.active && msalInstance.getActiveAccount()) { 
+            window.directLine.postActivity({ type: "event", name: "requestSidebarUpdate", from: { id: "user-client", role: "user" } })
+            .subscribe( id => {}, error => {console.warn("Periodic sidebar update request failed:", error);} ); 
+        } 
+    }, 30000);
+    console.log("Window onload finished.");
+}; 
+  </script>
+</body>
+</html>
