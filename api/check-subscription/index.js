@@ -1,4 +1,6 @@
 module.exports = async function (context, req) {
+    context.log('Checking subscription for user');
+
     if (req.method !== 'POST') {
         context.res = { status: 405, body: { message: 'Method not allowed' } };
         return;
@@ -11,9 +13,17 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // FOR TESTING: Return subscription active for your email
-    // Replace with your actual email address
-    if (email === 'j.baillie@fdintelligence.co.uk') {
+    context.log('Checking subscription for email:', email);
+
+    // FOR TESTING: Add your Microsoft account email here
+    // Replace 'your-email@company.com' with your actual email
+    const allowedEmails = [
+        'j.baillie@fdintelligence.co.uk',  // Replace with your email
+        'admin@fdintelligence.co.uk'  // Add other test emails
+    ];
+
+    if (allowedEmails.includes(email.toLowerCase())) {
+        context.log('User has active subscription');
         context.res = {
             status: 200,
             body: {
@@ -27,6 +37,7 @@ module.exports = async function (context, req) {
     }
 
     // For all other users, no subscription
+    context.log('User does not have active subscription');
     context.res = {
         status: 200,
         body: {
