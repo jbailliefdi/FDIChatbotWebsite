@@ -904,6 +904,68 @@
       font-size: 1rem;
       opacity: 0.8;
     }
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 2001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.loading-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease;
+}
+
+.loading-modal {
+  background: var(--content-bg-color);
+  color: var(--text-color);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  padding: 40px;
+  text-align: center;
+  transform: scale(0.95);
+  transition: transform 0.3s ease, background-color var(--transition-speed), color var(--transition-speed);
+}
+
+.loading-overlay.visible .loading-modal {
+  transform: scale(1);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.logo-container img {
+  filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.3));
+  transition: filter var(--transition-speed);
+}
+
+body.dark-mode .logo-container img {
+  filter: drop-shadow(0 0 12px rgba(102, 126, 234, 0.6)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+}
   </style>
   <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
 </head>
@@ -920,13 +982,11 @@
       </button>
       <a href="https://www.fdintelligence.co.uk/" target="_blank" rel="noopener noreferrer" class="header-logo-link">
         <div class="logo-container">
-          <i class="fas fa-robot"></i>
-          <span>FDI AI</span>
-        </div>
+  <img src="FDi_Logo_Final.png" alt="FDI Logo" style="height: 40px;">
+</div>
       </a>
       <div class="logo-container">
-        <i class="fas fa-robot"></i>
-        <span>FDI AI</span>
+        <span>TIA</span>
       </div>
       <div class="login-container" id="auth-container">
         <span id="user-status">User not signed in</span>
@@ -1050,8 +1110,15 @@ async function verifySubscriptionAndInitialize(account) {
         return;
     }
 
+    // Show loading overlay
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) loadingOverlay.classList.add('visible');
+
     const result = await checkUserSubscription(account);
     subscriptionData = result; // Store subscription details globally
+
+    // Hide loading overlay
+    if (loadingOverlay) loadingOverlay.classList.remove('visible');
 
     if (result && result.active) {
         console.log("Subscription active. Initializing chat.");
@@ -1311,5 +1378,13 @@ window.onload = async () => {
     console.log("Window onload finished.");
 }; 
   </script>
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="loading-modal">
+    <div class="loading-spinner"></div>
+    <h3>Verifying Subscription...</h3>
+    <p>Please wait while we check your account status.</p>
+  </div>
+</div>
 </body>
 </html>
