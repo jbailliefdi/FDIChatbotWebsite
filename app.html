@@ -1035,6 +1035,95 @@ body.dark-mode .logo-container img {
   margin-bottom: 25px;
   color: var(--text-muted-color);
 }
+/* Delete Confirmation Modal */
+.delete-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 2003;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.delete-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease;
+}
+
+.delete-modal {
+  background: var(--content-bg-color);
+  color: var(--text-color);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  padding: 40px;
+  text-align: center;
+  transform: scale(0.95);
+  transition: transform 0.3s ease, background-color var(--transition-speed), color var(--transition-speed);
+  max-width: 400px;
+  width: 90%;
+}
+
+.delete-overlay.visible .delete-modal {
+  transform: scale(1);
+}
+
+.delete-modal h3 {
+  color: #e74c3c;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.delete-modal p {
+  margin-bottom: 25px;
+  color: var(--text-muted-color);
+}
+
+.delete-modal .modal-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.delete-modal .modal-buttons button {
+  flex: 1;
+  padding: 12px 24px;
+  border-radius: 25px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.delete-modal .cancel-btn {
+  background: transparent;
+  color: var(--text-muted-color);
+  border: 2px solid var(--border-color);
+}
+
+.delete-modal .cancel-btn:hover {
+  background: var(--border-color);
+  color: var(--text-color);
+}
+
+.delete-modal .confirm-btn {
+  background: #e74c3c;
+  color: white;
+}
+
+.delete-modal .confirm-btn:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+}
   </style>
   <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
 </head>
@@ -1055,8 +1144,10 @@ body.dark-mode .logo-container img {
 </div>
       </a>
       <div class="logo-container">
-        <span>TIA</span>
-      </div>
+  <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+    <span>TIA</span>
+  </a>
+</div>
       <div class="login-container" id="auth-container">
         <span id="user-status">User not signed in</span>
         <button id="authBtn" onclick="handleAuth()">Sign In</button>
@@ -1118,7 +1209,34 @@ function showErrorOverlay() {
     const overlay = document.getElementById('error-overlay');
     if (overlay) overlay.classList.add('visible');
 }
+// Global variable to store the chat to be deleted
+let chatToDelete = null;
+let chatLabelToDelete = null;
 
+function showDeleteOverlay(chatId, label) {
+    chatToDelete = chatId;
+    chatLabelToDelete = label;
+    const overlay = document.getElementById('delete-overlay');
+    const message = document.getElementById('delete-message');
+    if (overlay && message) {
+        message.textContent = `Are you sure you want to delete "${label}"? This action cannot be undone.`;
+        overlay.classList.add('visible');
+    }
+}
+
+function hideDeleteOverlay() {
+    const overlay = document.getElementById('delete-overlay');
+    if (overlay) overlay.classList.remove('visible');
+    chatToDelete = null;
+    chatLabelToDelete = null;
+}
+
+function confirmDelete() {
+    if (chatToDelete) {
+        deleteChat(chatToDelete);
+        hideDeleteOverlay();
+    }
+}
 function hideErrorOverlay() {
     const overlay = document.getElementById('error-overlay');
     if (overlay) overlay.classList.remove('visible');
@@ -1376,7 +1494,7 @@ function newchat() {
         }, error: err => {console.error("Error in DL connection status sub for new chat:", err);}
     });
 }
-function createChatTabElement(chatId, label) { const container = document.createElement("div"); container.className = "chat-tab"; const button = document.createElement("button"); button.id = "chat-" + chatId; button.textContent = label; button.onclick = () => showchat(chatId); button.setAttribute("title", label); container.appendChild(button); const deleteButton = document.createElement("span"); deleteButton.className = "delete-chat"; deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>'; deleteButton.setAttribute("aria-label", "Delete chat"); deleteButton.onclick = (event) => { event.stopPropagation(); const capturedChatId = chatId; if (confirm(`Are you sure you want to delete "${label}"? This action cannot be undone.`)) { deleteChat(capturedChatId); } }; container.appendChild(deleteButton); return container; }
+function createChatTabElement(chatId, label) { const container = document.createElement("div"); container.className = "chat-tab"; const button = document.createElement("button"); button.id = "chat-" + chatId; button.textContent = label; button.onclick = () => showchat(chatId); button.setAttribute("title", label); container.appendChild(button); const deleteButton = document.createElement("span"); deleteButton.className = "delete-chat"; deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>'; deleteButton.setAttribute("aria-label", "Delete chat"); deleteButton.onclick = (event) => { event.stopPropagation(); const capturedChatId = chatId; const capturedLabel = label; showDeleteOverlay(capturedChatId, capturedLabel); }; container.appendChild(deleteButton); return container; }
 function addchatTab(chatId, newLabel) {
     const sidebar = document.querySelector(".sidebar"); if (!sidebar) return null;
     let existingTabElement = chats[chatId]; let existingButton = existingTabElement?.querySelector('button');
@@ -1394,7 +1512,9 @@ function changeFontSize(action) { const currentWebChatContainer = document.getEl
 function setDarkMode(isDark) { const darkModeBtn = document.getElementById('darkModeBtn'); const icon = darkModeBtn?.querySelector('i'); if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); } if (darkModeBtn) darkModeBtn.setAttribute('aria-label', 'Switch to Light Mode'); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); } if (darkModeBtn) darkModeBtn.setAttribute('aria-label', 'Switch to Dark Mode'); } } function toggleDarkMode() { setDarkMode(!document.body.classList.contains('dark-mode')); }
 
 // --- Global Event Listeners / Initial Setup ---
-window.signIn = signIn; window.signOut = signOut; window.handleAuth = handleAuth; window.toggleSidebar = toggleSidebar; window.newchat = newchat; window.changeFontSize = changeFontSize; window.saveChatTranscript = saveChatTranscript; window.showchat = showchat; window.toggleDarkMode = toggleDarkMode;
+window.signIn = signIn; window.signOut = signOut; window.handleAuth = handleAuth; window.toggleSidebar = toggleSidebar; window.newchat = newchat; window.changeFontSize = changeFontSize; window.saveChatTranscript = saveChatTranscript; window.showchat = showchat; window.toggleDarkMode = toggleDarkMode; window.showDeleteOverlay = showDeleteOverlay;
+window.hideDeleteOverlay = hideDeleteOverlay;
+window.confirmDelete = confirmDelete;
 
 window.onload = async () => {
     console.log("Window onload started.");
@@ -1488,6 +1608,17 @@ window.onload = async () => {
     <h3>Verification Failed</h3>
     <p>Please ensure you have an active subscription or contact support.</p>
     <button class="modal-button primary" onclick="hideErrorOverlay()">OK</button>
+  </div>
+</div>
+<!-- Delete Confirmation Overlay -->
+<div id="delete-overlay" class="delete-overlay">
+  <div class="delete-modal">
+    <h3>Delete Chat</h3>
+    <p id="delete-message">Are you sure you want to delete this chat? This action cannot be undone.</p>
+    <div class="modal-buttons">
+      <button class="cancel-btn" onclick="hideDeleteOverlay()">Cancel</button>
+      <button class="confirm-btn" onclick="confirmDelete()">Delete</button>
+    </div>
   </div>
 </div>
 </body>
