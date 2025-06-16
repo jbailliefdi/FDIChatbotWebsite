@@ -628,7 +628,24 @@
       height: 5px;
       background: var(--primary-gradient);
     }
-    
+    .subscription-modal .sign-out-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: transparent;
+  border: 1px solid var(--text-muted-color);
+  color: var(--text-muted-color);
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.subscription-modal .sign-out-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
     .subscription-overlay.visible .subscription-modal { 
       transform: scale(1); 
     }
@@ -1019,6 +1036,7 @@ body.dark-mode .logo-container img {
 
   <!-- Subscription Overlay -->
   <div id="subscription-overlay" class="subscription-overlay">
+<button class="sign-out-btn" onclick="signOut()">Sign Out</button>
     <div class="subscription-modal">
       <h2>Unlock Full Access</h2>
       <p class="price">£50<span style="font-size: 1.2rem; font-weight: 500;">/month</span></p>
@@ -1326,7 +1344,24 @@ window.onload = async () => {
 
     // Setup subscription modal buttons
     document.getElementById('start-trial-btn').onclick = () => { window.location.href = '/pricing'; };
-    document.getElementById('recheck-sub-btn').onclick = () => { verifySubscriptionAndInitialize(msalInstance.getActiveAccount()); };
+    document.getElementById('recheck-sub-btn').onclick = async () => { 
+  const account = msalInstance.getActiveAccount();
+  if (!account) {
+    alert('Please sign in first to verify your subscription.');
+    return;
+  }
+  
+  const result = await checkUserSubscription(account);
+  subscriptionData = result;
+  
+  if (result && result.active) {
+    hideSubscriptionOverlay();
+    updateAuthUI();
+    initializeChat();
+  } else {
+    alert('Subscription verification failed. Please ensure you have an active subscription or contact support.');
+  }
+};
 
     try {
         await msalInstance.handleRedirectPromise();
