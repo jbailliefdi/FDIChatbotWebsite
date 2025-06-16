@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FDI AI - Complete Your Subscription</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .payment-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .mock-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff6b6b;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transform: rotate(15deg);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-section h1 {
+            color: #005a9e;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .logo-section p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .order-summary {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .order-summary h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+
+        .summary-total {
+            border-top: 2px solid #e0e0e0;
+            padding-top: 10px;
+            margin-top: 10px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .payment-form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"], input[type="email"] {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #005a9e;
+            box-shadow: 0 0 0 3px rgba(0, 90, 158, 0.1);
+        }
+
+        .card-input {
+            position: relative;
+        }
+
+        .card-icons {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 5px;
+        }
+
+        .card-icons i {
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        .test-cards {
+            background: #e8f4f8;
+            border: 1px solid #b3e0f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .test-cards h4 {
+            color: #0066cc;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .test-cards p {
+            font-size: 0.8rem;
+            color: #0066cc;
+            margin-bottom: 8px;
+        }
+
+        .test-cards .card-option {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            padding: 4px 0;
+            border-bottom: 1px solid #b3e0f0;
+            margin-bottom: 4px;
+        }
+
+        .test-cards .card-option:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .security-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #f0f8f0;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-size: 0.85rem;
+            color: #2d5016;
+        }
+
+        .security-info i {
+            color: #4CAF50;
+            font-size: 1.2rem;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #005a9e, #004080);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 90, 158, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #005a9e;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .powered-by {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        @media (max-width: 600px) {
+            .payment-container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .test-cards {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="mock-badge">DEMO</div>
+        
+        <div class="logo-section">
+            <h1><i class="fas fa-robot"></i> FDI AI</h1>
+            <p>Complete your subscription</p>
+        </div>
+
+        <div class="order-summary">
+            <h3>Order Summary</h3>
+            <div class="summary-row">
+                <span>FDI AI Professional (5 users)</span>
+                <span>£250.00</span>
+            </div>
+            <div class="summary-row">
+                <span>14-day free trial</span>
+                <span style="color: #4CAF50;">-£250.00</span>
+            </div>
+            <div class="summary-row">
+                <span>VAT (20%)</span>
+                <span>£0.00</span>
+            </div>
+            <div class="summary-row summary-total">
+                <span>Total due today</span>
+                <span style="color: #4CAF50;">£0.00</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #666; margin-top: 10px;">
+                Your card will be charged £300.00 (inc. VAT) monthly after the trial period.
+            </div>
+        </div>
+
+        <form class="payment-form" id="paymentForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required placeholder="your@company.com">
+            </div>
+
+            <div class="form-group">
+                <label for="cardNumber">Card Number</label>
+                <div class="card-input">
+                    <input type="text" id="cardNumber" name="cardNumber" required placeholder="1234 5678 9012 3456" maxlength="19">
+                    <div class="card-icons">
+                        <i class="fab fa-cc-visa"></i>
+                        <i class="fab fa-cc-mastercard"></i>
+                        <i class="fab fa-cc-amex"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="expiry">Expiry Date</label>
+                    <input type="text" id="expiry" name="expiry" required placeholder="MM/YY" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label for="cvc">CVC</label>
+                    <input type="text" id="cvc" name="cvc" required placeholder="123" maxlength="4">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="cardName">Cardholder Name</label>
+                <input type="text" id="cardName" name="cardName" required placeholder="John Smith">
+            </div>
+
+            <div class="test-cards">
+                <h4><i class="fas fa-flask"></i> Test Card Numbers (Demo Mode)</h4>
+                <p>Use these test cards to simulate different payment scenarios:</p>
+                <div class="card-option">
+                    <span><strong>4242 4242 4242 4242</strong></span>
+                    <span style="color: #4CAF50;">✓ Success</span>
+                </div>
+                <div class="card-option">
+                    <span><strong>4000 0000 0000 0002</strong></span>
+                    <span style="color: #f44336;">✗ Declined</span>
+                </div>
+                <div class="card-option">
+                    <span><strong>4000 0000 0000 9995</strong></span>
+                    <span style="color: #ff9800;">⚠ Insufficient Funds</span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.7rem; color: #0066cc;">
+                    Any future expiry date and any 3-digit CVC will work with test cards.
+                </div>
+            </div>
+
+            <div class="security-info">
+                <i class="fas fa-shield-alt"></i>
+                <div>
+                    <strong>Secure payment processing</strong><br>
+                    Your payment information is encrypted and secure. This is a demo environment.
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                <i class="fas fa-credit-card"></i> Start Free Trial
+            </button>
+
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Processing your payment...</p>
+            </div>
+        </form>
+
+        <div class="powered-by">
+            <i class="fas fa-lock"></i> Secured by Stripe (Demo) | 
+            <a href="/pricing" style="color: #005a9e;">← Back to pricing</a>
+        </div>
+    </div>
+
+    <script>
+        // Format card number input
+        document.getElementById('cardNumber').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            if (formattedValue !== e.target.value) {
+                e.target.value = formattedValue;
+            }
+        });
+
+        // Format expiry date input
+        document.getElementById('expiry').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0,2) + '/' + value.substring(2,4);
+            }
+            e.target.value = value;
+        });
+
+        // Only allow numbers in CVC
+        document.getElementById('cvc').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+
+        // Handle form submission
+        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            
+            // Disable form
+            submitBtn.disabled = true;
+            submitBtn.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+            
+            // Simulate payment processing
+            setTimeout(() => {
+                // Determine outcome based on card number
+                let outcome = 'success';
+                let message = 'Payment successful!';
+                
+                if (cardNumber === '4000000000000002') {
+                    outcome = 'declined';
+                    message = 'Your card was declined. Please try a different payment method.';
+                } else if (cardNumber === '4000000000009995') {
+                    outcome = 'insufficient_funds';
+                    message = 'Insufficient funds. Please check your account balance.';
+                } else if (cardNumber.startsWith('4242')) {
+                    outcome = 'success';
+                    message = 'Payment successful! Welcome to FDI AI Professional.';
+                }
+                
+                // Store result and redirect
+                localStorage.setItem('mock_payment_result', JSON.stringify({
+                    outcome: outcome,
+                    message: message,
+                    email: document.getElementById('email').value,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                if (outcome === 'success') {
+                    window.location.href = '/app?payment=success';
+                } else {
+                    window.location.href = '/pricing?payment=failed&reason=' + encodeURIComponent(message);
+                }
+            }, 2000);
+        });
+
+        // Auto-fill test card for demo
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (window.location.search.includes('demo=1')) {
+                    document.getElementById('email').value = 'demo@company.com';
+                    document.getElementById('cardNumber').value = '4242 4242 4242 4242';
+                    document.getElementById('expiry').value = '12/28';
+                    document.getElementById('cvc').value = '123';
+                    document.getElementById('cardName').value = 'Demo User';
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

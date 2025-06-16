@@ -1,6 +1,6 @@
+// Enhanced api/check-subscription/index.js with grace period support
 const { CosmosClient } = require('@azure/cosmos');
 
-// Initialize Cosmos DB client
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
 const usersContainer = database.container('users');
@@ -33,7 +33,7 @@ module.exports = async function (context, req) {
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
 
         if (users.length === 0) {
-            // User not found - check if it's a test email for development
+            // Fallback for development - allow test email
             const testEmails = ['j.baillie@fdintelligence.co.uk'];
             if (testEmails.includes(email.toLowerCase())) {
                 context.res = {
@@ -43,7 +43,8 @@ module.exports = async function (context, req) {
                         companyName: "FD Intelligence (Test)",
                         usedLicenses: 1,
                         totalLicenses: 5,
-                        message: "Test account"
+                        message: "Test account",
+                        subscriptionStatus: "active"
                     }
                 };
                 return;
@@ -83,24 +84,73 @@ module.exports = async function (context, req) {
         }
 
         const organization = organizations[0];
+        const now = new Date();
 
-        // Check subscription status
-        const hasValidSubscription = organization.status === 'active' || 
-                                   organization.status === 'trialing';
+        // Determine subscription status with grace period logic
+        let hasAccess = false;
+        let accessReason = "";
+        let warningMessage = "";
+        let isGracePeriod = false;
 
-        // Count current active users in organization
-        const userCountQuery = {
-            query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
-            parameters: [{ name: "@orgId", value: organization.id }]
-        };
+        // Check different subscription states
+        if (organization.status === 'active') {
+            hasAccess = true;
+            accessReason = "Active subscription";
+        } 
+        else if (organization.status === 'trialing') {
+            // Check if trial has expired
+            if (organization.trialEnd && new Date(organization.trialEnd) > now) {
+                hasAccess = true;
+                accessReason = "Trial period";
+                const daysLeft = Math.ceil((new Date(organization.trialEnd) - now) / (1000 * 60 * 60 * 24));
+                warningMessage = `Trial expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
+            } else {
+                hasAccess = false;
+                accessReason = "Trial expired";
+            }
+        }
+        else if (organization.status === 'past_due') {
+            // Check grace period
+            if (organization.gracePeriodEnd && new Date(organization.gracePeriodEnd) > now) {
+                hasAccess = true;
+                isGracePeriod = true;
+                accessReason = "Grace period";
+                const daysLeft = Math.ceil((new Date(organization.gracePeriodEnd) - now) / (1000 * 60 * 60 * 24));
+                warningMessage = `Payment issue - Access ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
+            } else {
+                hasAccess = false;
+                accessReason = "Payment overdue";
+            }
+        }
+        else if (organization.status === 'cancelled') {
+            hasAccess = false;
+            accessReason = "Subscription cancelled";
+        }
+        else {
+            hasAccess = false;
+            accessReason = "Unknown status";
+        }
 
-        const { resources: countResult } = await usersContainer.items.query(userCountQuery).fetchAll();
-        const currentUserCount = countResult[0] || 0;
+        // Check license limits if access is granted
+        let currentUserCount = 0;
+        if (hasAccess) {
+            const userCountQuery = {
+                query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
+                parameters: [{ name: "@orgId", value: organization.id }]
+            };
 
-        const withinLicenseLimit = currentUserCount <= organization.licenseCount;
+            const { resources: countResult } = await usersContainer.items.query(userCountQuery).fetchAll();
+            currentUserCount = countResult[0] || 0;
 
-        if (hasValidSubscription && withinLicenseLimit) {
-            context.log('User has valid subscription');
+            const withinLicenseLimit = currentUserCount <= organization.licenseCount;
+            if (!withinLicenseLimit) {
+                hasAccess = false;
+                accessReason = "License limit exceeded";
+            }
+        }
+
+        if (hasAccess) {
+            context.log('User has valid access:', accessReason);
             context.res = {
                 status: 200,
                 body: {
@@ -109,16 +159,23 @@ module.exports = async function (context, req) {
                     usedLicenses: currentUserCount,
                     totalLicenses: organization.licenseCount,
                     userRole: user.role,
-                    subscriptionStatus: organization.status
+                    subscriptionStatus: organization.status,
+                    accessReason: accessReason,
+                    warningMessage: warningMessage,
+                    isGracePeriod: isGracePeriod,
+                    trialEnd: organization.trialEnd,
+                    gracePeriodEnd: organization.gracePeriodEnd
                 }
             };
         } else {
-            context.log('User subscription invalid or over limit');
+            context.log('User access denied:', accessReason);
             context.res = {
                 status: 200,
                 body: {
                     active: false,
-                    message: hasValidSubscription ? "License limit exceeded" : "Subscription inactive"
+                    message: accessReason,
+                    subscriptionStatus: organization.status,
+                    companyName: organization.name
                 }
             };
         }
@@ -126,7 +183,7 @@ module.exports = async function (context, req) {
     } catch (error) {
         context.log.error('Error checking subscription:', error);
         
-        // Fallback for development - allow test email
+        // Fallback for development
         if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
             context.res = {
                 status: 200,
@@ -135,7 +192,8 @@ module.exports = async function (context, req) {
                     companyName: "FD Intelligence (Fallback)",
                     usedLicenses: 1,
                     totalLicenses: 5,
-                    message: "Database error - using fallback"
+                    message: "Database error - using fallback",
+                    subscriptionStatus: "active"
                 }
             };
             return;

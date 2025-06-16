@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FDI AI - Pricing & Signup</title>
-    <script src="https://js.stripe.com/v3/"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -87,6 +86,21 @@
             color: #666;
             margin-bottom: 3rem;
             font-size: 1.1rem;
+        }
+
+        /* Demo Mode Banner */
+        .demo-banner {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .demo-banner i {
+            margin-right: 8px;
         }
 
         /* Pricing Display */
@@ -238,6 +252,28 @@
             transform: none;
         }
 
+        /* Alert Messages */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
         /* Security Notice */
         .security-notice {
             text-align: center;
@@ -271,6 +307,55 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* Test Controls */
+        .admin-controls {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .admin-controls h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .test-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .test-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .test-btn.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .test-btn.danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .test-btn.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
         /* Responsive */
@@ -313,10 +398,18 @@
             <h1 class="signup-title">Get Started with FDI AI</h1>
             <p class="signup-subtitle">Join thousands of businesses already using our AI chatbot solution</p>
 
+            <!-- Demo Mode Banner -->
+            <div class="demo-banner">
+                <i class="fas fa-flask"></i> Demo Mode Active - Test the complete payment flow with mock data
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertMessage" class="alert"></div>
+
             <!-- Pricing Summary -->
             <div class="pricing-summary">
                 <div class="price-display" id="totalPrice">£50</div>
-                <div class="price-details">per month • billed monthly</div>
+                <div class="price-details">per month • 14-day free trial</div>
                 
                 <div class="license-selector">
                     <label for="licenseCount">Number of users:</label>
@@ -364,18 +457,25 @@
                         <span id="summaryPrice">£50.00</span>
                     </div>
                     <div class="summary-row">
+                        <span>14-day free trial</span>
+                        <span style="color: #4CAF50;">FREE</span>
+                    </div>
+                    <div class="summary-row">
                         <span>VAT (20%)</span>
                         <span id="summaryVAT">£10.00</span>
                     </div>
                     <div class="summary-row summary-total">
-                        <span>Total per month</span>
-                        <span id="summaryTotal">£60.00</span>
+                        <span>Due today</span>
+                        <span style="color: #4CAF50;">£0.00</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #666; margin-top: 10px;">
+                        Your card will be charged <span id="totalAfterTrial">£60.00</span> monthly after the trial period.
                     </div>
                 </div>
 
                 <!-- Submit Button -->
                 <button type="submit" class="submit-btn" id="submitBtn">
-                    <i class="fas fa-credit-card"></i> Start 14-Day Free Trial
+                    <i class="fas fa-credit-card"></i> Start 14-Day Free Trial (Demo)
                 </button>
 
                 <div class="loading" id="loadingSpinner">
@@ -384,18 +484,38 @@
                 </div>
 
                 <div class="security-notice">
-                    <i class="fas fa-shield-alt"></i> Secure payment processing by Stripe
+                    <i class="fas fa-shield-alt"></i> Secure demo payment processing
                     <br>
                     <i class="fas fa-clock"></i> 14-day free trial • No setup fees • Cancel anytime
                 </div>
             </form>
+
+            <!-- Admin Test Controls -->
+            <div class="admin-controls">
+                <h3><i class="fas fa-cogs"></i> Demo Testing Controls</h3>
+                <p style="margin-bottom: 15px; color: #856404;">Test different subscription scenarios:</p>
+                <div class="test-buttons">
+                    <button class="test-btn success" onclick="simulateEvent('checkout.session.completed')">
+                        ✓ Simulate Successful Signup
+                    </button>
+                    <button class="test-btn danger" onclick="simulateEvent('admin.simulate_cancellation')">
+                        ✗ Simulate Cancellation
+                    </button>
+                    <button class="test-btn warning" onclick="simulateEvent('admin.simulate_payment_failure')">
+                        ⚠ Simulate Payment Failure
+                    </button>
+                    <button class="test-btn success" onclick="simulateEvent('admin.simulate_reactivation')">
+                        ↻ Simulate Reactivation
+                    </button>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.85rem; color: #856404;">
+                    <strong>Test Email:</strong> j.baillie@fdintelligence.co.uk
+                </p>
+            </div>
         </div>
     </div>
 
     <script>
-        // Initialize Stripe (Replace with your publishable key)
-        const stripe = Stripe('pk_test_your_stripe_publishable_key_here');
-
         let currentLicenses = 1;
         const pricePerLicense = 50;
         const vatRate = 0.20;
@@ -417,15 +537,23 @@
             const vat = subtotal * vatRate;
             const total = subtotal + vat;
 
-            // Update main price display
             document.getElementById('totalPrice').textContent = `£${subtotal}`;
-
-            // Update summary
             document.getElementById('summaryLicenses').textContent = licenseCount;
             document.getElementById('summaryPlural').textContent = licenseCount > 1 ? 's' : '';
             document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
             document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
-            document.getElementById('summaryTotal').textContent = `£${total.toFixed(2)}`;
+            document.getElementById('totalAfterTrial').textContent = `£${total.toFixed(2)}`;
+        }
+
+        function showAlert(message, type = 'success') {
+            const alert = document.getElementById('alertMessage');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
         }
 
         // Form submission
@@ -435,12 +563,10 @@
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
             
-            // Disable form and show loading
             submitBtn.disabled = true;
             submitBtn.style.display = 'none';
             loadingSpinner.style.display = 'block';
 
-            // Collect form data
             const formData = {
                 companyName: document.getElementById('companyName').value,
                 firstName: document.getElementById('firstName').value,
@@ -452,52 +578,71 @@
             };
 
             try {
-                // Create checkout session
-                const response = await fetch('/api/create-checkout-session', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                const session = await response.json();
-
-                if (session.error) {
-                    throw new Error(session.error);
-                }
-
-                // Redirect to Stripe Checkout
-                const result = await stripe.redirectToCheckout({
-                    sessionId: session.sessionId
-                });
-
-                if (result.error) {
-                    throw new Error(result.error.message);
-                }
+                // Store form data for the payment page
+                localStorage.setItem('signup_data', JSON.stringify(formData));
+                
+                // Redirect to mock payment page
+                window.location.href = '/mock-payment.html?demo=1';
 
             } catch (error) {
                 console.error('Error:', error);
-                alert('There was an error processing your request. Please try again.');
+                showAlert('There was an error processing your request. Please try again.', 'error');
                 
-                // Re-enable form
                 submitBtn.disabled = false;
                 submitBtn.style.display = 'block';
                 loadingSpinner.style.display = 'none';
             }
         });
 
+        // Simulate webhook events for testing
+        async function simulateEvent(eventType) {
+            try {
+                const testEmail = 'j.baillie@fdintelligence.co.uk';
+                
+                const response = await fetch('/api/mock-stripe-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        event_type: eventType,
+                        email: testEmail,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert(`✓ ${result.message}`, 'success');
+                    
+                    // Suggest testing the app
+                    setTimeout(() => {
+                        if (confirm('Event simulated successfully! Would you like to test the app now?')) {
+                            window.open('/app', '_blank');
+                        }
+                    }, 1000);
+                } else {
+                    showAlert(`Error: ${result.message}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Error simulating event:', error);
+                showAlert('Error simulating event. Check console for details.', 'error');
+            }
+        }
+
+        // Handle URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('payment') === 'success') {
+            showAlert('Payment successful! Welcome to FDI AI Professional.', 'success');
+        } else if (urlParams.get('payment') === 'failed') {
+            const reason = urlParams.get('reason') || 'Payment failed';
+            showAlert(reason, 'error');
+        }
+
         // Initialize price display
         updatePrice();
-
-        // Handle URL parameters (for returning from Stripe)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('success') === 'true') {
-            alert('Payment successful! Welcome to FDI AI. Check your email for login details.');
-            window.location.href = '/app';
-        } else if (urlParams.get('canceled') === 'true') {
-            alert('Payment canceled. You can try again anytime.');
-        }
     </script>
 </body>
 </html>
