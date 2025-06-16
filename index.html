@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FDI AI Chatbot - Intelligent Business Solutions</title>
+    <title>TIA - Tax Investigation Assistant | FD Intelligence</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -35,12 +35,43 @@
             top: 0;
             z-index: 1000;
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            height: 100px;
+            display: flex;
+            align-items: center;
         }
 
         nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
+        }
+
+        .header-logo-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-container img {
+            height: 80px;
+            filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.3));
+        }
+
+        .logo-container span {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
         }
 
         .logo {
@@ -154,6 +185,91 @@
             color: #667eea;
         }
 
+        .hero-robot-icon {
+            margin-top: 2rem;
+            font-size: 3rem;
+            color: rgba(255, 255, 255, 0.8);
+            animation: float-gentle 3s ease-in-out infinite;
+        }
+
+        @keyframes float-gentle {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .hero-testimonials {
+            margin-top: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .testimonial-container {
+            position: relative;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .testimonial {
+            text-align: center;
+            opacity: 0;
+            position: absolute;
+            transform: translateX(30px);
+            transition: all 0.5s ease;
+            width: 100%;
+        }
+
+        .testimonial.active {
+            opacity: 0.9;
+            transform: translateX(0);
+        }
+
+        .testimonial-quote {
+            font-size: 1.1rem;
+            font-style: italic;
+            color: white;
+            margin-bottom: 0.5rem;
+            line-height: 1.6;
+        }
+
+        .testimonial-author {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+        }
+
+        .testimonial-arrow {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-size: 1rem;
+        }
+
+        .testimonial-arrow:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .testimonial-arrow:active {
+            transform: scale(0.95);
+        }
+
         /* Features Section */
         .features {
             padding: 5rem 0;
@@ -257,12 +373,107 @@
             margin-right: 10px;
         }
 
-        /* Footer */
+        /* Enhanced Footer */
         footer {
-            background: #333;
+            background: #050547;
             color: white;
+            padding: 3rem 0 2rem 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .footer-main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .footer-logo {
+            height: 90px;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-description {
+            color: #ffffff;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .footer-copyright {
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: #667eea;
+        }
+
+        .footer-social-title {
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .footer-social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: #ffffff;
+            color: #050547;
+            border-radius: 50%;
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .footer-social-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .footer-contact {
             text-align: center;
-            padding: 2rem 0;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-contact a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer-contact a:hover {
+            text-decoration: underline;
         }
 
         /* Responsive */
@@ -283,6 +494,35 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .hero-testimonials {
+                margin-top: 2rem;
+                gap: 1rem;
+            }
+
+            .testimonial-quote {
+                font-size: 1rem;
+            }
+
+            .testimonial-arrow {
+                width: 35px;
+                height: 35px;
+                font-size: 0.9rem;
+            }
+
+            /* Responsive Footer */
+            .footer-main {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-logo {
+                height: 40px;
+            }
+
+            footer {
+                padding: 2rem 0 1.5rem 0;
+            }
         }
     </style>
 </head>
@@ -290,15 +530,24 @@
     <!-- Header -->
     <header>
         <nav class="container">
-            <div class="logo">
-                <i class="fas fa-robot"></i> FDI AI
+            <div class="header-logo-section">
+                <a href="https://www.fdintelligence.co.uk/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                    <div class="logo-container">
+                        <img src="FDi_Logo_Final.png" alt="FDI Logo">
+                    </div>
+                </a>
+                <div class="logo-container">
+                    <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                        <span>TIA</span>
+                    </a>
+                </div>
             </div>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
                 <li><a href="#pricing">Pricing</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
-            <a href="/app" class="cta-button">Sign In</a>
+            <a href="/app" class="cta-button">Access TIA</a>
         </nav>
     </header>
 
@@ -306,11 +555,36 @@
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <h1>Transform Your Business with AI</h1>
-                <p>Intelligent chatbot solutions that understand your business needs and deliver exceptional customer experiences</p>
+                <h1>Meet TIA: Your Tax Investigation Assistant</h1>
+                <p>The AI-powered assistant designed specifically for accountants and tax professionals. Get instant, accurate answers to complex VAT, Corporation Tax, and Private Client Tax queries.</p>
                 <div class="hero-buttons">
-                    <a href="/pricing" class="cta-button">Start Free Trial</a>
+                    <a href="/pricing" class="cta-button">View Pricing</a>
                     <a href="#features" class="btn-secondary">Learn More</a>
+                </div>
+                <div class="hero-robot-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="hero-testimonials">
+                    <button class="testimonial-arrow testimonial-prev" onclick="previousTestimonial()">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="testimonial-container">
+                        <div class="testimonial active" data-index="0">
+                            <p class="testimonial-quote">"We are very pro-TIA!"</p>
+                            <p class="testimonial-author">- HaysMac</p>
+                        </div>
+                        <div class="testimonial" data-index="1">
+                            <p class="testimonial-quote">"We found this bot to be much better than competitors, giving us accurate answers to the most complex of tax queries"</p>
+                            <p class="testimonial-author">- WBG</p>
+                        </div>
+<div class="testimonial" data-index="2">
+                            <p class="testimonial-quote">"We use TIA in our day to day workflow to help us quickly gather references to everyday issues, saving us time."</p>
+                            <p class="testimonial-author">- Johnston Smilie</p>
+                        </div>
+                    </div>
+                    <button class="testimonial-arrow testimonial-next" onclick="nextTestimonial()">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -319,49 +593,49 @@
     <!-- Features Section -->
     <section id="features" class="features">
         <div class="container">
-            <h2 class="section-title">Why Choose FDI AI?</h2>
+            <h2 class="section-title">Why Tax Professionals Choose TIA</h2>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-brain"></i>
+                        <i class="fas fa-calculator"></i>
                     </div>
-                    <h3>Advanced AI Understanding</h3>
-                    <p>Our chatbot uses cutting-edge natural language processing to understand complex queries and provide accurate, contextual responses.</p>
+                    <h3>UK Tax Expertise</h3>
+                    <p>Trained specifically on UK tax legislation including VAT, Corporation Tax, and Private Client Tax. TIA understands the nuances and complexities of British tax law.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <h3>Enterprise Security</h3>
-                    <p>Bank-level security with Microsoft authentication, ensuring your data and conversations remain private and protected.</p>
+                    <p>Bank-level security with Microsoft authentication, ensuring your sensitive client data and tax queries remain completely private and protected.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-chart-line"></i>
+                        <i class="fas fa-search"></i>
                     </div>
-                    <h3>Business Intelligence</h3>
-                    <p>Gain insights from customer interactions and improve your business processes with detailed analytics and reporting.</p>
+                    <h3>Tax Investigation Ready</h3>
+                    <p>Get precise guidance on HMRC investigations, compliance requirements, and tax dispute resolution. TIA helps you navigate complex investigation scenarios with confidence.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-users"></i>
                     </div>
-                    <h3>Team Collaboration</h3>
-                    <p>Perfect for teams with multi-user support, role management, and centralized billing for organizations.</p>
+                    <h3>Practice Collaboration</h3>
+                    <p>Perfect for accounting practices with multi-user support, role management, and centralized billing. Share knowledge and insights across your entire team.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-clock"></i>
                     </div>
-                    <h3>24/7 Availability</h3>
-                    <p>Your AI assistant never sleeps. Provide instant responses to customers and team members around the clock.</p>
+                    <h3>24/7 Tax Support</h3>
+                    <p>Never wait for tax answers again. TIA provides instant responses to urgent tax queries, helping you meet deadlines and serve clients efficiently around the clock.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-cogs"></i>
+                        <i class="fas fa-chart-line"></i>
                     </div>
-                    <h3>Easy Integration</h3>
-                    <p>Seamlessly integrate with your existing business tools and workflows with our flexible API and webhooks.</p>
+                    <h3>Practice Intelligence</h3>
+                    <p>Gain insights into common tax queries, track team knowledge gaps, and improve your practice's efficiency with detailed analytics and reporting.</p>
                 </div>
             </div>
         </div>
@@ -370,26 +644,24 @@
     <!-- Pricing Section -->
     <section id="pricing" class="pricing">
         <div class="container">
-            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <h2 class="section-title">TIA Pricing</h2>
             <div class="pricing-card">
-                <h3>Professional Plan</h3>
+                <h3>TIA Professional</h3>
                 <div class="price">
                     £50
                     <span class="price-period">per user/month</span>
                 </div>
                 <ul class="pricing-features">
-                    <li>Unlimited AI conversations</li>
-                    <li>Advanced natural language processing</li>
-                    <li>Microsoft SSO integration</li>
-                    <li>Team management dashboard</li>
-                    <li>Analytics and reporting</li>
-                    <li>Priority email support</li>
+                    <li>Unlimited tax queries and conversations</li>
+                    <li>Accurate Tax Expertise</li>
+                    <li>Microsoft SSO Login System</li>
+                    <li>Secure Data Management</li>
+                    <li>Professional Support</li>
                     <li>99.9% uptime guarantee</li>
-                    <li>Data export capabilities</li>
                 </ul>
-                <a href="/pricing" class="cta-button" style="width: 100%; display: block; text-align: center; margin-top: 2rem;">Get Started Today</a>
+                <a href="/pricing" class="cta-button" style="width: 100%; display: block; text-align: center; margin-top: 2rem;">Get TIA</a>
                 <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
-                    <i class="fas fa-lock"></i> 14-day free trial • No setup fees • Cancel anytime
+                    <i class="fas fa-lock"></i> No setup fees • Cancel anytime
                 </p>
             </div>
         </div>
@@ -397,9 +669,31 @@
 
     <!-- Footer -->
     <footer id="contact">
-        <div class="container">
-            <p>&copy; 2025 FDI AI. All rights reserved.</p>
-            <p>Contact us: <a href="mailto:support@fdi-ai.com" style="color: #667eea;">support@fdi-ai.com</a></p>
+        <div class="container footer-content">
+            <!-- Main Footer -->
+            <div class="footer-main">
+                <div class="footer-column">
+                    <a href="https://www.fdintelligence.co.uk/" style="text-decoration: none;">
+                        <img src="FDi_Logo_RGB_White.png" alt="FDI Logo" class="footer-logo">
+                    </a>
+                    <p class="footer-description">FD Intelligence is a limited company registered in Scotland SC651122 at 133 Finnieston Street, Glasgow, G3 8HB.</p>
+                    <p class="footer-copyright">Copyright © 2025 FD Intelligence.</p>
+                </div>
+                <div class="footer-column">
+                    <div class="footer-links">
+                        <a href="https://www.fdintelligence.co.uk/privacy-statement">Privacy Statement</a>
+                        <a href="https://www.fdintelligence.co.uk/terms">Terms of Use</a>
+                    </div>
+                    <h3 class="footer-social-title">Follow us on LinkedIn</h3>
+                    <a href="https://www.linkedin.com/company/fd-intelligence" target="_blank" class="footer-social-link" aria-label="LinkedIn">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                </div>
+            </div>
+            <!-- Contact Info -->
+            <div class="footer-contact">
+                <p>Contact us: <a href="mailto:hello@fdintelligence.co.uk">hello@fdintelligence.co.uk</a></p>
+            </div>
         </div>
     </footer>
 
@@ -427,6 +721,30 @@
                 header.style.background = 'rgba(255, 255, 255, 0.95)';
             }
         });
+
+        // Testimonial carousel functionality
+        let currentTestimonial = 0;
+        const testimonials = document.querySelectorAll('.testimonial');
+        const totalTestimonials = testimonials.length;
+
+        function showTestimonial(index) {
+            testimonials.forEach((testimonial, i) => {
+                testimonial.classList.toggle('active', i === index);
+            });
+        }
+
+        function nextTestimonial() {
+            currentTestimonial = (currentTestimonial + 1) % totalTestimonials;
+            showTestimonial(currentTestimonial);
+        }
+
+        function previousTestimonial() {
+            currentTestimonial = (currentTestimonial - 1 + totalTestimonials) % totalTestimonials;
+            showTestimonial(currentTestimonial);
+        }
+
+        // Auto-advance testimonials every 5 seconds
+        setInterval(nextTestimonial, 5000);
     </script>
 </body>
 </html>

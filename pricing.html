@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FDI AI - Pricing & Signup</title>
+    <title>TIA - Pricing & Signup | FD Intelligence</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -27,28 +27,55 @@
         }
 
         /* Header */
-        .header {
+        header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             padding: 1rem 0;
-            margin-bottom: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            height: 100px;
+            display: flex;
+            align-items: center;
         }
 
-        .header-content {
+        nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 760px;
+            width: 100%;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 0 20px;
         }
 
-        .logo {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #667eea;
+        .header-logo-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-container img {
+            height: 80px;
+            filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.3));
+        }
+
+        .logo-container span {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
         }
 
         .back-btn {
@@ -65,7 +92,12 @@
             color: #764ba2;
         }
 
-        /* Main Content */
+        /* Main Content - adjusted for header */
+        .main-content {
+            margin-top: 120px;
+            margin-bottom: 2rem;
+        }
+
         .signup-container {
             background: white;
             border-radius: 20px;
@@ -358,6 +390,109 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
+        /* Enhanced Footer */
+        footer {
+            background: #050547;
+            color: white;
+            padding: 3rem 0 2rem 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .footer-main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .footer-logo {
+            height: 60px;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-description {
+            color: #ffffff;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .footer-copyright {
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: #667eea;
+        }
+
+        .footer-social-title {
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .footer-social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: #ffffff;
+            color: #050547;
+            border-radius: 50%;
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .footer-social-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .footer-contact {
+            text-align: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-contact a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer-contact a:hover {
+            text-decoration: underline;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container {
@@ -376,144 +511,194 @@
                 flex-direction: column;
                 gap: 1rem;
             }
+
+            .footer-main {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-logo {
+                height: 40px;
+            }
+
+            footer {
+                padding: 2rem 0 1.5rem 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-robot"></i> FDI AI
-                </div>
-                <a href="/" class="back-btn">
-                    <i class="fas fa-arrow-left"></i> Back to Home
+    <!-- Header -->
+    <header>
+        <nav>
+            <div class="header-logo-section">
+                <a href="https://www.fdintelligence.co.uk/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                    <div class="logo-container">
+                        <img src="FDi_Logo_Final.png" alt="FDI Logo">
+                    </div>
                 </a>
+                <div class="logo-container">
+                    <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                        <span>TIA</span>
+                    </a>
+                </div>
             </div>
-        </div>
+            <a href="/" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+        </nav>
+    </header>
 
-        <!-- Main Signup Form -->
-        <div class="signup-container">
-            <h1 class="signup-title">Get Started with FDI AI</h1>
-            <p class="signup-subtitle">Join thousands of businesses already using our AI chatbot solution</p>
+    <div class="main-content">
+        <div class="container">
+            <!-- Main Signup Form -->
+            <div class="signup-container">
+                <h1 class="signup-title">Get Started with TIA</h1>
+                <p class="signup-subtitle">Join thousands of tax professionals already using our AI assistant</p>
 
-            <!-- Demo Mode Banner -->
-            <div class="demo-banner">
-                <i class="fas fa-flask"></i> Demo Mode Active - Test the complete payment flow with mock data
-            </div>
+                <!-- Demo Mode Banner -->
+                <div class="demo-banner">
+                    <i class="fas fa-flask"></i> Demo Mode Active - Test the complete payment flow with mock data
+                </div>
 
-            <!-- Alert Messages -->
-            <div id="alertMessage" class="alert"></div>
+                <!-- Alert Messages -->
+                <div id="alertMessage" class="alert"></div>
 
-            <!-- Pricing Summary -->
-            <div class="pricing-summary">
-                <div class="price-display" id="totalPrice">£50</div>
-                <div class="price-details">per month • 14-day free trial</div>
-                
-                <div class="license-selector">
-                    <label for="licenseCount">Number of users:</label>
-                    <div class="license-input">
-                        <button type="button" onclick="updateLicenses(-1)">-</button>
-                        <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
-                        <button type="button" onclick="updateLicenses(1)">+</button>
+                <!-- Pricing Summary -->
+                <div class="pricing-summary">
+                    <div class="price-display" id="totalPrice">£50</div>
+                    <div class="price-details">per month • No setup fees</div>
+                    
+                    <div class="license-selector">
+                        <label for="licenseCount">Number of users:</label>
+                        <div class="license-input">
+                            <button type="button" onclick="updateLicenses(-1)">-</button>
+                            <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
+                            <button type="button" onclick="updateLicenses(1)">+</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Signup Form -->
-            <form id="signupForm" class="signup-form">
-                <div class="form-group">
-                    <label for="companyName">Company Name <span class="required">*</span></label>
-                    <input type="text" id="companyName" name="companyName" required>
-                </div>
-
-                <div class="form-row">
+                <!-- Signup Form -->
+                <form id="signupForm" class="signup-form">
                     <div class="form-group">
-                        <label for="firstName">First Name <span class="required">*</span></label>
-                        <input type="text" id="firstName" name="firstName" required>
+                        <label for="companyName">Company Name <span class="required">*</span></label>
+                        <input type="text" id="companyName" name="companyName" required>
                     </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">First Name <span class="required">*</span></label>
+                            <input type="text" id="firstName" name="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last Name <span class="required">*</span></label>
+                            <input type="text" id="lastName" name="lastName" required>
+                        </div>
+                    </div>
+
                     <div class="form-group">
-                        <label for="lastName">Last Name <span class="required">*</span></label>
-                        <input type="text" id="lastName" name="lastName" required>
+                        <label for="email">Business Email <span class="required">*</span></label>
+                        <input type="email" id="email" name="email" required>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="email">Business Email <span class="required">*</span></label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone" name="phone">
-                </div>
-
-                <!-- Order Summary -->
-                <div class="order-summary">
-                    <h3>Order Summary</h3>
-                    <div class="summary-row">
-                        <span>FDI AI Professional (<span id="summaryLicenses">1</span> user<span id="summaryPlural"></span>)</span>
-                        <span id="summaryPrice">£50.00</span>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone">
                     </div>
-                    <div class="summary-row">
-                        <span>14-day free trial</span>
-                        <span style="color: #4CAF50;">FREE</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>VAT (20%)</span>
-                        <span id="summaryVAT">£10.00</span>
-                    </div>
-                    <div class="summary-row summary-total">
-                        <span>Due today</span>
-                        <span style="color: #4CAF50;">£0.00</span>
-                    </div>
-                    <div style="font-size: 0.85rem; color: #666; margin-top: 10px;">
-                        Your card will be charged <span id="totalAfterTrial">£60.00</span> monthly after the trial period.
-                    </div>
-                </div>
 
-                <!-- Submit Button -->
-                <button type="submit" class="submit-btn" id="submitBtn">
-                    <i class="fas fa-credit-card"></i> Start 14-Day Free Trial (Demo)
-                </button>
+                    <!-- Order Summary -->
+                    <div class="order-summary">
+                        <h3>Order Summary</h3>
+                        <div class="summary-row">
+                            <span>TIA Professional (<span id="summaryLicenses">1</span> user<span id="summaryPlural"></span>)</span>
+                            <span id="summaryPrice">£50.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>VAT (20%)</span>
+                            <span id="summaryVAT">£10.00</span>
+                        </div>
+                        <div class="summary-row summary-total">
+                            <span>Total Monthly</span>
+                            <span id="totalAfterTrial">£60.00</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 10px;">
+                            Monthly billing • Cancel anytime
+                        </div>
+                    </div>
 
-                <div class="loading" id="loadingSpinner">
-                    <div class="spinner"></div>
-                    <p>Setting up your account...</p>
-                </div>
-
-                <div class="security-notice">
-                    <i class="fas fa-shield-alt"></i> Secure demo payment processing
-                    <br>
-                    <i class="fas fa-clock"></i> 14-day free trial • No setup fees • Cancel anytime
-                </div>
-            </form>
-
-            <!-- Admin Test Controls -->
-            <div class="admin-controls">
-                <h3><i class="fas fa-cogs"></i> Demo Testing Controls</h3>
-                <p style="margin-bottom: 15px; color: #856404;">Test different subscription scenarios:</p>
-                <div class="test-buttons">
-                    <button class="test-btn success" onclick="simulateEvent('checkout.session.completed')">
-                        ✓ Simulate Successful Signup
+                    <!-- Submit Button -->
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <i class="fas fa-credit-card"></i> Get TIA (Demo)
                     </button>
-                    <button class="test-btn danger" onclick="simulateEvent('admin.simulate_cancellation')">
-                        ✗ Simulate Cancellation
-                    </button>
-                    <button class="test-btn warning" onclick="simulateEvent('admin.simulate_payment_failure')">
-                        ⚠ Simulate Payment Failure
-                    </button>
-                    <button class="test-btn success" onclick="simulateEvent('admin.simulate_reactivation')">
-                        ↻ Simulate Reactivation
-                    </button>
+
+                    <div class="loading" id="loadingSpinner">
+                        <div class="spinner"></div>
+                        <p>Setting up your account...</p>
+                    </div>
+
+                    <div class="security-notice">
+                        <i class="fas fa-shield-alt"></i> Secure demo payment processing
+                        <br>
+                        <i class="fas fa-clock"></i> No setup fees • Cancel anytime
+                    </div>
+                </form>
+
+                <!-- Admin Test Controls -->
+                <div class="admin-controls">
+                    <h3><i class="fas fa-cogs"></i> Demo Testing Controls</h3>
+                    <p style="margin-bottom: 15px; color: #856404;">Test different subscription scenarios:</p>
+                    <div class="test-buttons">
+                        <button class="test-btn success" onclick="simulateEvent('checkout.session.completed')">
+                            ✓ Simulate Successful Signup
+                        </button>
+                        <button class="test-btn danger" onclick="simulateEvent('admin.simulate_cancellation')">
+                            ✗ Simulate Cancellation
+                        </button>
+                        <button class="test-btn warning" onclick="simulateEvent('admin.simulate_payment_failure')">
+                            ⚠ Simulate Payment Failure
+                        </button>
+                        <button class="test-btn success" onclick="simulateEvent('admin.simulate_reactivation')">
+                            ↻ Simulate Reactivation
+                        </button>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.85rem; color: #856404;">
+                        <strong>Test Email:</strong> j.baillie@fdintelligence.co.uk
+                    </p>
                 </div>
-                <p style="margin-top: 15px; font-size: 0.85rem; color: #856404;">
-                    <strong>Test Email:</strong> j.baillie@fdintelligence.co.uk
-                </p>
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <!-- Main Footer -->
+            <div class="footer-main">
+                <div class="footer-column">
+                    <a href="https://www.fdintelligence.co.uk/" style="text-decoration: none;">
+                        <img src="FDi_Logo_RGB_White.png" alt="FDI Logo" class="footer-logo">
+                    </a>
+                    <p class="footer-description">FD Intelligence is a limited company registered in Scotland SC651122 at 133 Finnieston Street, Glasgow, G3 8HB.</p>
+                    <p class="footer-copyright">Copyright © 2025 FD Intelligence.</p>
+                </div>
+                <div class="footer-column">
+                    <div class="footer-links">
+                        <a href="https://www.fdintelligence.co.uk/privacy-statement">Privacy Statement</a>
+                        <a href="https://www.fdintelligence.co.uk/terms">Terms of Use</a>
+                    </div>
+                    <h3 class="footer-social-title">Follow us on LinkedIn</h3>
+                    <a href="https://www.linkedin.com/company/fd-intelligence" target="_blank" class="footer-social-link" aria-label="LinkedIn">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                </div>
+            </div>
+            <!-- Contact Info -->
+            <div class="footer-contact">
+                <p>Contact us: <a href="mailto:hello@fdintelligence.co.uk">hello@fdintelligence.co.uk</a></p>
+            </div>
+        </div>
+    </footer>
 
     <script>
         let currentLicenses = 1;
@@ -635,7 +820,7 @@
         // Handle URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('payment') === 'success') {
-            showAlert('Payment successful! Welcome to FDI AI Professional.', 'success');
+            showAlert('Payment successful! Welcome to TIA Professional.', 'success');
         } else if (urlParams.get('payment') === 'failed') {
             const reason = urlParams.get('reason') || 'Payment failed';
             showAlert(reason, 'error');
