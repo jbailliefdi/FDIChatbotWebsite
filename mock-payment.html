@@ -520,18 +520,10 @@
             
             <div class="logo-section">
                 <div class="header-logos">
-                    <a href="https://www.fdintelligence.co.uk/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
-                        <div class="logo-container">
-                            <img src="FDi_Logo_Final.png" alt="FDI Logo">
-                        </div>
-                    </a>
-                    <div class="logo-container">
-                        <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
-                            <span>TIA</span>
-                        </a>
-                    </div>
+                    
+
                 </div>
-                <h1><i class="fas fa-robot"></i> TIA Professional</h1>
+                <h1></i> TIA - Professional Edition</h1>
                 <p>Complete your subscription</p>
             </div>
 
@@ -765,25 +757,33 @@
                 }
             }, 2000);
         });
-window.addEventListener('load', function() {
-    // Get signup data from localStorage
-    const signupData = localStorage.getItem('signup_data');
-    if (signupData) {
-        try {
-            const data = JSON.parse(signupData);
-            if (data.email) {
-                document.getElementById('email').value = data.email;
-            }
-        } catch (error) {
-            console.error('Error parsing signup data:', error);
-        }
-    }
 
-        // Auto-fill test card for demo
+        // Auto-populate email and demo data on page load
         window.addEventListener('load', function() {
+            // First, try to get signup data from localStorage
+            const signupData = localStorage.getItem('signup_data');
+            let emailFromSignup = null;
+            
+            if (signupData) {
+                try {
+                    const data = JSON.parse(signupData);
+                    if (data.email) {
+                        emailFromSignup = data.email;
+                        document.getElementById('email').value = data.email;
+                        console.log('Email populated from signup:', data.email);
+                    }
+                } catch (error) {
+                    console.error('Error parsing signup data:', error);
+                }
+            }
+
+            // Auto-fill demo data if demo=1 in URL
             setTimeout(() => {
                 if (window.location.search.includes('demo=1')) {
-                    document.getElementById('email').value = 'demo@company.com';
+                    // Only override email if we didn't get one from signup
+                    if (!emailFromSignup) {
+                        document.getElementById('email').value = 'demo@company.com';
+                    }
                     document.getElementById('cardNumber').value = '4242 4242 4242 4242';
                     document.getElementById('expiry').value = '12/28';
                     document.getElementById('cvc').value = '123';
@@ -791,6 +791,6 @@ window.addEventListener('load', function() {
                 }
             }, 500);
         });
-    </script>
+</script>
 </body>
 </html>
