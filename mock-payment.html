@@ -398,20 +398,21 @@
         });
 
         // Handle form submission
-        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        document.getElementById('paymentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
             const loadingIndicator = document.getElementById('loadingIndicator');
             const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const email = document.getElementById('email').value;
             
             // Disable form
             submitBtn.disabled = true;
             submitBtn.style.display = 'none';
             loadingIndicator.style.display = 'block';
             
-            // Simulate payment processing
-            setTimeout(() => {
+            // Simulate payment processing delay
+            setTimeout(async () => {
                 // Determine outcome based on card number
                 let outcome = 'success';
                 let message = 'Payment successful!';
@@ -427,17 +428,50 @@
                     message = 'Payment successful! Welcome to FDI AI Professional.';
                 }
                 
-                // Store result and redirect
+                // Store result
                 localStorage.setItem('mock_payment_result', JSON.stringify({
                     outcome: outcome,
                     message: message,
-                    email: document.getElementById('email').value,
+                    email: email,
                     timestamp: new Date().toISOString()
                 }));
                 
                 if (outcome === 'success') {
-                    window.location.href = '/app?payment=success';
+                    try {
+                        // Call webhook to create database records
+                        console.log('Creating subscription records for:', email);
+                        
+                        const webhookResponse = await fetch('/api/mock-stripe-webhook', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                event_type: 'checkout.session.completed',
+                                email: email,
+                                timestamp: new Date().toISOString()
+                            })
+                        });
+
+                        const webhookResult = await webhookResponse.json();
+                        
+                        if (webhookResponse.ok) {
+                            console.log('Subscription created successfully:', webhookResult);
+                            // Success - redirect to app
+                            window.location.href = '/app?payment=success';
+                        } else {
+                            console.error('Webhook failed:', webhookResult);
+                            // Webhook failed, but show success to user (they can try again)
+                            window.location.href = '/app?payment=success&webhook_error=1';
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error calling webhook:', error);
+                        // Network error, but show success to user
+                        window.location.href = '/app?payment=success&webhook_error=1';
+                    }
                 } else {
+                    // Payment failed - redirect to pricing with error
                     window.location.href = '/pricing?payment=failed&reason=' + encodeURIComponent(message);
                 }
             }, 2000);
