@@ -1412,30 +1412,92 @@ function loadExistingChat(chatId, memoryStr) {
     let container = document.getElementById(containerId);
     if (!container) { container = document.createElement("div"); container.id = containerId; container.style.display = "none"; container.style.minHeight = "100%"; mainWebchatArea.appendChild(container); } else { container.innerHTML = ''; }
     endCurrentDirectLine();
+    
+    // Check authentication before proceeding
+    const account = msalInstance.getActiveAccount();
+    const token = getAuthToken();
+    if (!account || !token) {
+        alert("Please sign in to access chat history.");
+        isInjectingHistory = false;
+        return;
+    }
+    
     try { window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: DIRECT_LINE_TOKEN }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
     currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
-    const historyInjectionTimeout = setTimeout(() => { const activities = parseMemory(memoryStr); const historyActivities = activities.filter(act => !act.id?.startsWith('welcome_')); const historyBaseTime = Date.now() - (24 * 60 * 60 * 1000); historyActivities.forEach((activity, index) => { activity.id = activity.id || `memory-${chatId}-${index}`; activity.timestamp = new Date(historyBaseTime + index * 100).toISOString(); try { store.dispatch({ type: 'DIRECT_LINE/INCOMING_ACTIVITY', payload: { activity } }); } catch (dispatchError) { console.error("Error dispatching history activity:", dispatchError); } }); scrollToBottom(container); isInjectingHistory = false; console.log("History injected for chat:", chatId); }, 250);
+    
+    const historyInjectionTimeout = setTimeout(() => { 
+        const activities = parseMemory(memoryStr); 
+        const historyActivities = activities.filter(act => !act.id?.startsWith('welcome_')); 
+        const historyBaseTime = Date.now() - (24 * 60 * 60 * 1000); 
+        historyActivities.forEach((activity, index) => { 
+            activity.id = activity.id || `memory-${chatId}-${index}`; 
+            activity.timestamp = new Date(historyBaseTime + index * 100).toISOString(); 
+            try { 
+                store.dispatch({ type: 'DIRECT_LINE/INCOMING_ACTIVITY', payload: { activity } }); 
+            } catch (dispatchError) { 
+                console.error("Error dispatching history activity:", dispatchError); 
+            } 
+        }); 
+        scrollToBottom(container); 
+        isInjectingHistory = false; 
+        console.log("History injected for chat:", chatId); 
+    }, 250);
+    
     let authSent = false;
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
         if (status === 2 && !authSent) {
             authSent = true;
             const actualDlConversationId = window.directLine.conversationId;
+            
+            // Send mapping event first if needed
             if (actualDlConversationId && actualDlConversationId !== chatId) {
-                window.directLine.postActivity({ type: 'event', name: 'mapOldConversation', value: { originalConversationId: chatId, currentConversationId: actualDlConversationId }, from: { id: 'user-client', role: 'user' } }).subscribe({ next: id => { console.log("mapOldConversation event sent", id); }, error: err => { console.error("Error sending mapOldConversation event:", err); } });
+                window.directLine.postActivity({ 
+                    type: 'event', 
+                    name: 'mapOldConversation', 
+                    value: { 
+                        originalConversationId: chatId, 
+                        currentConversationId: actualDlConversationId 
+                    }, 
+                    from: { id: 'user-client', role: 'user' } 
+                }).subscribe({ 
+                    next: id => { console.log("mapOldConversation event sent", id); }, 
+                    error: err => { console.error("Error sending mapOldConversation event:", err); } 
+                });
             }
-            setTimeout(() => {
-                const token = getAuthToken(); const account = msalInstance.getActiveAccount();
-                if (token && account) {
-                    window.directLine.postActivity({ type: "event", name: "signin/verifyState", from: { id: "user", name: account.name || account.username, role: "user" }, value: { token: token, originalConversationIdHint: chatId, email: account.username, firstName: account.name ? account.name.split(" ")[0] : "User", subscription: subscriptionData } }).subscribe(id => console.log("signin/verifyState with hint sent from loadExistingChat, client ID:", id), error => console.error("Error sending signin/verifyState with hint from loadExistingChat:", error));
-                } else { console.warn("Cannot send signin/verifyState with hint: No token or account."); alert("Please sign in to access this chat."); }
-            }, 100);
+            
+            // Send authentication event immediately after connection
+            if (token && account) {
+                window.directLine.postActivity({ 
+                    type: "event", 
+                    name: "signin/verifyState", 
+                    from: { id: "user", name: account.name || account.username, role: "user" }, 
+                    value: { 
+                        token: token, 
+                        originalConversationIdHint: chatId, 
+                        email: account.username, 
+                        firstName: account.name ? account.name.split(" ")[0] : "User", 
+                        subscription: subscriptionData 
+                    } 
+                }).subscribe(
+                    id => console.log("signin/verifyState with hint sent from loadExistingChat, client ID:", id), 
+                    error => console.error("Error sending signin/verifyState with hint from loadExistingChat:", error)
+                );
+            } else { 
+                console.warn("Cannot send signin/verifyState with hint: No token or account."); 
+                alert("Please sign in to access this chat."); 
+            }
             connSub.unsubscribe();
-        } else if (status === 3 || status === 4 || status === 5) { clearTimeout(historyInjectionTimeout); connSub.unsubscribe(); isInjectingHistory = false; console.error(`Failed to connect to existing chat "${chatId}". Status: ${status}.`); alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`); }
+        } else if (status === 3 || status === 4 || status === 5) { 
+            clearTimeout(historyInjectionTimeout); 
+            connSub.unsubscribe(); 
+            isInjectingHistory = false; 
+            console.error(`Failed to connect to existing chat "${chatId}". Status: ${status}.`); 
+            alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`); 
+        }
     });
-}
-function showchat(chatId) {
+}function showchat(chatId) {
     const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in showchat"); return; }
     if (currentchat === chatId && document.getElementById("webchat_" + chatId)?.style.display !== 'none') { const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); } return; }
     const containers = mainWebchatArea.querySelectorAll(":scope > div[id^='webchat_']"); containers.forEach(container => { container.style.display = "none"; });
