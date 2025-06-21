@@ -9,6 +9,10 @@
       "rewrite": "/app.html"
     },
     {
+      "route": "/admin",
+      "rewrite": "/admin.html"
+    },
+    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"]
     }
