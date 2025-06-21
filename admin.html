@@ -1017,10 +1017,9 @@
             }
 
             async init() {
-                await this.checkAuthentication();
                 this.setupEventListeners();
                 this.setupTheme();
-                await this.loadDashboardData();
+                await this.checkAuthentication();
             }
 
             async checkAuthentication() {
@@ -1048,6 +1047,9 @@
 
                     currentUser = account;
                     this.updateUserInfo(account);
+                    
+                    // Now that we have authenticated user, load dashboard data
+                    await this.loadDashboardData();
 
                 } catch (error) {
                     console.error('Authentication error:', error);
@@ -1120,13 +1122,6 @@
                     }
                     
                     return false;
-                }
-            }
-
-            showSetupPrompt(email) {
-                const setupKey = prompt(`No admin found. Enter setup key to create admin for ${email}:`);
-                if (setupKey) {
-                    this.createSystemAdmin(email, setupKey);
                 }
             }
 
@@ -1304,7 +1299,14 @@
 
             async loadDashboardData() {
                 try {
-                    console.log('Loading dashboard data for user:', currentUser?.username);
+                    // Check if currentUser exists
+                    if (!currentUser || !currentUser.username) {
+                        console.error('No authenticated user found');
+                        this.showFallbackDashboard();
+                        return;
+                    }
+
+                    console.log('Loading dashboard data for user:', currentUser.username);
                     
                     const response = await fetch('/api/admin/analytics', {
                         headers: {
