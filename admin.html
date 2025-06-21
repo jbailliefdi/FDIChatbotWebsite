@@ -1130,6 +1130,13 @@
                 }
             }
 
+            showSetupPrompt(email) {
+                const setupKey = prompt(`No admin found. Enter setup key to create admin for ${email}:`);
+                if (setupKey) {
+                    this.createSystemAdmin(email, setupKey);
+                }
+            }
+
             async createSystemAdmin(email, setupKey) {
                 try {
                     console.log('Attempting to create system admin for:', email);
@@ -1297,23 +1304,53 @@
 
             async loadDashboardData() {
                 try {
+                    console.log('Loading dashboard data for user:', currentUser?.username);
+                    
                     const response = await fetch('/api/admin/analytics', {
                         headers: {
                             'x-user-email': currentUser.username
                         }
                     });
 
-                    if (!response.ok) throw new Error('Failed to load analytics');
+                    console.log('Analytics response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Analytics response error:', errorText);
+                        throw new Error(`Failed to load analytics: ${response.status} ${response.statusText}`);
+                    }
 
                     analyticsData = await response.json();
+                    console.log('Analytics data loaded:', analyticsData);
+                    
                     this.updateDashboardStats(analyticsData);
                     this.updateSignupsChart(analyticsData.charts.dailySignups);
                     this.updateRecentActivity(analyticsData.recentActivity);
 
                 } catch (error) {
                     console.error('Error loading dashboard data:', error);
-                    this.showError('Failed to load dashboard data');
+                    this.showError('Failed to load dashboard data: ' + error.message);
+                    
+                    // Show some fallback data
+                    this.showFallbackDashboard();
                 }
+            }
+
+            showFallbackDashboard() {
+                // Show basic dashboard with placeholder data
+                document.getElementById('totalOrganizations').textContent = '0';
+                document.getElementById('activeUsers').textContent = '0';
+                document.getElementById('monthlyRevenue').textContent = '£0';
+                document.getElementById('conversionRate').textContent = '0%';
+                
+                // Hide loading indicators
+                document.querySelectorAll('.loading').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Show message
+                document.getElementById('recentActivity').innerHTML = 
+                    '<div class="text-center text-secondary">Dashboard data unavailable - check console for details</div>';
             }
 
             updateDashboardStats(data) {
