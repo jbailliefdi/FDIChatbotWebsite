@@ -1132,6 +1132,9 @@
 
             async createSystemAdmin(email, setupKey) {
                 try {
+                    console.log('Attempting to create system admin for:', email);
+                    console.log('Using setup key:', setupKey);
+
                     const response = await fetch('/api/admin/setup', {
                         method: 'POST',
                         headers: {
@@ -1141,21 +1144,25 @@
                             email: email,
                             firstName: email.split('@')[0].split('.')[0],
                             lastName: email.split('@')[0].split('.')[1] || 'Admin',
-                            setupKey: setupKey
+                            setupKey: setupKey.trim()
                         })
                     });
 
+                    console.log('Setup response status:', response.status);
+                    
+                    const responseData = await response.json();
+                    console.log('Setup response data:', responseData);
+
                     if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.message);
+                        throw new Error(responseData.message || `Setup failed with status ${response.status}`);
                     }
 
-                    alert('Admin created successfully! Please refresh the page.');
+                    alert('✅ Admin created successfully! Please refresh the page.');
                     window.location.reload();
 
                 } catch (error) {
-                    alert('Setup failed: ' + error.message);
-                    console.error('Setup error:', error);
+                    console.error('Setup error details:', error);
+                    alert(`❌ Setup failed: ${error.message}\n\nPlease check:\n1. The setup key is: fdi-admin-setup-2025\n2. You're using the correct email\n3. Check browser console for details`);
                 }
             }
 

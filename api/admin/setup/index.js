@@ -17,10 +17,34 @@ module.exports = async function (context, req) {
     try {
         const { email, firstName, lastName, setupKey } = req.body;
 
-        // Verify setup key (you should set this as an environment variable)
-        const expectedSetupKey = process.env.ADMIN_SETUP_KEY || 'fdi-admin-setup-2025';
-        if (setupKey !== expectedSetupKey) {
-            context.res = { status: 401, body: { message: 'Invalid setup key' } };
+        context.log('Setup request for:', email, 'with key:', setupKey);
+
+        if (!email || !setupKey) {
+            context.res = { status: 400, body: { message: 'Email and setup key are required' } };
+            return;
+        }
+
+        // Verify setup key (case insensitive and flexible)
+        const expectedKeys = [
+            'fdi-admin-setup-2025',
+            'FDI-ADMIN-SETUP-2025',
+            process.env.ADMIN_SETUP_KEY
+        ].filter(Boolean);
+
+        const isValidKey = expectedKeys.some(key => 
+            key && setupKey.toLowerCase().trim() === key.toLowerCase().trim()
+        );
+
+        if (!isValidKey) {
+            context.log('Invalid setup key provided:', setupKey);
+            context.res = { 
+                status: 401, 
+                body: { 
+                    message: 'Invalid setup key',
+                    providedKey: setupKey,
+                    expectedFormat: 'fdi-admin-setup-2025'
+                } 
+            };
             return;
         }
 
@@ -33,6 +57,7 @@ module.exports = async function (context, req) {
         const { resources: existingAdmins } = await usersContainer.items.query(existingAdminQuery).fetchAll();
 
         if (existingAdmins.length > 0) {
+            context.log('System admin already exists:', existingAdmins[0].email);
             context.res = { 
                 status: 400, 
                 body: { 
@@ -51,12 +76,13 @@ module.exports = async function (context, req) {
             subscriptionId: "admin-subscription",
             licenseCount: 999,
             status: "active",
-            adminEmail: email,
+            adminEmail: email.toLowerCase(),
             createdAt: new Date().toISOString(),
             isAdminOrganization: true,
             mockSubscription: false
         };
 
+        context.log('Creating admin organization:', adminOrgId);
         await organizationsContainer.items.create(adminOrganization);
 
         // Create system admin user
@@ -64,8 +90,8 @@ module.exports = async function (context, req) {
         const systemAdmin = {
             id: adminUserId,
             email: email.toLowerCase(),
-            firstName: firstName || 'System',
-            lastName: lastName || 'Admin',
+            firstName: firstName || email.split('@')[0].split('.')[0] || 'Admin',
+            lastName: lastName || email.split('@')[0].split('.')[1] || 'User',
             organizationId: adminOrgId,
             role: 'admin',
             systemAdmin: true, // Special flag for system admin
@@ -82,6 +108,7 @@ module.exports = async function (context, req) {
             ]
         };
 
+        context.log('Creating system admin user:', adminUserId);
         await usersContainer.items.create(systemAdmin);
 
         context.log('System admin created successfully:', email);
@@ -93,7 +120,9 @@ module.exports = async function (context, req) {
                 admin: {
                     email: systemAdmin.email,
                     name: `${systemAdmin.firstName} ${systemAdmin.lastName}`,
-                    organization: adminOrganization.name
+                    organization: adminOrganization.name,
+                    id: systemAdmin.id,
+                    organizationId: adminOrgId
                 }
             }
         };
@@ -102,7 +131,11 @@ module.exports = async function (context, req) {
         context.log.error('Error setting up admin:', error);
         context.res = {
             status: 500,
-            body: { message: 'Internal server error', error: error.message }
+            body: { 
+                message: 'Internal server error', 
+                error: error.message,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            }
         };
     }
 };
