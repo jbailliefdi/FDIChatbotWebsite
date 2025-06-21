@@ -1,3 +1,4 @@
+// api/admin/organizations/index.js
 const { CosmosClient } = require('@azure/cosmos');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
@@ -44,6 +45,28 @@ async function verifyAdminAccess(context, req) {
         const email = req.headers['x-user-email'] || req.body?.adminEmail;
         
         if (!email) return null;
+
+        // Check if this is a setup email and no system admin exists yet
+        const setupEmails = ['j.baillie@fdintelligence.co.uk', 'j.baillieadmin@fdintelligence.co.uk'];
+        
+        if (setupEmails.includes(email.toLowerCase())) {
+            // Check if any system admin exists
+            const systemAdminQuery = {
+                query: "SELECT * FROM c WHERE c.systemAdmin = true",
+                parameters: []
+            };
+
+            const { resources: systemAdmins } = await usersContainer.items.query(systemAdminQuery).fetchAll();
+            
+            // If no system admin exists, allow the setup email to proceed
+            if (systemAdmins.length === 0) {
+                return {
+                    email: email,
+                    systemAdmin: true,
+                    setupMode: true
+                };
+            }
+        }
 
         const userQuery = {
             query: "SELECT * FROM c WHERE c.email = @email AND c.status = 'active'",

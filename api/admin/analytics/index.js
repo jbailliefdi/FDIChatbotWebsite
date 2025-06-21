@@ -42,6 +42,28 @@ async function verifyAdminAccess(context, req) {
         
         if (!email) return null;
 
+        // Check if this is a setup email and no system admin exists yet
+        const setupEmails = ['j.baillie@fdintelligence.co.uk', 'j.baillieadmin@fdintelligence.co.uk'];
+        
+        if (setupEmails.includes(email.toLowerCase())) {
+            // Check if any system admin exists
+            const systemAdminQuery = {
+                query: "SELECT * FROM c WHERE c.systemAdmin = true",
+                parameters: []
+            };
+
+            const { resources: systemAdmins } = await usersContainer.items.query(systemAdminQuery).fetchAll();
+            
+            // If no system admin exists, allow the setup email to proceed
+            if (systemAdmins.length === 0) {
+                return {
+                    email: email,
+                    systemAdmin: true,
+                    setupMode: true
+                };
+            }
+        }
+
         const userQuery = {
             query: "SELECT * FROM c WHERE c.email = @email AND c.status = 'active'",
             parameters: [{ name: "@email", value: email.toLowerCase() }]

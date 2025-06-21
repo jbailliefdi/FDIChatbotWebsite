@@ -1069,6 +1069,33 @@
 
             async verifyAdminAccess(email) {
                 try {
+                    // First check if this is the setup email and no admin exists yet
+                    const setupEmails = ['j.baillie@fdintelligence.co.uk', 'j.baillieadmin@fdintelligence.co.uk'];
+                    
+                    if (setupEmails.includes(email.toLowerCase())) {
+                        // Check if any system admin exists
+                        const checkResponse = await fetch('/api/admin/users', {
+                            headers: {
+                                'x-user-email': email
+                            }
+                        });
+
+                        // If API call fails (likely no admin exists), allow setup
+                        if (!checkResponse.ok) {
+                            this.showSetupPrompt(email);
+                            return false;
+                        }
+
+                        const data = await checkResponse.json();
+                        const systemAdmins = data.users?.filter(u => u.systemAdmin);
+                        
+                        // If no system admin exists, show setup prompt
+                        if (!systemAdmins || systemAdmins.length === 0) {
+                            this.showSetupPrompt(email);
+                            return false;
+                        }
+                    }
+
                     // Check if user exists and has admin role
                     const response = await fetch('/api/admin/users?search=' + encodeURIComponent(email), {
                         headers: {
@@ -1085,7 +1112,50 @@
 
                 } catch (error) {
                     console.error('Error verifying admin access:', error);
+                    
+                    // If error and this is a setup email, show setup prompt
+                    const setupEmails = ['j.baillie@fdintelligence.co.uk', 'j.baillieadmin@fdintelligence.co.uk'];
+                    if (setupEmails.includes(email.toLowerCase())) {
+                        this.showSetupPrompt(email);
+                    }
+                    
                     return false;
+                }
+            }
+
+            showSetupPrompt(email) {
+                const setupKey = prompt(`No admin found. Enter setup key to create admin for ${email}:`);
+                if (setupKey) {
+                    this.createSystemAdmin(email, setupKey);
+                }
+            }
+
+            async createSystemAdmin(email, setupKey) {
+                try {
+                    const response = await fetch('/api/admin/setup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: email,
+                            firstName: email.split('@')[0].split('.')[0],
+                            lastName: email.split('@')[0].split('.')[1] || 'Admin',
+                            setupKey: setupKey
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message);
+                    }
+
+                    alert('Admin created successfully! Please refresh the page.');
+                    window.location.reload();
+
+                } catch (error) {
+                    alert('Setup failed: ' + error.message);
+                    console.error('Setup error:', error);
                 }
             }
 
