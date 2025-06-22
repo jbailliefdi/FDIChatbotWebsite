@@ -84,41 +84,99 @@ async function handleMockCheckoutCompleted(context, email) {
         const domain = email.split('@')[1];
         const companyName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
 
-        // Create organization
-        const organizationId = uuidv4();
-        const organization = {
-            id: organizationId,
-            name: `${companyName} Ltd`,
-            subscriptionId: `mock-sub-${Date.now()}`,
-            licenseCount: 5, // Default to 5 licenses
-            status: 'trialing', // Start with trial
-            adminEmail: email,
-            createdAt: new Date().toISOString(),
-            trialEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
-            mockSubscription: true
+        let organizationId;
+        let isNewOrganization = false;
+        let userRole = 'user'; // Default role for new users
+
+        // Check if organization already exists for this domain
+        const orgDomainQuery = {
+            query: "SELECT * FROM c WHERE c.adminEmail LIKE @domain OR c.name = @companyName",
+            parameters: [
+                { name: "@domain", value: `%@${domain}` },
+                { name: "@companyName", value: `${companyName} Ltd` }
+            ]
         };
 
-        await organizationsContainer.items.create(organization);
+        const { resources: existingOrgs } = await organizationsContainer.items.query(orgDomainQuery).fetchAll();
 
-        // Create admin user
-        const userId = uuidv4();
-        const firstName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
-        const adminUser = {
-            id: userId,
-            email: email,
-            firstName: firstName,
-            lastName: 'User',
-            organizationId: organizationId,
-            role: 'admin',
-            status: 'active',
-            createdAt: new Date().toISOString(),
-            lastLogin: null,
-            mockUser: true
+        if (existingOrgs.length > 0) {
+            // Organization exists - use existing one
+            organizationId = existingOrgs[0].id;
+            context.log('Using existing organization:', organizationId);
+            
+            // Check if this email is already the admin email
+            if (existingOrgs[0].adminEmail === email) {
+                userRole = 'admin';
+                context.log('User is existing admin, maintaining admin role');
+            } else {
+                userRole = 'user';
+                context.log('Adding user to existing organization as regular user');
+            }
+        } else {
+            // No organization exists - create new one
+            organizationId = uuidv4();
+            isNewOrganization = true;
+            userRole = 'admin'; // First user becomes admin
+
+            const organization = {
+                id: organizationId,
+                name: `${companyName} Ltd`,
+                subscriptionId: `mock-sub-${Date.now()}`,
+                licenseCount: 5, // Default to 5 licenses
+                status: 'trialing', // Start with trial
+                adminEmail: email,
+                createdAt: new Date().toISOString(),
+                trialEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
+                mockSubscription: true
+            };
+
+            await organizationsContainer.items.create(organization);
+            context.log('Created new organization:', organizationId);
+        }
+
+        // Check if user already exists
+        const userQuery = {
+            query: "SELECT * FROM c WHERE c.email = @email",
+            parameters: [{ name: "@email", value: email }]
         };
 
-        await usersContainer.items.create(adminUser);
+        const { resources: existingUsers } = await usersContainer.items.query(userQuery).fetchAll();
 
-        context.log('Mock organization and user created successfully');
+        if (existingUsers.length > 0) {
+            // User already exists - update their information
+            const existingUser = existingUsers[0];
+            const updatedUser = {
+                ...existingUser,
+                organizationId: organizationId,
+                role: userRole,
+                status: 'active',
+                lastUpdated: new Date().toISOString()
+            };
+
+            await usersContainer.item(existingUser.id, existingUser.id).replace(updatedUser);
+            context.log('Updated existing user:', email);
+        } else {
+            // Create new user
+            const userId = uuidv4();
+            const firstName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
+            const newUser = {
+                id: userId,
+                email: email,
+                firstName: firstName,
+                lastName: 'User',
+                organizationId: organizationId,
+                role: userRole,
+                status: 'active',
+                createdAt: new Date().toISOString(),
+                lastLogin: null,
+                mockUser: true
+            };
+
+            await usersContainer.items.create(newUser);
+            context.log('Created new user:', email, 'with role:', userRole);
+        }
+
+        context.log('Checkout completed successfully - Organization:', organizationId, 'User role:', userRole);
 
     } catch (error) {
         context.log.error('Error in handleMockCheckoutCompleted:', error);
