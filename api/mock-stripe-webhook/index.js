@@ -22,7 +22,7 @@ module.exports = async function (context, req) {
 
         switch (event_type) {
             case 'checkout.session.completed':
-                await handleMockCheckoutCompleted(context, email);
+                await handleMockCheckoutCompleted(context, req);
                 break;
                 
             case 'customer.subscription.updated':
@@ -71,18 +71,20 @@ module.exports = async function (context, req) {
         context.log.error('Error processing mock webhook:', error);
         context.res = {
             status: 500,
-            body: { message: 'Internal server error' }
+            body: { message: error.message || 'Internal server error' }
         };
     }
 };
 
-async function handleMockCheckoutCompleted(context, email) {
+async function handleMockCheckoutCompleted(context, req) {
     try {
-        context.log('Processing mock checkout completion for:', email);
+        const { email, user_data } = req.body;
+        context.log('Processing mock checkout completion for:', email, 'with data:', user_data);
 
-        // Extract company name from email domain
+        // Extract company name from email domain or use provided company name
         const domain = email.split('@')[1];
-        const companyName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+        const defaultCompanyName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+        const companyName = user_data?.companyName || `${defaultCompanyName} Ltd`;
 
         let organizationId;
         let isNewOrganization = false;
@@ -90,10 +92,9 @@ async function handleMockCheckoutCompleted(context, email) {
 
         // Check if organization already exists for this domain
         const orgDomainQuery = {
-            query: "SELECT * FROM c WHERE c.adminEmail LIKE @domain OR c.name = @companyName",
+            query: "SELECT * FROM c WHERE c.adminEmail LIKE @domain",
             parameters: [
-                { name: "@domain", value: `%@${domain}` },
-                { name: "@companyName", value: `${companyName} Ltd` }
+                { name: "@domain", value: `%@${domain}` }
             ]
         };
 
@@ -101,11 +102,26 @@ async function handleMockCheckoutCompleted(context, email) {
 
         if (existingOrgs.length > 0) {
             // Organization exists - use existing one
-            organizationId = existingOrgs[0].id;
+            const existingOrg = existingOrgs[0];
+            organizationId = existingOrg.id;
             context.log('Using existing organization:', organizationId);
             
+            // Check license limits before adding user
+            const userCountQuery = {
+                query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
+                parameters: [{ name: "@orgId", value: organizationId }]
+            };
+            
+            const { resources: userCountResult } = await usersContainer.items.query(userCountQuery).fetchAll();
+            const currentUserCount = userCountResult[0] || 0;
+            
+            if (currentUserCount >= existingOrg.licenseCount) {
+                context.log(`License limit reached. Current users: ${currentUserCount}, License limit: ${existingOrg.licenseCount}`);
+                throw new Error(`License limit reached. Your organization has ${existingOrg.licenseCount} licenses and ${currentUserCount} active users. Please upgrade your plan to add more users.`);
+            }
+            
             // Check if this email is already the admin email
-            if (existingOrgs[0].adminEmail === email) {
+            if (existingOrg.adminEmail === email) {
                 userRole = 'admin';
                 context.log('User is existing admin, maintaining admin role');
             } else {
@@ -118,11 +134,13 @@ async function handleMockCheckoutCompleted(context, email) {
             isNewOrganization = true;
             userRole = 'admin'; // First user becomes admin
 
+            const licenseCount = user_data?.licenseCount || 5; // Use provided license count or default to 5
+
             const organization = {
                 id: organizationId,
-                name: `${companyName} Ltd`,
+                name: companyName,
                 subscriptionId: `mock-sub-${Date.now()}`,
-                licenseCount: 5, // Default to 5 licenses
+                licenseCount: licenseCount,
                 status: 'trialing', // Start with trial
                 adminEmail: email,
                 createdAt: new Date().toISOString(),
@@ -131,7 +149,7 @@ async function handleMockCheckoutCompleted(context, email) {
             };
 
             await organizationsContainer.items.create(organization);
-            context.log('Created new organization:', organizationId);
+            context.log('Created new organization:', organizationId, 'with', licenseCount, 'licenses');
         }
 
         // Check if user already exists
@@ -150,20 +168,27 @@ async function handleMockCheckoutCompleted(context, email) {
                 organizationId: organizationId,
                 role: userRole,
                 status: 'active',
+                // Update name if provided in user_data
+                firstName: user_data?.firstName || existingUser.firstName,
+                lastName: user_data?.lastName || existingUser.lastName,
+                phone: user_data?.phone || existingUser.phone,
                 lastUpdated: new Date().toISOString()
             };
 
             await usersContainer.item(existingUser.id, existingUser.id).replace(updatedUser);
             context.log('Updated existing user:', email);
         } else {
-            // Create new user
+            // Create new user with proper form data
             const userId = uuidv4();
-            const firstName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
+            const firstName = user_data?.firstName || email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
+            const lastName = user_data?.lastName || 'User';
+            
             const newUser = {
                 id: userId,
                 email: email,
                 firstName: firstName,
-                lastName: 'User',
+                lastName: lastName,
+                phone: user_data?.phone || null,
                 organizationId: organizationId,
                 role: userRole,
                 status: 'active',
@@ -173,7 +198,7 @@ async function handleMockCheckoutCompleted(context, email) {
             };
 
             await usersContainer.items.create(newUser);
-            context.log('Created new user:', email, 'with role:', userRole);
+            context.log('Created new user:', email, 'with role:', userRole, 'Name:', firstName, lastName);
         }
 
         context.log('Checkout completed successfully - Organization:', organizationId, 'User role:', userRole);
@@ -296,6 +321,207 @@ async function handleMockPaymentSucceeded(context, email) {
 
     } catch (error) {
         context.log.error('Error in handleMockPaymentSucceeded:', error);
+        throw error;
+    }
+}
+
+// Additional helper functions for license management
+
+async function getOrganizationUsage(context, organizationId) {
+    try {
+        // Get organization details
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.id = @orgId",
+            parameters: [{ name: "@orgId", value: organizationId }]
+        };
+        
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+        
+        if (organizations.length === 0) {
+            throw new Error('Organization not found');
+        }
+        
+        const organization = organizations[0];
+        
+        // Count active users
+        const userCountQuery = {
+            query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
+            parameters: [{ name: "@orgId", value: organizationId }]
+        };
+        
+        const { resources: userCountResult } = await usersContainer.items.query(userCountQuery).fetchAll();
+        const activeUsers = userCountResult[0] || 0;
+        
+        // Get all users for the organization
+        const usersQuery = {
+            query: "SELECT * FROM c WHERE c.organizationId = @orgId ORDER BY c.createdAt",
+            parameters: [{ name: "@orgId", value: organizationId }]
+        };
+        
+        const { resources: users } = await usersContainer.items.query(usersQuery).fetchAll();
+        
+        return {
+            organization: organization,
+            licenseCount: organization.licenseCount,
+            activeUsers: activeUsers,
+            availableLicenses: organization.licenseCount - activeUsers,
+            users: users,
+            usage: {
+                percentage: Math.round((activeUsers / organization.licenseCount) * 100),
+                remaining: organization.licenseCount - activeUsers
+            }
+        };
+    } catch (error) {
+        context.log.error('Error getting organization usage:', error);
+        throw error;
+    }
+}
+
+async function upgradeOrganizationLicenses(context, organizationId, newLicenseCount) {
+    try {
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.id = @orgId",
+            parameters: [{ name: "@orgId", value: organizationId }]
+        };
+        
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+        
+        if (organizations.length === 0) {
+            throw new Error('Organization not found');
+        }
+        
+        const organization = organizations[0];
+        
+        if (newLicenseCount < organization.licenseCount) {
+            // Check if downgrade is possible (no more active users than new license count)
+            const userCountQuery = {
+                query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
+                parameters: [{ name: "@orgId", value: organizationId }]
+            };
+            
+            const { resources: userCountResult } = await usersContainer.items.query(userCountQuery).fetchAll();
+            const activeUsers = userCountResult[0] || 0;
+            
+            if (activeUsers > newLicenseCount) {
+                throw new Error(`Cannot downgrade to ${newLicenseCount} licenses. You have ${activeUsers} active users. Please deactivate users first.`);
+            }
+        }
+        
+        // Update organization
+        const updatedOrg = {
+            ...organization,
+            licenseCount: newLicenseCount,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        await organizationsContainer.item(organization.id, organization.id).replace(updatedOrg);
+        
+        context.log(`Organization ${organizationId} license count updated to ${newLicenseCount}`);
+        
+        return updatedOrg;
+    } catch (error) {
+        context.log.error('Error upgrading organization licenses:', error);
+        throw error;
+    }
+}
+
+async function deactivateUser(context, userId, organizationId) {
+    try {
+        // Get user
+        const userQuery = {
+            query: "SELECT * FROM c WHERE c.id = @userId AND c.organizationId = @orgId",
+            parameters: [
+                { name: "@userId", value: userId },
+                { name: "@orgId", value: organizationId }
+            ]
+        };
+        
+        const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+        
+        if (users.length === 0) {
+            throw new Error('User not found or not in organization');
+        }
+        
+        const user = users[0];
+        
+        if (user.role === 'admin') {
+            // Check if this is the only admin
+            const adminQuery = {
+                query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
+                parameters: [{ name: "@orgId", value: organizationId }]
+            };
+            
+            const { resources: adminCountResult } = await usersContainer.items.query(adminQuery).fetchAll();
+            const adminCount = adminCountResult[0] || 0;
+            
+            if (adminCount <= 1) {
+                throw new Error('Cannot deactivate the only admin user. Please assign another admin first.');
+            }
+        }
+        
+        // Deactivate user
+        const updatedUser = {
+            ...user,
+            status: 'deactivated',
+            deactivatedAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+        };
+        
+        await usersContainer.item(user.id, user.id).replace(updatedUser);
+        
+        context.log(`User ${userId} deactivated, license freed up`);
+        
+        return updatedUser;
+    } catch (error) {
+        context.log.error('Error deactivating user:', error);
+        throw error;
+    }
+}
+
+async function reactivateUser(context, userId, organizationId) {
+    try {
+        // Check license availability first
+        const usage = await getOrganizationUsage(context, organizationId);
+        
+        if (usage.availableLicenses <= 0) {
+            throw new Error(`No available licenses. Your organization has ${usage.licenseCount} licenses and ${usage.activeUsers} active users.`);
+        }
+        
+        // Get user
+        const userQuery = {
+            query: "SELECT * FROM c WHERE c.id = @userId AND c.organizationId = @orgId",
+            parameters: [
+                { name: "@userId", value: userId },
+                { name: "@orgId", value: organizationId }
+            ]
+        };
+        
+        const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+        
+        if (users.length === 0) {
+            throw new Error('User not found or not in organization');
+        }
+        
+        const user = users[0];
+        
+        // Reactivate user
+        const updatedUser = {
+            ...user,
+            status: 'active',
+            reactivatedAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+        };
+        
+        // Remove deactivatedAt if it exists
+        delete updatedUser.deactivatedAt;
+        
+        await usersContainer.item(user.id, user.id).replace(updatedUser);
+        
+        context.log(`User ${userId} reactivated`);
+        
+        return updatedUser;
+    } catch (error) {
+        context.log.error('Error reactivating user:', error);
         throw error;
     }
 }

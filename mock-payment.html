@@ -680,83 +680,105 @@
 
         // Handle form submission
         document.getElementById('paymentForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
-            const email = document.getElementById('email').value;
-            
-            // Disable form
-            submitBtn.disabled = true;
-            submitBtn.style.display = 'none';
-            loadingIndicator.style.display = 'block';
-            
-            // Simulate payment processing delay
-            setTimeout(async () => {
-                // Determine outcome based on card number
-                let outcome = 'success';
-                let message = 'Payment successful!';
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const email = document.getElementById('email').value;
+    
+    // Get stored signup data
+    const signupData = localStorage.getItem('signup_data');
+    let formData = {};
+    
+    if (signupData) {
+        try {
+            formData = JSON.parse(signupData);
+        } catch (error) {
+            console.error('Error parsing signup data:', error);
+        }
+    }
+    
+    // Disable form
+    submitBtn.disabled = true;
+    submitBtn.style.display = 'none';
+    loadingIndicator.style.display = 'block';
+    
+    // Simulate payment processing delay
+    setTimeout(async () => {
+        // Determine outcome based on card number
+        let outcome = 'success';
+        let message = 'Payment successful!';
+        
+        if (cardNumber === '4000000000000002') {
+            outcome = 'declined';
+            message = 'Your card was declined. Please try a different payment method.';
+        } else if (cardNumber === '4000000000009995') {
+            outcome = 'insufficient_funds';
+            message = 'Insufficient funds. Please check your account balance.';
+        } else if (cardNumber.startsWith('4242')) {
+            outcome = 'success';
+            message = 'Payment successful! Welcome to TIA Professional.';
+        }
+        
+        // Store result
+        localStorage.setItem('mock_payment_result', JSON.stringify({
+            outcome: outcome,
+            message: message,
+            email: email,
+            timestamp: new Date().toISOString()
+        }));
+        
+        if (outcome === 'success') {
+            try {
+                // Call webhook with complete form data
+                console.log('Creating subscription records for:', email);
                 
-                if (cardNumber === '4000000000000002') {
-                    outcome = 'declined';
-                    message = 'Your card was declined. Please try a different payment method.';
-                } else if (cardNumber === '4000000000009995') {
-                    outcome = 'insufficient_funds';
-                    message = 'Insufficient funds. Please check your account balance.';
-                } else if (cardNumber.startsWith('4242')) {
-                    outcome = 'success';
-                    message = 'Payment successful! Welcome to TIA Professional.';
-                }
-                
-                // Store result
-                localStorage.setItem('mock_payment_result', JSON.stringify({
-                    outcome: outcome,
-                    message: message,
+                const webhookPayload = {
+                    event_type: 'checkout.session.completed',
                     email: email,
-                    timestamp: new Date().toISOString()
-                }));
-                
-                if (outcome === 'success') {
-                    try {
-                        // Call webhook to create database records
-                        console.log('Creating subscription records for:', email);
-                        
-                        const webhookResponse = await fetch('/api/mock-stripe-webhook', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                event_type: 'checkout.session.completed',
-                                email: email,
-                                timestamp: new Date().toISOString()
-                            })
-                        });
-
-                        const webhookResult = await webhookResponse.json();
-                        
-                        if (webhookResponse.ok) {
-                            console.log('Subscription created successfully:', webhookResult);
-                            // Success - redirect to app
-                            window.location.href = '/app?payment=success';
-                        } else {
-                            console.error('Webhook failed:', webhookResult);
-                            // Webhook failed, but show success to user (they can try again)
-                            window.location.href = '/app?payment=success&webhook_error=1';
-                        }
-                        
-                    } catch (error) {
-                        console.error('Error calling webhook:', error);
-                        // Network error, but show success to user
-                        window.location.href = '/app?payment=success&webhook_error=1';
+                    timestamp: new Date().toISOString(),
+                    // Include form data from signup
+                    user_data: {
+                        firstName: formData.firstName || email.split('@')[0],
+                        lastName: formData.lastName || 'User',
+                        companyName: formData.companyName,
+                        phone: formData.phone,
+                        licenseCount: formData.licenseCount || 1
                     }
+                };
+                
+                const webhookResponse = await fetch('/api/mock-stripe-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(webhookPayload)
+                });
+
+                const webhookResult = await webhookResponse.json();
+                
+                if (webhookResponse.ok) {
+                    console.log('Subscription created successfully:', webhookResult);
+                    // Success - redirect to app
+                    window.location.href = '/app?payment=success';
                 } else {
-                    // Payment failed - redirect to pricing with error
-                    window.location.href = '/pricing?payment=failed&reason=' + encodeURIComponent(message);
+                    console.error('Webhook failed:', webhookResult);
+                    // Webhook failed, but show success to user (they can try again)
+                    window.location.href = '/app?payment=success&webhook_error=1';
                 }
-            }, 2000);
-        });
+                
+            } catch (error) {
+                console.error('Error calling webhook:', error);
+                // Network error, but show success to user
+                window.location.href = '/app?payment=success&webhook_error=1';
+            }
+        } else {
+            // Payment failed - redirect to pricing with error
+            window.location.href = '/pricing?payment=failed&reason=' + encodeURIComponent(message);
+        }
+    }, 2000);
+});
 
         // Auto-populate email and demo data on page load
         window.addEventListener('load', function() {
