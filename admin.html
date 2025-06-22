@@ -1137,22 +1137,49 @@
                     console.log('Attempting to create system admin for:', email);
                     console.log('Using setup key:', setupKey);
 
+                    const requestBody = {
+                        email: email,
+                        firstName: email.split('@')[0].split('.')[0],
+                        lastName: email.split('@')[0].split('.')[1] || 'Admin',
+                        setupKey: setupKey.trim()
+                    };
+                    
+                    console.log('Request body:', requestBody);
+
                     const response = await fetch('/api/admin/setup', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            email: email,
-                            firstName: email.split('@')[0].split('.')[0],
-                            lastName: email.split('@')[0].split('.')[1] || 'Admin',
-                            setupKey: setupKey.trim()
-                        })
+                        body: JSON.stringify(requestBody)
                     });
 
                     console.log('Setup response status:', response.status);
+                    console.log('Setup response headers:', response.headers);
                     
-                    const responseData = await response.json();
+                    // Get response text first to check what we received
+                    const responseText = await response.text();
+                    console.log('Setup response text:', responseText);
+                    
+                    let responseData;
+                    try {
+                        // Try to parse as JSON
+                        responseData = responseText ? JSON.parse(responseText) : {};
+                    } catch (parseError) {
+                        console.error('Failed to parse response as JSON:', parseError);
+                        console.error('Response was:', responseText);
+                        
+                        // If we can't parse JSON, create a meaningful error
+                        if (response.ok) {
+                            // If status is OK but no JSON, assume success
+                            alert('✅ Admin setup completed! Please refresh the page.');
+                            window.location.reload();
+                            return;
+                        } else {
+                            throw new Error(`Server returned invalid response (status ${response.status}): ${responseText || 'Empty response'}`);
+                        }
+                    }
+
                     console.log('Setup response data:', responseData);
 
                     if (!response.ok) {
@@ -1164,7 +1191,7 @@
 
                 } catch (error) {
                     console.error('Setup error details:', error);
-                    alert(`❌ Setup failed: ${error.message}\n\nPlease check:\n1. The setup key is: fdi-admin-setup-2025\n2. You're using the correct email\n3. Check browser console for details`);
+                    alert(`❌ Setup failed: ${error.message}\n\nPlease check:\n1. The setup key is: fdi-admin-setup-2025\n2. You're using the correct email\n3. Check browser console for details\n4. Check the API endpoint /api/admin/setup exists`);
                 }
             }
 
