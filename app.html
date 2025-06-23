@@ -1248,13 +1248,7 @@ body.dark-mode .account-status-modal .contact-info {
       <p id="subscription-status"></p>
     </div>
   </div>
-
-  <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-  <script>
-let userData = null; // Global state for user's data
-
-<!-- Account Status Overlay -->
+  <!-- Account Status Overlay -->
 <div id="account-status-overlay" class="account-status-overlay">
   <div class="account-status-modal">
     <div class="status-icon">
@@ -1280,6 +1274,14 @@ let userData = null; // Global state for user's data
     </div>
   </div>
 </div>
+
+  <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script>
+let userData = null; // Global state for user's data
+</script>
+<script>
+
 /**********************
  * Subscription Management
  **********************/
@@ -1421,6 +1423,7 @@ function initializeChat() {
 /**********************
  * MSAL & Authentication Setup
  **********************/
+let subscriptionData = null;
 const msalConfig = { auth: { clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2", authority: "https://login.microsoftonline.com/common", redirectUri: window.location.origin + window.location.pathname, }, cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false, } };
 let msalInstance; try { msalInstance = new msal.PublicClientApplication(msalConfig); } catch (e) { alert("Critical error initializing authentication library. Please refresh the page or contact support."); throw new Error("MSAL Initialization Failed"); }
 function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
