@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TIA - Organization Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -168,22 +169,6 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: 500;
-        }
-
-        #orgSelector {
-            min-width: 200px;
-            background: white;
-            cursor: pointer;
-        }
-
-        #orgSelector:focus {
-            outline: 2px solid #3498db;
-            outline-offset: 2px;
-        }
-
-        .page-header > div:first-child {
-            display: flex;
-            flex-direction: column;
         }
 
         /* Users Table */
@@ -499,6 +484,22 @@
             color: white;
         }
 
+        .sign-out-btn {
+            background: transparent;
+            color: #666;
+            border: 1px solid #ddd;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .sign-out-btn:hover {
+            background: #f8f9fa;
+            border-color: #999;
+        }
+
         @media (max-width: 768px) {
             .dashboard-container {
                 grid-template-columns: 1fr;
@@ -546,6 +547,12 @@
                         Back to TIA
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link sign-out-btn" onclick="signOut()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sign Out
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -556,12 +563,6 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Users & Teams</h1>
-                        <div style="margin-top: 0.5rem;">
-                            <label for="orgSelector" style="font-size: 0.9rem; color: #666; margin-right: 0.5rem;">Organization:</label>
-                            <select id="orgSelector" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem;">
-                                <option value="">Loading organizations...</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="user-info">
                         <div class="user-avatar" id="currentUserAvatar">?</div>
@@ -775,16 +776,171 @@
     </div>
 
     <script>
-        // Global state
-        let currentOrganization = null;
+        // MSAL Configuration
+        const msalConfig = {
+            auth: {
+                clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2",
+                authority: "https://login.microsoftonline.com/common",
+                redirectUri: window.location.origin + window.location.pathname,
+            },
+            cache: {
+                cacheLocation: "localStorage",
+                storeAuthStateInCookie: false,
+            }
+        };
+
+        let msalInstance;
         let currentUser = null;
+        let currentUserOrganization = null;
+        let currentOrganization = null;
         let organizationUsers = [];
         let currentPage = 'users';
 
+        // Initialize MSAL
+        try {
+            msalInstance = new msal.PublicClientApplication(msalConfig);
+        } catch (e) {
+            console.error("MSAL Initialization Failed:", e);
+            showError("Authentication system failed to initialize. Please refresh the page.");
+        }
+
+        // Authentication functions
+        async function checkAdminAuth() {
+            try {
+                await msalInstance.handleRedirectPromise();
+                let account = msalInstance.getActiveAccount();
+                
+                if (!account && msalInstance.getAllAccounts().length > 0) {
+                    account = msalInstance.getAllAccounts()[0];
+                    msalInstance.setActiveAccount(account);
+                }
+
+                if (!account) {
+                    redirectToLogin();
+                    return false;
+                }
+
+                // Verify user is admin and get organization
+                const userStatus = await verifyAdminStatus(account);
+                
+                if (!userStatus.isAdmin || !userStatus.hasAccess) {
+                    showUnauthorizedError(userStatus.message);
+                    return false;
+                }
+
+                // Set global user data
+                currentUser = userStatus.user;
+                currentUserOrganization = userStatus.organization;
+                
+                return true;
+            } catch (error) {
+                console.error("Authentication check failed:", error);
+                showError("Authentication failed. Please try again.");
+                return false;
+            }
+        }
+
+        async function verifyAdminStatus(account) {
+            try {
+                const response = await fetch('/api/check-subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: account.username })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to verify user status');
+                }
+
+                const data = await response.json();
+                
+                return {
+                    isAdmin: data.userRole === 'admin',
+                    hasAccess: data.active,
+                    user: { 
+                        email: account.username, 
+                        role: data.userRole,
+                        firstName: account.name ? account.name.split(' ')[0] : 'User',
+                        lastName: account.name ? account.name.split(' ').slice(1).join(' ') : ''
+                    },
+                    organization: { 
+                        id: data.organizationId || 'unknown',
+                        name: data.companyName || 'Unknown Organization'
+                    },
+                    message: data.message
+                };
+            } catch (error) {
+                console.error("Admin verification failed:", error);
+                return {
+                    isAdmin: false,
+                    hasAccess: false,
+                    message: "Unable to verify admin status"
+                };
+            }
+        }
+
+        function redirectToLogin() {
+            alert("Please sign in to access the dashboard.");
+            window.location.href = '/app';
+        }
+
+        function showUnauthorizedError(message) {
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f7fa;">
+                    <div style="background: white; padding: 40px; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                        <i class="fas fa-shield-alt" style="font-size: 4rem; color: #e74c3c; margin-bottom: 20px;"></i>
+                        <h2 style="color: #e74c3c; margin-bottom: 20px;">Access Denied</h2>
+                        <p style="margin-bottom: 30px; color: #666;">${message || 'You do not have permission to access this dashboard. Only administrators can view this page.'}</p>
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <button onclick="window.location.href='/app'" style="padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">Go to TIA</button>
+                            <button onclick="signOut()" style="padding: 12px 24px; background: transparent; color: #666; border: 2px solid #ddd; border-radius: 6px; cursor: pointer;">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function signOut() {
+            try {
+                await msalInstance.logoutRedirect({
+                    postLogoutRedirectUri: window.location.origin + '/app'
+                });
+            } catch (error) {
+                console.error("Sign out error:", error);
+                window.location.href = '/app';
+            }
+        }
+
         // Initialize dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            loadDashboardData();
-            initializeNavigation();
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Show loading state
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f7fa;">
+                    <div style="text-align: center;">
+                        <div style="width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                        <p style="color: #666;">Verifying access...</p>
+                    </div>
+                </div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            `;
+            
+            // Check authentication
+            const isAuthenticated = await checkAdminAuth();
+            
+            if (isAuthenticated) {
+                // Restore the original page content and initialize
+                location.reload();
+            }
+        });
+
+        // Initialize dashboard after authentication is verified
+        window.addEventListener('load', async function() {
+            if (currentUser && currentUserOrganization) {
+                initializeNavigation();
+                await loadDashboardData();
+            }
         });
 
         // Navigation system
@@ -829,108 +985,31 @@
             document.getElementById('currentUserRole2').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         }
 
-        let allOrganizations = [];
-
-        // Replace the getTestOrganizationId function with this:
-        async function loadOrganizations() {
-            try {
-                console.log('Fetching organizations list...');
-                
-                const response = await fetch('/api/organizations');
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Available organizations:', data.organizations);
-                    
-                    allOrganizations = data.organizations || [];
-                    populateOrgSelector();
-                    
-                    // Default to FDI organization if available, otherwise first org
-                    const defaultOrg = allOrganizations.find(org => 
-                        org.id === 'fdi-test-org-001' || 
-                        org.name === 'FD Intelligence'
-                    ) || allOrganizations[0];
-                    
-                    if (defaultOrg) {
-                        document.getElementById('orgSelector').value = defaultOrg.id;
-                        return defaultOrg.id;
-                    }
-                }
-                
-                return 'fdi-test-org-001'; // fallback
-            } catch (error) {
-                console.error('Error switching organization:', error);
-                showError('Failed to load organization data');
-            }
-        }
-        // Populate the organization selector dropdown
-        function populateOrgSelector() {
-            const selector = document.getElementById('orgSelector');
-            
-            if (allOrganizations.length === 0) {
-                selector.innerHTML = '<option value="">No organizations found</option>';
+        // Load dashboard data (SECURE - only user's organization)
+        async function loadDashboardData() {
+            if (!currentUser || !currentUserOrganization) {
+                showError("Authentication required");
                 return;
             }
-            
-            selector.innerHTML = allOrganizations.map(org => 
-                `<option value="${org.id}">${org.name} (${org.status})</option>`
-            ).join('');
-            
-            // Add change event listener
-            selector.addEventListener('change', function() {
-                const selectedOrgId = this.value;
-                if (selectedOrgId) {
-                    switchOrganization(selectedOrgId);
-                }
-            });
-        }
 
-        // Switch to a different organization
-        async function switchOrganization(orgId) {
-            console.log('Switching to organization:', orgId);
-            
-            // Show loading state
-            document.getElementById('usersTableContainer').innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading users...</div>';
-            
             try {
+                // Only load data for the user's organization
+                const orgId = currentUserOrganization.id;
+                
                 const response = await fetch(`/api/organization/${orgId}/overview`);
                 const data = await response.json();
                 
                 if (response.ok) {
+                    // Verify the returned organization matches the user's organization
+                    if (data.organization.id !== orgId) {
+                        throw new Error("Data mismatch - security violation");
+                    }
+                    
                     currentOrganization = data.organization;
                     organizationUsers = data.users;
                     
-                    // Find current user (admin for now)
-                    currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
-                    
-                    updateDashboardUI(data);
-                    showSuccess(`Switched to ${currentOrganization.name}`);
-                } else {
-                    showError('Error loading organization: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error switching organization:', error);
-                showError('Failed to load organization data');
-            }
-        }
-        // Load all dashboard data
-        async function loadDashboardData() {
-            try {
-                const orgId = await loadOrganizations();
-                
-                if (!orgId) {
-                    showError('No organization found. Please create one first using the pricing page.');
-                    return;
-                }
-
-                const response = await fetch(`/api/organization/${orgId}/overview`);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentOrganization = data.organization;
-                    organizationUsers = data.users;
-                    
-                    // Find current user (admin for now)
-                    currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
+                    // Find current user in the organization users
+                    currentUser = organizationUsers.find(u => u.email === currentUser.email) || currentUser;
                     
                     updateDashboardUI(data);
                 } else {
@@ -938,7 +1017,7 @@
                 }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                showError('Failed to connect to server');
+                showError('Failed to load dashboard data');
             }
         }
 
@@ -1097,9 +1176,12 @@
             }
         }
 
-        // User management functions
+        // User management functions (SECURE - with organization validation)
         async function deactivateUser(userId) {
-            console.log('Attempting to deactivate user:', userId, 'in org:', currentOrganization?.id);
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
             
             if (!confirm('Are you sure you want to deactivate this user? They will lose access to TIA.')) {
                 return;
@@ -1113,13 +1195,11 @@
                 });
                 
                 const result = await response.json();
-                console.log('Deactivate response:', result);
                 
                 if (response.ok) {
                     showSuccess('User deactivated successfully');
                     loadDashboardData(); // Refresh
                 } else {
-                    console.error('Deactivation failed:', result);
                     showError(result.error || 'Failed to deactivate user');
                 }
             } catch (error) {
@@ -1129,7 +1209,10 @@
         }
 
         async function reactivateUser(userId) {
-            console.log('Attempting to reactivate user:', userId, 'in org:', currentOrganization?.id);
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
             
             try {
                 const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
@@ -1139,13 +1222,11 @@
                 });
                 
                 const result = await response.json();
-                console.log('Reactivate response:', result);
                 
                 if (response.ok) {
                     showSuccess('User reactivated successfully');
                     loadDashboardData(); // Refresh
                 } else {
-                    console.error('Reactivation failed:', result);
                     showError(result.error || 'Failed to reactivate user');
                 }
             } catch (error) {
@@ -1155,7 +1236,10 @@
         }
 
         async function removeUser(userId) {
-            console.log('Attempting to remove user:', userId, 'in org:', currentOrganization?.id);
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
             
             if (!confirm('Are you sure you want to permanently remove this user? This action cannot be undone.')) {
                 return;
@@ -1167,13 +1251,11 @@
                 });
                 
                 const result = await response.json();
-                console.log('Remove response:', result);
                 
                 if (response.ok) {
                     showSuccess('User removed successfully');
                     loadDashboardData(); // Refresh
                 } else {
-                    console.error('Removal failed:', result);
                     showError(result.error || 'Failed to remove user');
                 }
             } catch (error) {
@@ -1221,9 +1303,14 @@
             document.getElementById('inviteForm').reset();
         }
 
-        // Invite form submission
+        // Invite form submission (SECURE - with organization validation)
         document.getElementById('inviteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
             
             const firstName = document.getElementById('inviteFirstName').value;
             const lastName = document.getElementById('inviteLastName').value;
@@ -1279,9 +1366,6 @@
                 hideInviteModal();
             }
         });
-
-        // Auto-refresh every 30 seconds
-        setInterval(loadDashboardData, 30000);
     </script>
 </body>
 </html>
