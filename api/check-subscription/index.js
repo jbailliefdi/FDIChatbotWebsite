@@ -26,7 +26,7 @@ module.exports = async function (context, req) {
 
         // Find user in database
         const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @email AND c.status = 'active'",
+            query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@email) AND c.status = 'active'",
             parameters: [{ name: "@email", value: email.toLowerCase() }]
         };
 
