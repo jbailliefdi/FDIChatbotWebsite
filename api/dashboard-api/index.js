@@ -353,6 +353,7 @@ async function handleDeleteUser(context, orgId, userId) {
 }
 
 // Invite new user (simplified version)
+// Invite new user (updated version)
 async function handleInviteUser(context, orgId, inviteData) {
     try {
         if (!orgId) {
@@ -361,11 +362,11 @@ async function handleInviteUser(context, orgId, inviteData) {
             return;
         }
 
-        const { email, role = 'user' } = inviteData;
+        const { firstName, lastName, email, role = 'user' } = inviteData;
         
-        if (!email) {
+        if (!email || !firstName || !lastName) {
             context.res.status = 400;
-            context.res.body = { error: 'Email required' };
+            context.res.body = { error: 'First name, last name, and email are required' };
             return;
         }
 
@@ -394,13 +395,12 @@ async function handleInviteUser(context, orgId, inviteData) {
         // For demo purposes, we'll create the user directly
         // In production, you'd create an invitation and send an email
         const userId = uuidv4();
-        const firstName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
         
         const newUser = {
             id: userId,
             email: email,
-            firstName: firstName,
-            lastName: 'User',
+            firstName: firstName,  // Use form data
+            lastName: lastName,    // Use form data
             phone: null,
             organizationId: orgId,
             role: role,
@@ -419,12 +419,12 @@ async function handleInviteUser(context, orgId, inviteData) {
                 id: userId,
                 email: email,
                 firstName: firstName,
-                lastName: 'User',
+                lastName: lastName,
                 role: role
             }
         };
         
-        context.log('User invited/created:', email);
+        context.log('User invited/created:', email, 'Name:', firstName, lastName);
     } catch (error) {
         context.log.error('Error inviting user:', error);
         throw error;
