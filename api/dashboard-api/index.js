@@ -11,7 +11,7 @@ const organizationsContainer = database.container('organizations');
 const usersContainer = database.container('users');
 
 module.exports = async function (context, req) {
-    context.log('Dashboard API request received');
+    context.log('Dashboard API request received:', req.method, req.url);
 
     // Enable CORS
     context.res = {
@@ -29,37 +29,45 @@ module.exports = async function (context, req) {
 
     try {
         const method = req.method;
-        const segments = req.url.split('/').filter(Boolean);
+        const orgId = req.params.orgId;
+        const segments = req.params.segments ? req.params.segments.split('/') : [];
+        
+        context.log('Organization ID:', orgId);
+        context.log('Segments:', segments);
         
         // Route: /api/organization/{orgId}/overview
-        if (method === 'GET' && segments.includes('organization') && segments.includes('overview')) {
-            const orgId = getOrgIdFromUrl(segments);
+        if (method === 'GET' && segments.includes('overview')) {
+            context.log('Getting overview for org:', orgId);
             await handleGetOrganizationOverview(context, orgId);
         }
         // Route: /api/organization/{orgId}/users/{userId} - PUT
-        else if (method === 'PUT' && segments.includes('organization') && segments.includes('users')) {
-            const orgId = getOrgIdFromUrl(segments);
-            const userId = getUserIdFromUrl(segments);
+        else if (method === 'PUT' && segments.includes('users') && segments.length >= 2) {
+            const userId = segments[segments.indexOf('users') + 1];
+            context.log('Updating user:', userId, 'in org:', orgId);
             await handleUpdateUser(context, orgId, userId, req.body);
         }
         // Route: /api/organization/{orgId}/users/{userId} - DELETE
-        else if (method === 'DELETE' && segments.includes('organization') && segments.includes('users')) {
-            const orgId = getOrgIdFromUrl(segments);
-            const userId = getUserIdFromUrl(segments);
+        else if (method === 'DELETE' && segments.includes('users') && segments.length >= 2) {
+            const userId = segments[segments.indexOf('users') + 1];
+            context.log('Deleting user:', userId, 'in org:', orgId);
             await handleDeleteUser(context, orgId, userId);
         }
         // Route: /api/organization/{orgId}/invite - POST
-        else if (method === 'POST' && segments.includes('organization') && segments.includes('invite')) {
-            const orgId = getOrgIdFromUrl(segments);
+        else if (method === 'POST' && segments.includes('invite')) {
+            context.log('Inviting user to org:', orgId);
             await handleInviteUser(context, orgId, req.body);
         }
-        // Route: /api/organizations - GET (list organizations)
-        else if (method === 'GET' && segments.length === 2 && segments[1] === 'organizations') {
-            await handleListOrganizations(context);
-        }
         else {
+            context.log('No matching route found for:', method, 'orgId:', orgId, 'segments:', segments);
             context.res.status = 404;
-            context.res.body = { error: 'Endpoint not found' };
+            context.res.body = { 
+                error: 'Endpoint not found',
+                debug: {
+                    method: method,
+                    orgId: orgId,
+                    segments: segments
+                }
+            };
         }
 
     } catch (error) {
@@ -69,10 +77,10 @@ module.exports = async function (context, req) {
     }
 };
 
-// Helper functions to extract IDs from URL
+// Helper functions to extract IDs from segments (simplified now)
 function getOrgIdFromUrl(segments) {
-    const orgIndex = segments.indexOf('organization');
-    return orgIndex !== -1 && segments[orgIndex + 1] ? segments[orgIndex + 1] : null;
+    // No longer needed with new routing
+    return null;
 }
 
 function getUserIdFromUrl(segments) {
@@ -386,25 +394,6 @@ async function handleInviteUser(context, orgId, inviteData) {
         context.log('User invited/created:', email);
     } catch (error) {
         context.log.error('Error inviting user:', error);
-        throw error;
-    }
-}
-
-// List organizations (for finding test orgs)
-async function handleListOrganizations(context) {
-    try {
-        const orgQuery = {
-            query: "SELECT c.id, c.name, c.adminEmail, c.licenseCount, c.status, c.createdAt FROM c ORDER BY c.createdAt DESC"
-        };
-        
-        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
-        
-        context.res.status = 200;
-        context.res.body = { organizations };
-        
-        context.log('Organizations listed:', organizations.length);
-    } catch (error) {
-        context.log.error('Error listing organizations:', error);
         throw error;
     }
 }
