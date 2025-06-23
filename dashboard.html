@@ -862,7 +862,56 @@
                 showError('Failed to load organization data');
             }
         }
+        // Populate the organization selector dropdown
+        function populateOrgSelector() {
+            const selector = document.getElementById('orgSelector');
+            
+            if (allOrganizations.length === 0) {
+                selector.innerHTML = '<option value="">No organizations found</option>';
+                return;
+            }
+            
+            selector.innerHTML = allOrganizations.map(org => 
+                `<option value="${org.id}">${org.name} (${org.status})</option>`
+            ).join('');
+            
+            // Add change event listener
+            selector.addEventListener('change', function() {
+                const selectedOrgId = this.value;
+                if (selectedOrgId) {
+                    switchOrganization(selectedOrgId);
+                }
+            });
+        }
 
+        // Switch to a different organization
+        async function switchOrganization(orgId) {
+            console.log('Switching to organization:', orgId);
+            
+            // Show loading state
+            document.getElementById('usersTableContainer').innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading users...</div>';
+            
+            try {
+                const response = await fetch(`/api/organization/${orgId}/overview`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentOrganization = data.organization;
+                    organizationUsers = data.users;
+                    
+                    // Find current user (admin for now)
+                    currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
+                    
+                    updateDashboardUI(data);
+                    showSuccess(`Switched to ${currentOrganization.name}`);
+                } else {
+                    showError('Error loading organization: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error switching organization:', error);
+                showError('Failed to load organization data');
+            }
+        }
         // Load all dashboard data
         async function loadDashboardData() {
             try {
