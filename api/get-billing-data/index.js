@@ -67,12 +67,29 @@ module.exports = async function (context, req) {
             stripe.invoices.list({ customer: customerId, limit: 12 })
         ]);
 
-        // Get payment method
+        // Get payment method from subscription or customer
         let paymentMethod = null;
         if (customer.invoice_settings?.default_payment_method) {
             paymentMethod = await stripe.paymentMethods.retrieve(
                 customer.invoice_settings.default_payment_method
             );
+        } else if (subscriptions.data[0]?.default_payment_method) {
+            // Check subscription's payment method
+            paymentMethod = await stripe.paymentMethods.retrieve(
+                subscriptions.data[0].default_payment_method
+            );
+        } else if (customer.default_source) {
+            // Fallback to older card sources
+            const source = await stripe.customers.retrieveSource(customerId, customer.default_source);
+            paymentMethod = {
+                card: {
+                    brand: source.brand,
+                    last4: source.last4,
+                    exp_month: source.exp_month,
+                    exp_year: source.exp_year
+                },
+                billing_details: { name: source.name }
+            };
         }
 
         context.res = {

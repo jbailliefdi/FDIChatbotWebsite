@@ -20,7 +20,7 @@ module.exports = async function (context, req) {
 
         // Verify user is admin in the organization
         const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @userEmail",
+            query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@userEmail)",
             parameters: [
                 { name: "@userEmail", value: userEmail }
             ]
