@@ -1,4 +1,3 @@
-// api/get-billing-data/index.js (CONSOLE DEBUG VERSION)
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 
@@ -8,57 +7,20 @@ const usersContainer = database.container('users');
 const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
-    console.log('=== BILLING API DEBUG ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-
     try {
         const { organizationId, userEmail } = req.body;
         
-        console.log('Extracted values:');
-        console.log('- organizationId:', organizationId);
-        console.log('- userEmail:', userEmail);
-        
         if (!organizationId || !userEmail) {
-            console.log('Missing required fields');
             context.res = { 
                 status: 400, 
-                body: { 
-                    error: 'Organization ID and user email required',
-                    debug: 'Missing required fields'
-                } 
+                body: { error: 'Organization ID and user email required' } 
             };
             return;
         }
 
-        // First, let's try to find ALL users in this organization
-        console.log('Searching for ALL users in organization:', organizationId);
-        
-        const allUsersQuery = {
-            query: "SELECT * FROM c",
-            parameters: []
-        };
-
-        const { resources: allUsers } = await usersContainer.items.query(allUsersQuery, {
-            partitionKey: organizationId
-        }).fetchAll();
-        
-        console.log(`Found ${allUsers.length} total users in organization ${organizationId}`);
-        
-        allUsers.forEach((user, index) => {
-            console.log(`User ${index + 1}:`, {
-                id: user.id,
-                email: user.email,
-                role: user.role,
-                status: user.status,
-                organizationId: user.organizationId
-            });
-        });
-
-        // Now search for the specific user
-        console.log('Searching for specific user with email:', userEmail);
-        
+        // Use case-insensitive email search
         const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @userEmail",
+            query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@userEmail)",
             parameters: [
                 { name: "@userEmail", value: userEmail }
             ]
@@ -68,142 +30,70 @@ module.exports = async function (context, req) {
             partitionKey: organizationId
         }).fetchAll();
         
-        console.log(`Found ${users.length} users matching email ${userEmail}`);
-        
         if (users.length === 0) {
-            console.log('No users found with that email in this organization');
-            
-            // Let's also check if the user exists in a different organization
-            const crossPartitionQuery = {
-                query: "SELECT * FROM c WHERE c.email = @userEmail",
-                parameters: [
-                    { name: "@userEmail", value: userEmail }
-                ]
-            };
-
-            const { resources: allMatchingUsers } = await usersContainer.items.query(crossPartitionQuery).fetchAll();
-            
-            console.log(`Found ${allMatchingUsers.length} users with this email across all organizations:`);
-            allMatchingUsers.forEach(user => {
-                console.log('- User in org:', user.organizationId, 'with role:', user.role);
-            });
-            
-            context.res = { 
-                status: 403, 
-                body: { 
-                    error: 'User not found in organization',
-                    debug: {
-                        searchedOrgId: organizationId,
-                        searchedEmail: userEmail,
-                        totalUsersInOrg: allUsers.length,
-                        usersWithEmailAcrossAllOrgs: allMatchingUsers.length,
-                        message: 'Check console for detailed user list'
-                    }
-                } 
-            };
+            context.res = { status: 403, body: { error: 'User not found in organization' } };
             return;
         }
 
         const currentUser = users[0];
-        console.log('Found user:', {
-            id: currentUser.id,
-            email: currentUser.email,
-            role: currentUser.role,
-            status: currentUser.status
-        });
         
         if (currentUser.role !== 'admin') {
-            console.log('User role check failed. Expected: admin, Got:', currentUser.role);
+            context.res = { status: 403, body: { error: 'Admin access required' } };
+            return;
+        }
+
+        // Get organization
+        const { resource: organization } = await organizationsContainer.item(organizationId, organizationId).read();
+        
+        if (!organization) {
+            context.res = { status: 404, body: { error: 'Organization not found' } };
+            return;
+        }
+        
+        if (!organization.stripeCustomerId) {
             context.res = { 
-                status: 403, 
-                body: { 
-                    error: 'Admin access required',
-                    debug: {
-                        userRole: currentUser.role,
-                        expectedRole: 'admin',
-                        message: 'User found but not admin'
-                    }
-                } 
+                status: 404, 
+                body: { error: 'No billing setup found for this organization' } 
             };
             return;
         }
 
-        // Try to get organization
-        console.log('Attempting to get organization:', organizationId);
+        // Get Stripe data
+        const customerId = organization.stripeCustomerId;
         
-        try {
-            const { resource: organization } = await organizationsContainer.item(organizationId, organizationId).read();
-            
-            if (!organization) {
-                console.log('Organization not found');
-                context.res = { 
-                    status: 404, 
-                    body: { 
-                        error: 'Organization not found',
-                        debug: 'Organization lookup returned null'
-                    } 
-                };
-                return;
-            }
-            
-            console.log('Found organization:', {
-                id: organization.id,
-                name: organization.name,
-                stripeCustomerId: organization.stripeCustomerId,
-                status: organization.status
-            });
-            
-            if (!organization.stripeCustomerId) {
-                console.log('No Stripe customer ID found');
-                context.res = { 
-                    status: 404, 
-                    body: { 
-                        error: 'No billing setup found for this organization',
-                        debug: 'Organization exists but no stripeCustomerId'
-                    } 
-                };
-                return;
-            }
+        const [customer, subscriptions, invoices] = await Promise.all([
+            stripe.customers.retrieve(customerId),
+            stripe.subscriptions.list({ customer: customerId, limit: 1 }),
+            stripe.invoices.list({ customer: customerId, limit: 12 })
+        ]);
 
-            // SUCCESS - return debug info for now
-            console.log('SUCCESS: All checks passed!');
-            console.log('Ready to call Stripe with customer ID:', organization.stripeCustomerId);
-            
-            context.res = {
-                status: 200,
-                body: {
-                    success: true,
-                    debug: {
-                        userId: currentUser.id,
-                        userEmail: currentUser.email,
-                        userRole: currentUser.role,
-                        organizationId: organization.id,
-                        organizationName: organization.name,
-                        stripeCustomerId: organization.stripeCustomerId,
-                        message: 'All validation passed - ready for Stripe integration'
-                    }
-                }
-            };
-
-        } catch (orgError) {
-            console.error('Error getting organization:', orgError);
-            context.res = {
-                status: 500,
-                body: { 
-                    error: 'Error accessing organization: ' + orgError.message,
-                    debug: 'Organization lookup failed'
-                }
-            };
+        // Get payment method
+        let paymentMethod = null;
+        if (customer.invoice_settings?.default_payment_method) {
+            paymentMethod = await stripe.paymentMethods.retrieve(
+                customer.invoice_settings.default_payment_method
+            );
         }
 
+        context.res = {
+            status: 200,
+            body: {
+                customer: {
+                    id: customer.id,
+                    email: customer.email,
+                    name: customer.name
+                },
+                paymentMethod: paymentMethod,
+                subscription: subscriptions.data[0] || null,
+                invoices: invoices.data
+            }
+        };
+
     } catch (error) {
-        console.error('Top level error:', error);
+        context.log.error('Error:', error);
         context.res = {
             status: 500,
-            body: { 
-                error: error.message,
-                debug: 'Top level exception occurred'
-            }
+            body: { error: error.message }
         };
     }
 };
