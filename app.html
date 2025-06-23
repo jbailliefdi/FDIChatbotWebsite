@@ -1334,7 +1334,6 @@ function hideSubscriptionOverlay() {
     if (overlay) overlay.classList.remove('visible');
     if (container) container.classList.remove('disabled');
 }
-
 async function checkUserStatus(account) {
     if (!account) {
         console.warn("checkUserStatus called without an account.");
@@ -1342,7 +1341,7 @@ async function checkUserStatus(account) {
     }
 
     try {
-        const response = await fetch('/api/check-user-status', {
+        const response = await fetch('/api/check-subscription', {  // <-- Changed this line
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1358,10 +1357,16 @@ async function checkUserStatus(account) {
         
         const data = await response.json();
         console.log('User status check result:', data);
-        return data;
+        
+        // Map the API response to the expected format
+        return {
+            userExists: true,
+            accessGranted: data.active,
+            ...data
+        };
 
     } catch (error) {
-        console.error("API call to /api/check-user-status failed:", error);
+        console.error("API call to /api/check-subscription failed:", error);
         return { userExists: false, accessGranted: false, error: "Network error" };
     }
 }
