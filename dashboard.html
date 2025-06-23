@@ -631,40 +631,27 @@
 
                 <!-- Billing Overview -->
                 <div class="billing-overview">
-                    <div class="billing-card plan-card">
-                        <h3><i class="fas fa-star"></i> Current Plan</h3>
-                        <div style="margin: 1rem 0;">
-                            <div style="font-size: 1.5rem; font-weight: bold; color: #27ae60;">Professional Plan</div>
-                            <div style="color: #666; margin-top: 0.5rem;">£50 per user/month</div>
+                    <div class="billing-card payment-card">
+                        <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
+                        <div id="paymentMethodContent">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading payment method...
+                            </div>
                         </div>
-                        <ul class="plan-features">
-                            <li><i class="fas fa-check"></i> Unlimited AI conversations</li>
-                            <li><i class="fas fa-check"></i> Advanced analytics</li>
-                            <li><i class="fas fa-check"></i> Priority support</li>
-                            <li><i class="fas fa-check"></i> Team collaboration</li>
-                            <li><i class="fas fa-check"></i> Data export</li>
-                        </ul>
-                        <button class="btn btn-success" style="margin-top: 1rem; width: 100%;" onclick="showUpgradeModal()">
-                            <i class="fas fa-arrow-up"></i> Upgrade Plan
+                        <button class="btn btn-warning" style="width: 100%; margin-top: 1rem;" onclick="updatePaymentMethod()">
+                            <i class="fas fa-edit"></i> Update Payment Method
                         </button>
                     </div>
 
-                    <div class="billing-card payment-card">
-                        <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
-                        <div style="margin: 1rem 0;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-credit-card" style="color: #f39c12;"></i>
-                                <span>**** **** **** 4242</span>
+                    <div class="billing-card plan-card">
+                        <h3><i class="fas fa-calendar-alt"></i> Next Billing</h3>
+                        <div id="nextBillingContent">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading billing info...
                             </div>
-                            <div style="color: #666; font-size: 0.9rem;">Expires 12/26</div>
                         </div>
-                        <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-weight: 600;">Next billing date:</div>
-                            <div style="color: #666;">June 30, 2025</div>
-                            <div style="font-weight: 600; margin-top: 0.5rem;">Amount: <span id="nextBillAmount">£250.00</span></div>
-                        </div>
-                        <button class="btn btn-warning" style="width: 100%;" onclick="updatePaymentMethod()">
-                            <i class="fas fa-edit"></i> Update Payment Method
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="openBillingPortal()">
+                            <i class="fas fa-external-link-alt"></i> Manage Billing
                         </button>
                     </div>
                 </div>
@@ -684,25 +671,9 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>May 30, 2025</td>
-                                <td>Professional Plan - 5 users</td>
-                                <td>£250.00</td>
-                                <td><span class="status-badge status-active">Paid</span></td>
-                                <td><button class="action-btn" onclick="downloadInvoice('inv_001')"><i class="fas fa-download"></i> Download</button></td>
-                            </tr>
-                            <tr>
-                                <td>April 30, 2025</td>
-                                <td>Professional Plan - 4 users</td>
-                                <td>£200.00</td>
-                                <td><span class="status-badge status-active">Paid</span></td>
-                                <td><button class="action-btn" onclick="downloadInvoice('inv_002')"><i class="fas fa-download"></i> Download</button></td>
-                            </tr>
-                            <tr>
-                                <td>March 30, 2025</td>
-                                <td>Professional Plan - 3 users</td>
-                                <td>£150.00</td>
-                                <td><span class="status-badge status-active">Paid</span></td>
-                                <td><button class="action-btn" onclick="downloadInvoice('inv_003')"><i class="fas fa-download"></i> Download</button></td>
+                                <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading billing history...
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -781,7 +752,7 @@
             auth: {
                 clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2",
                 authority: "https://login.microsoftonline.com/common",
-                redirectUri: window.location.origin + window.location.pathname,
+                redirectUri: window.location.origin + "/dashboard.html",
             },
             cache: {
                 cacheLocation: "localStorage",
@@ -795,6 +766,7 @@
         let currentOrganization = null;
         let organizationUsers = [];
         let currentPage = 'users';
+        let currentBillingData = null;
 
         // Initialize MSAL
         try {
@@ -806,116 +778,117 @@
 
         // Authentication functions
         async function checkAdminAuth() {
-    try {
-        await msalInstance.handleRedirectPromise();
-        let account = msalInstance.getActiveAccount();
-        
-        if (!account && msalInstance.getAllAccounts().length > 0) {
-            account = msalInstance.getAllAccounts()[0];
-            msalInstance.setActiveAccount(account);
-        }
+            try {
+                await msalInstance.handleRedirectPromise();
+                let account = msalInstance.getActiveAccount();
+                
+                if (!account && msalInstance.getAllAccounts().length > 0) {
+                    account = msalInstance.getAllAccounts()[0];
+                    msalInstance.setActiveAccount(account);
+                }
 
-        // Check for email hint in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const emailHint = urlParams.get('email');
+                // Check for email hint in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const emailHint = urlParams.get('email');
 
-        if (!account) {
-            if (emailHint) {
-                // Try to find existing account with that email first
-                const existingAccount = msalInstance.getAllAccounts().find(acc => acc.username === emailHint);
-                if (existingAccount) {
-                    msalInstance.setActiveAccount(existingAccount);
-                    account = existingAccount;
-                } else {
-                    // No existing account, redirect to login with email hint
-                    redirectToLoginWithEmail(emailHint);
+                if (!account) {
+                    if (emailHint) {
+                        // Try to find existing account with that email first
+                        const existingAccount = msalInstance.getAllAccounts().find(acc => acc.username === emailHint);
+                        if (existingAccount) {
+                            msalInstance.setActiveAccount(existingAccount);
+                            account = existingAccount;
+                        } else {
+                            // No existing account, redirect to login with email hint
+                            redirectToLoginWithEmail(emailHint);
+                            return false;
+                        }
+                    } else {
+                        redirectToLogin();
+                        return false;
+                    }
+                }
+
+                // Verify user is admin and get organization
+                const userStatus = await verifyAdminStatus(account);
+                
+                if (!userStatus.isAdmin || !userStatus.hasAccess) {
+                    showUnauthorizedError(userStatus.message);
                     return false;
                 }
-            } else {
-                redirectToLogin();
+
+                // Set global user data
+                currentUser = userStatus.user;
+                currentUserOrganization = userStatus.organization;
+                
+                // Clean up URL parameters after successful auth
+                if (emailHint) {
+                    const cleanUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error("Authentication check failed:", error);
+                showError("Authentication failed. Please try again.");
                 return false;
             }
         }
 
-        // Verify user is admin and get organization
-        const userStatus = await verifyAdminStatus(account);
-        
-        if (!userStatus.isAdmin || !userStatus.hasAccess) {
-            showUnauthorizedError(userStatus.message);
-            return false;
-        }
-
-        // Set global user data
-        currentUser = userStatus.user;
-        currentUserOrganization = userStatus.organization;
-        
-        // Clean up URL parameters after successful auth
-        if (emailHint) {
-            const cleanUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-        }
-        
-        return true;
-    } catch (error) {
-        console.error("Authentication check failed:", error);
-        showError("Authentication failed. Please try again.");
-        return false;
-    }
-}
-
         async function verifyAdminStatus(account) {
-    try {
-        const response = await fetch('/api/check-subscription', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: account.username })
-        });
+            try {
+                const response = await fetch('/api/check-subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: account.username })
+                });
 
-        if (!response.ok) {
-            throw new Error('Failed to verify user status');
+                if (!response.ok) {
+                    throw new Error('Failed to verify user status');
+                }
+
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                return {
+                    isAdmin: data.userRole === 'admin',
+                    hasAccess: data.active,
+                    user: { 
+                        email: account.username, 
+                        role: data.userRole,
+                        firstName: account.name ? account.name.split(' ')[0] : 'User',
+                        lastName: account.name ? account.name.split(' ').slice(1).join(' ') : ''
+                    },
+                    organization: { 
+                        id: data.organizationId || data.user?.organizationId || 'fdi-test-org-001',
+                        name: data.companyName || 'FD Intelligence'
+                    },
+                    message: data.message
+                };
+            } catch (error) {
+                console.error("Admin verification failed:", error);
+                return {
+                    isAdmin: false,
+                    hasAccess: false,
+                    message: "Unable to verify admin status"
+                };
+            }
         }
 
-        const data = await response.json();
-        console.log('API Response:', data); // Add logging to see what we get
-        
-        return {
-            isAdmin: data.userRole === 'admin',
-            hasAccess: data.active,
-            user: { 
-                email: account.username, 
-                role: data.userRole,
-                firstName: account.name ? account.name.split(' ')[0] : 'User',
-                lastName: account.name ? account.name.split(' ').slice(1).join(' ') : ''
-            },
-            organization: { 
-                id: data.organizationId || data.user?.organizationId || 'fdi-test-org-001', // Try multiple sources
-                name: data.companyName || 'FD Intelligence'
-            },
-            message: data.message
-        };
-    } catch (error) {
-        console.error("Admin verification failed:", error);
-        return {
-            isAdmin: false,
-            hasAccess: false,
-            message: "Unable to verify admin status"
-        };
-    }
-}
         function redirectToLoginWithEmail(email) {
-    const loginRequest = {
-        scopes: ["openid", "profile", "email"],
-        prompt: "select_account",
-        loginHint: email,
-        redirectUri: window.location.href.split('?')[0] // Clean URL without parameters
-    };
-    
-    msalInstance.loginRedirect(loginRequest).catch(error => {
-        console.error("Login redirect with email hint failed:", error);
-        // Fallback to regular login
-        redirectToLogin();
-    });
-}
+            const loginRequest = {
+                scopes: ["openid", "profile", "email"],
+                prompt: "select_account",
+                loginHint: email,
+                redirectUri: window.location.href.split('?')[0]
+            };
+            
+            msalInstance.loginRedirect(loginRequest).catch(error => {
+                console.error("Login redirect with email hint failed:", error);
+                redirectToLogin();
+            });
+        }
+
         function redirectToLogin() {
             alert("Please sign in to access the dashboard.");
             window.location.href = '/app';
@@ -950,18 +923,13 @@
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async function() {
-    // Check authentication first
-    const isAuthenticated = await checkAdminAuth();
-    
-    if (isAuthenticated) {
-        // Initialize the dashboard properly
-        initializeNavigation();
-        await loadDashboardData();
-    }
-    // If not authenticated, checkAdminAuth() handles redirects/error screens
-});
-
-        
+            const isAuthenticated = await checkAdminAuth();
+            
+            if (isAuthenticated) {
+                initializeNavigation();
+                await loadDashboardData();
+            }
+        });
 
         // Navigation system
         function initializeNavigation() {
@@ -992,9 +960,12 @@
 
             currentPage = pageId;
 
-            // Update user info in header for billing page
-            if (pageId === 'billing' && currentUser) {
-                updateBillingPageUserInfo();
+            // Load billing data when showing billing page
+            if (pageId === 'billing') {
+                if (currentUser) {
+                    updateBillingPageUserInfo();
+                }
+                loadBillingData();
             }
         }
 
@@ -1005,7 +976,7 @@
             document.getElementById('currentUserRole2').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         }
 
-        // Load dashboard data (SECURE - only user's organization)
+        // Load dashboard data
         async function loadDashboardData() {
             if (!currentUser || !currentUserOrganization) {
                 showError("Authentication required");
@@ -1013,22 +984,18 @@
             }
 
             try {
-                // Only load data for the user's organization
                 const orgId = currentUserOrganization.id;
                 
                 const response = await fetch(`/api/organization/${orgId}/overview`);
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Verify the returned organization matches the user's organization
                     if (data.organization.id !== orgId) {
                         throw new Error("Data mismatch - security violation");
                     }
                     
                     currentOrganization = data.organization;
                     organizationUsers = data.users;
-                    
-                    // Find current user in the organization users
                     currentUser = organizationUsers.find(u => u.email === currentUser.email) || currentUser;
                     
                     updateDashboardUI(data);
@@ -1041,50 +1008,352 @@
             }
         }
 
+        // Load billing data
+        async function loadBillingData() {
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/get-billing-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        organizationId: currentOrganization.id,
+                        userEmail: currentUser.email
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentBillingData = data;
+                    updateBillingUI(data);
+                } else {
+                    showError('Error loading billing data: ' + data.error);
+                    showBillingError();
+                }
+            } catch (error) {
+                console.error('Error loading billing data:', error);
+                showError('Failed to load billing data');
+                showBillingError();
+            }
+        }
+
+        // Update billing UI
+        function updateBillingUI(billingData) {
+            updatePaymentMethodUI(billingData.paymentMethod);
+            updateNextBillingUI(billingData.subscription);
+            updateBillingHistoryUI(billingData.invoices);
+        }
+
+        function updatePaymentMethodUI(paymentMethod) {
+            const container = document.getElementById('paymentMethodContent');
+            
+            if (!paymentMethod || !paymentMethod.card) {
+                container.innerHTML = `
+                    <div style="margin: 1rem 0; padding: 1rem; background: #f8d7da; border-radius: 6px; color: #721c24;">
+                        <i class="fas fa-exclamation-triangle"></i> No payment method on file
+                    </div>
+                `;
+                return;
+            }
+
+            const card = paymentMethod.card;
+            const cardBrand = card.brand.charAt(0).toUpperCase() + card.brand.slice(1);
+            
+            const brandIconMap = {
+                'visa': 'fa-cc-visa',
+                'mastercard': 'fa-cc-mastercard',
+                'amex': 'fa-cc-amex', 
+                'discover': 'fa-cc-discover',
+                'diners': 'fa-cc-diners-club',
+                'jcb': 'fa-cc-jcb',
+                'unionpay': 'fa-credit-card'
+            };
+            
+            const iconClass = brandIconMap[card.brand.toLowerCase()] || 'fa-credit-card';
+            
+            container.innerHTML = `
+                <div style="margin: 1rem 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <i class="fab ${iconClass}" style="color: #f39c12; font-size: 1.2rem;"></i>
+                        <span>${cardBrand} •••• •••• •••• ${card.last4}</span>
+                    </div>
+                    <div style="color: #666; font-size: 0.9rem;">
+                        Expires ${String(card.exp_month).padStart(2, '0')}/${card.exp_year}
+                    </div>
+                    ${paymentMethod.billing_details?.name ? 
+                        `<div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
+                            ${paymentMethod.billing_details.name}
+                        </div>` : ''
+                    }
+                </div>
+            `;
+        }
+
+        function updateNextBillingUI(subscription) {
+            const container = document.getElementById('nextBillingContent');
+            
+            if (!subscription) {
+                container.innerHTML = `
+                    <div style="margin: 1rem 0; padding: 1rem; background: #f8d7da; border-radius: 6px; color: #721c24;">
+                        <i class="fas fa-exclamation-triangle"></i> No active subscription
+                    </div>
+                `;
+                return;
+            }
+
+            const nextBillingDate = new Date(subscription.current_period_end * 1000);
+            const amount = subscription.items.data.reduce((total, item) => {
+                return total + (item.price.unit_amount * item.quantity);
+            }, 0) / 100;
+
+            const status = subscription.status;
+            const statusMap = {
+                'active': { color: '#27ae60', icon: 'fa-check-circle' },
+                'past_due': { color: '#e74c3c', icon: 'fa-exclamation-circle' },
+                'canceled': { color: '#95a5a6', icon: 'fa-times-circle' },
+                'incomplete': { color: '#f39c12', icon: 'fa-clock' },
+                'trialing': { color: '#3498db', icon: 'fa-gift' }
+            };
+            
+            const statusInfo = statusMap[status] || { color: '#666', icon: 'fa-question-circle' };
+
+            container.innerHTML = `
+                <div style="margin: 1rem 0;">
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-weight: 600; color: ${statusInfo.color};">
+                            <i class="fas ${statusInfo.icon}" style="margin-right: 0.5rem;"></i>
+                            ${status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                        </div>
+                    </div>
+                    <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                        <div style="font-weight: 600;">Next billing date:</div>
+                        <div style="color: #666;">${nextBillingDate.toLocaleDateString('en-GB', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        })}</div>
+                        <div style="font-weight: 600; margin-top: 0.5rem;">
+                            Amount: £${amount.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateBillingHistoryUI(invoices) {
+            const tableBody = document.querySelector('.invoice-table tbody');
+            
+            if (!invoices || invoices.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
+                            No billing history available
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = invoices.map(invoice => {
+                const invoiceDate = new Date(invoice.created * 1000).toLocaleDateString('en-GB', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                const amount = (invoice.amount_paid / 100).toFixed(2);
+                const status = invoice.paid ? 'Paid' : (invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1));
+                const statusClass = invoice.paid ? 'status-active' : 'status-deactivated';
+                
+                let description = 'Subscription';
+                if (invoice.lines && invoice.lines.data.length > 0) {
+                    const lineItem = invoice.lines.data[0];
+                    if (lineItem.description) {
+                        description = lineItem.description;
+                    } else if (lineItem.price && lineItem.quantity) {
+                        const itemName = lineItem.price.nickname || 'License';
+                        description = `${lineItem.quantity} x ${itemName}`;
+                    }
+                }
+
+                return `
+                    <tr>
+                        <td>${invoiceDate}</td>
+                        <td>${description}</td>
+                        <td>£${amount}</td>
+                        <td><span class="status-badge ${statusClass}">${status}</span></td>
+                        <td>
+                            <button class="action-btn" onclick="downloadInvoice('${invoice.id}')">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            ${invoice.hosted_invoice_url ? 
+                                `<button class="action-btn" onclick="viewInvoice('${invoice.hosted_invoice_url}')" style="margin-left: 0.5rem;">
+                                    <i class="fas fa-eye"></i> View
+                                </button>` : ''
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showBillingError() {
+            const paymentContainer = document.getElementById('paymentMethodContent');
+            const billingContainer = document.getElementById('nextBillingContent');
+            
+            const errorHTML = `
+                <div style="margin: 1rem 0; padding: 1rem; background: #f8d7da; border-radius: 6px; color: #721c24;">
+                    <i class="fas fa-exclamation-triangle"></i> Unable to load billing information
+                </div>
+            `;
+            
+            if (paymentContainer) paymentContainer.innerHTML = errorHTML;
+            if (billingContainer) billingContainer.innerHTML = errorHTML;
+        }
+
+        // Billing functions
+        async function updatePaymentMethod() {
+            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
+                showError('Unable to access billing portal');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/create-billing-portal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        customerId: currentBillingData.customer.id,
+                        returnUrl: window.location.href,
+                        userEmail: currentUser.email,
+                        organizationId: currentOrganization.id
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.url) {
+                    window.location.href = data.url;
+                } else {
+                    showError('Unable to access billing portal: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error creating billing portal session:', error);
+                showError('Unable to access billing portal');
+            }
+        }
+
+        async function openBillingPortal() {
+            await updatePaymentMethod();
+        }
+
+        async function downloadInvoice(invoiceId) {
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/download-invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        invoiceId: invoiceId,
+                        userEmail: currentUser.email,
+                        organizationId: currentOrganization.id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.downloadUrl) {
+                    const link = document.createElement('a');
+                    link.href = data.downloadUrl;
+                    link.download = data.filename || `invoice-${invoiceId}.pdf`;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    showError('Unable to download invoice: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error downloading invoice:', error);
+                showError('Unable to download invoice');
+            }
+        }
+
+        function viewInvoice(invoiceUrl) {
+            window.open(invoiceUrl, '_blank');
+        }
+
+        function pauseSubscription() {
+            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
+                showError('Unable to access billing portal');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to pause your subscription? Your team will lose access to TIA.')) {
+                updatePaymentMethod();
+            }
+        }
+
+        function changeSubscription() {
+            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
+                showError('Unable to access billing portal');
+                return;
+            }
+            
+            updatePaymentMethod();
+        }
+
+        function cancelSubscription() {
+            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
+                showError('Unable to access billing portal');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to cancel your subscription? This action cannot be undone and your team will immediately lose access to TIA.')) {
+                updatePaymentMethod();
+            }
+        }
+
         // Update dashboard UI with real data
         function updateDashboardUI(data) {
             const { organization, users, usage } = data;
             
-            // Update organization info
             document.getElementById('orgName').textContent = organization.name;
             
-            // Update current user info
             if (currentUser) {
                 const initials = `${currentUser.firstName?.charAt(0) || ''}${currentUser.lastName?.charAt(0) || ''}`.toUpperCase();
                 document.getElementById('currentUserAvatar').textContent = initials;
                 document.getElementById('currentUserName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
                 document.getElementById('currentUserRole').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
                 
-                // Update billing page user info if on billing page
                 if (currentPage === 'billing') {
                     updateBillingPageUserInfo();
                 }
             }
             
-            // Update license usage
             updateLicenseUsage(usage, organization);
-            
-            // Update users table
             updateUsersTable(users);
-            
-            // Update invite modal info
             updateInviteModalInfo(usage);
-            
-            // Update billing page data
             updateBillingData(usage, organization);
         }
 
-        // Update license usage display
         function updateLicenseUsage(usage, organization) {
             document.getElementById('licenseUsageText').textContent = `${usage.used} of ${usage.total} licenses used`;
             document.getElementById('usageBar').style.width = `${usage.percentage}%`;
             document.getElementById('availableLicenses').textContent = `${usage.available} available`;
             
-            const monthlyPrice = usage.total * 50; // £50 per license
+            const monthlyPrice = usage.total * 50;
             document.getElementById('planDetails').innerHTML = `Professional Plan - £${monthlyPrice}/month - Status: ${organization.status}`;
         }
 
-        // Update billing page data
         function updateBillingData(usage, organization) {
             const monthlyPrice = usage.total * 50;
             const nextBillElement = document.getElementById('nextBillAmount');
@@ -1093,7 +1362,6 @@
             }
         }
 
-        // Update users table
         function updateUsersTable(users) {
             const container = document.getElementById('usersTableContainer');
             
@@ -1125,7 +1393,6 @@
             container.appendChild(table);
         }
 
-        // Create user table row
         function createUserRow(user) {
             const initials = `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase();
             const joinDate = new Date(user.createdAt).toLocaleDateString('en-GB', {
@@ -1158,7 +1425,6 @@
             `;
         }
 
-        // Create action buttons
         function createUserActions(user, isCurrentUser, isOnlyAdmin) {
             let actions = '';
             
@@ -1176,12 +1442,10 @@
             return actions;
         }
 
-        // Update invite modal license info
         function updateInviteModalInfo(usage) {
             const info = `${usage.used} of ${usage.total} licenses used. You have ${usage.available} available licenses.`;
             document.getElementById('inviteModalLicenseInfo').textContent = info;
             
-            // Disable invite if no licenses available
             const inviteBtn = document.querySelector('#inviteForm button[type="submit"]');
             if (usage.available <= 0) {
                 inviteBtn.disabled = true;
@@ -1196,7 +1460,7 @@
             }
         }
 
-        // User management functions (SECURE - with organization validation)
+        // User management functions
         async function deactivateUser(userId) {
             if (!currentOrganization || !currentUser) {
                 showError("Authentication required");
@@ -1218,7 +1482,7 @@
                 
                 if (response.ok) {
                     showSuccess('User deactivated successfully');
-                    loadDashboardData(); // Refresh
+                    loadDashboardData();
                 } else {
                     showError(result.error || 'Failed to deactivate user');
                 }
@@ -1245,7 +1509,7 @@
                 
                 if (response.ok) {
                     showSuccess('User reactivated successfully');
-                    loadDashboardData(); // Refresh
+                    loadDashboardData();
                 } else {
                     showError(result.error || 'Failed to reactivate user');
                 }
@@ -1274,42 +1538,13 @@
                 
                 if (response.ok) {
                     showSuccess('User removed successfully');
-                    loadDashboardData(); // Refresh
+                    loadDashboardData();
                 } else {
                     showError(result.error || 'Failed to remove user');
                 }
             } catch (error) {
                 console.error('Remove error:', error);
                 showError('Failed to remove user');
-            }
-        }
-
-        // Billing functions
-        function showUpgradeModal() {
-            alert('Upgrade plan functionality would integrate with Stripe billing portal here');
-        }
-
-        function updatePaymentMethod() {
-            alert('Update payment method would open Stripe payment portal');
-        }
-
-        function downloadInvoice(invoiceId) {
-            alert(`Download invoice ${invoiceId} - would download PDF from Stripe`);
-        }
-
-        function pauseSubscription() {
-            if (confirm('Are you sure you want to pause your subscription? Your team will lose access to TIA.')) {
-                alert('Pause subscription functionality would integrate with Stripe');
-            }
-        }
-
-        function changeSubscription() {
-            alert('Change subscription would show plan options and integrate with Stripe');
-        }
-
-        function cancelSubscription() {
-            if (confirm('Are you sure you want to cancel your subscription? This action cannot be undone and your team will immediately lose access to TIA.')) {
-                alert('Cancel subscription functionality would integrate with Stripe cancellation flow');
             }
         }
 
@@ -1323,7 +1558,7 @@
             document.getElementById('inviteForm').reset();
         }
 
-        // Invite form submission (SECURE - with organization validation)
+        // Invite form submission
         document.getElementById('inviteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -1349,7 +1584,7 @@
                 if (response.ok) {
                     showSuccess(`Invitation sent to ${firstName} ${lastName} (${email})`);
                     hideInviteModal();
-                    loadDashboardData(); // Refresh
+                    loadDashboardData();
                 } else {
                     showError(result.error || 'Failed to send invitation');
                 }
