@@ -44,7 +44,8 @@ if (testEmails.includes(email.toLowerCase())) {
             companyName: "FD Intelligence (Test)",
             usedLicenses: 1,
             totalLicenses: 5,
-            userRole: "admin", // Add this line
+            userRole: "admin",
+            organizationId: "6afe153b-6d75-417b-9602-d747c613a73d", // ADD THIS LINE
             message: "Test account",
             subscriptionStatus: "active"
         }
@@ -152,24 +153,25 @@ if (testEmails.includes(email.toLowerCase())) {
         }
 
         if (hasAccess) {
-            context.log('User has valid access:', accessReason);
-            context.res = {
-                status: 200,
-                body: {
-                    active: true,
-                    companyName: organization.name,
-                    usedLicenses: currentUserCount,
-                    totalLicenses: organization.licenseCount,
-                    userRole: user.role,
-                    subscriptionStatus: organization.status,
-                    accessReason: accessReason,
-                    warningMessage: warningMessage,
-                    isGracePeriod: isGracePeriod,
-                    trialEnd: organization.trialEnd,
-                    gracePeriodEnd: organization.gracePeriodEnd
-                }
-            };
-        } else {
+    context.log('User has valid access:', accessReason);
+    context.res = {
+        status: 200,
+        body: {
+            active: true,
+            companyName: organization.name,
+            usedLicenses: currentUserCount,
+            totalLicenses: organization.licenseCount,
+            userRole: user.role,
+            organizationId: user.organizationId,  // ADD THIS LINE
+            subscriptionStatus: organization.status,
+            accessReason: accessReason,
+            warningMessage: warningMessage,
+            isGracePeriod: isGracePeriod,
+            trialEnd: organization.trialEnd,
+            gracePeriodEnd: organization.gracePeriodEnd
+        }
+    };
+} else {
             context.log('User access denied:', accessReason);
             context.res = {
                 status: 200,
@@ -189,22 +191,18 @@ if (testEmails.includes(email.toLowerCase())) {
         // Fallback for development
 if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
     context.res = {
-    status: 200,
-    body: {
-        active: true,
-        companyName: organization.name,
-        usedLicenses: currentUserCount,
-        totalLicenses: organization.licenseCount,
-        userRole: user.role,
-        organizationId: user.organizationId, // Add this line
-        subscriptionStatus: organization.status,
-        accessReason: accessReason,
-        warningMessage: warningMessage,
-        isGracePeriod: isGracePeriod,
-        trialEnd: organization.trialEnd,
-        gracePeriodEnd: organization.gracePeriodEnd
-    }
-};
+        status: 200,
+        body: {
+            active: true,
+            companyName: "FD Intelligence (Dev)",
+            usedLicenses: 1,
+            totalLicenses: 5,
+            userRole: "admin",
+            organizationId: "6afe153b-6d75-417b-9602-d747c613a73d", // ADD THIS LINE
+            subscriptionStatus: "active",
+            message: "Development fallback"
+        }
+    };
     return;
 }
 
