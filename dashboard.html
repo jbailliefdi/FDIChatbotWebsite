@@ -841,43 +841,44 @@
         }
 
         async function verifyAdminStatus(account) {
-            try {
-                const response = await fetch('/api/check-subscription', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: account.username })
-                });
+    try {
+        const response = await fetch('/api/check-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: account.username })
+        });
 
-                if (!response.ok) {
-                    throw new Error('Failed to verify user status');
-                }
-
-                const data = await response.json();
-                
-                return {
-                    isAdmin: data.userRole === 'admin',
-                    hasAccess: data.active,
-                    user: { 
-                        email: account.username, 
-                        role: data.userRole,
-                        firstName: account.name ? account.name.split(' ')[0] : 'User',
-                        lastName: account.name ? account.name.split(' ').slice(1).join(' ') : ''
-                    },
-                    organization: { 
-                        id: data.organizationId || 'unknown',
-                        name: data.companyName || 'Unknown Organization'
-                    },
-                    message: data.message
-                };
-            } catch (error) {
-                console.error("Admin verification failed:", error);
-                return {
-                    isAdmin: false,
-                    hasAccess: false,
-                    message: "Unable to verify admin status"
-                };
-            }
+        if (!response.ok) {
+            throw new Error('Failed to verify user status');
         }
+
+        const data = await response.json();
+        console.log('API Response:', data); // Add logging to see what we get
+        
+        return {
+            isAdmin: data.userRole === 'admin',
+            hasAccess: data.active,
+            user: { 
+                email: account.username, 
+                role: data.userRole,
+                firstName: account.name ? account.name.split(' ')[0] : 'User',
+                lastName: account.name ? account.name.split(' ').slice(1).join(' ') : ''
+            },
+            organization: { 
+                id: data.organizationId || data.user?.organizationId || 'fdi-test-org-001', // Try multiple sources
+                name: data.companyName || 'FD Intelligence'
+            },
+            message: data.message
+        };
+    } catch (error) {
+        console.error("Admin verification failed:", error);
+        return {
+            isAdmin: false,
+            hasAccess: false,
+            message: "Unable to verify admin status"
+        };
+    }
+}
 
         function redirectToLogin() {
             alert("Please sign in to access the dashboard.");

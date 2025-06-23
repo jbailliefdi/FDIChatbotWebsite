@@ -189,17 +189,22 @@ if (testEmails.includes(email.toLowerCase())) {
         // Fallback for development
 if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
     context.res = {
-        status: 200,
-        body: {
-            active: true,
-            companyName: "FD Intelligence (Fallback)",
-            usedLicenses: 1,
-            totalLicenses: 5,
-            userRole: "admin", // Add this line
-            message: "Database error - using fallback",
-            subscriptionStatus: "active"
-        }
-    };
+    status: 200,
+    body: {
+        active: true,
+        companyName: organization.name,
+        usedLicenses: currentUserCount,
+        totalLicenses: organization.licenseCount,
+        userRole: user.role,
+        organizationId: user.organizationId, // Add this line
+        subscriptionStatus: organization.status,
+        accessReason: accessReason,
+        warningMessage: warningMessage,
+        isGracePeriod: isGracePeriod,
+        trialEnd: organization.trialEnd,
+        gracePeriodEnd: organization.gracePeriodEnd
+    }
+};
     return;
 }
 
