@@ -190,7 +190,7 @@
 
         .action-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 1rem;
             margin: 2rem 0;
         }
@@ -464,6 +464,9 @@
                 <a href="/app" class="btn btn-primary" id="appBtn">
                     <i class="fas fa-play"></i> Start Using TIA
                 </a>
+                <a href="/dashboard.html" class="btn btn-secondary">
+                    <i class="fas fa-cog"></i> Access Admin Dashboard
+                </a>
                 <a href="mailto:hello@fdintelligence.co.uk" class="btn btn-secondary">
                     <i class="fas fa-envelope"></i> Contact Support
                 </a>
@@ -522,14 +525,22 @@
             }
 
             try {
-                // In a real implementation, you would fetch session details from your backend
-                // For now, we'll show a generic success message
-                setTimeout(() => {
-                    document.getElementById('loadingDetails').style.display = 'none';
-                    document.getElementById('subscriptionDetails').style.display = 'block';
-                    document.getElementById('userCount').textContent = '1+ users';
-                    document.getElementById('totalAmount').textContent = '£60.00/month (inc. VAT)';
-                }, 1500);
+                // Fetch session details from Stripe
+                const response = await fetch('/api/get-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sessionId: sessionId })
+                });
+
+                if (response.ok) {
+                    const sessionData = await response.json();
+                    displaySessionDetails(sessionData);
+                } else {
+                    console.warn('Could not fetch session details, showing defaults');
+                    showDefaultSuccess();
+                }
 
             } catch (error) {
                 console.error('Error loading subscription details:', error);
@@ -537,11 +548,62 @@
             }
         }
 
+        function displaySessionDetails(sessionData) {
+            document.getElementById('loadingDetails').style.display = 'none';
+            document.getElementById('subscriptionDetails').style.display = 'block';
+            
+            // Display actual session data
+            if (sessionData.licenseCount) {
+                const userText = sessionData.licenseCount === 1 ? '1 user' : `${sessionData.licenseCount} users`;
+                document.getElementById('userCount').textContent = userText;
+            }
+            
+            if (sessionData.totalAmount) {
+                document.getElementById('totalAmount').textContent = sessionData.totalAmount;
+            }
+            
+            if (sessionData.customerEmail) {
+                // You could display customer email or other details if needed
+                console.log('Payment completed for:', sessionData.customerEmail);
+            }
+        }
+
         function showDefaultSuccess() {
             document.getElementById('loadingDetails').style.display = 'none';
             document.getElementById('subscriptionDetails').style.display = 'block';
-            document.getElementById('userCount').textContent = '1+ users';
-            document.getElementById('totalAmount').textContent = '£60.00/month (inc. VAT)';
+            
+            // Try to get details from URL parameters or localStorage as fallback
+            const urlParams = new URLSearchParams(window.location.search);
+            const users = urlParams.get('users');
+            const amount = urlParams.get('amount');
+            
+            // Check localStorage for signup data
+            const signupData = localStorage.getItem('signup_data');
+            let licenseCount = 1;
+            let totalAmount = '£60.00/month (inc. VAT)';
+            
+            if (signupData) {
+                try {
+                    const data = JSON.parse(signupData);
+                    if (data.licenseCount) {
+                        licenseCount = data.licenseCount;
+                        const subtotal = licenseCount * (data.pricePerLicense || 50);
+                        const vat = subtotal * 0.20;
+                        const total = subtotal + vat;
+                        totalAmount = `£${total.toFixed(2)}/month (inc. VAT)`;
+                    }
+                } catch (error) {
+                    console.error('Error parsing signup data:', error);
+                }
+            }
+            
+            // Use URL params if available, otherwise use calculated values
+            const userText = users ? (users === '1' ? '1 user' : `${users} users`) 
+                                  : (licenseCount === 1 ? '1 user' : `${licenseCount} users`);
+            const displayAmount = amount || totalAmount;
+            
+            document.getElementById('userCount').textContent = userText;
+            document.getElementById('totalAmount').textContent = displayAmount;
         }
 
         // Auto-redirect to app after a delay

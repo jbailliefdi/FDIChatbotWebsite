@@ -1,0 +1,21 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"],
+      "cors": {
+        "allowedOrigins": ["https://your-domain.com"],
+        "allowedMethods": ["POST"],
+        "allowedHeaders": ["Content-Type"]
+      }
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    }
+  ]
+}
