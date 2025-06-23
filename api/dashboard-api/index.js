@@ -54,7 +54,7 @@ module.exports = async function (context, req) {
             await handleInviteUser(context, orgId, req.body);
         }
         // Route: /api/organizations - GET (list organizations)
-        else if (method === 'GET' && segments.includes('organizations') && segments.length === 2) {
+        else if (method === 'GET' && segments.length === 2 && segments[1] === 'organizations') {
             await handleListOrganizations(context);
         }
         else {
@@ -145,6 +145,8 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
             return;
         }
 
+        context.log('Updating user:', userId, 'in org:', orgId, 'with data:', updateData);
+
         // Get user
         const userQuery = {
             query: "SELECT * FROM c WHERE c.id = @userId AND c.organizationId = @orgId",
@@ -157,12 +159,31 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
         
         if (users.length === 0) {
+            context.log('User not found. Searching all users for debugging...');
+            
+            // Debug: Search for any user with this ID
+            const debugQuery = {
+                query: "SELECT c.id, c.email, c.organizationId FROM c WHERE c.id = @userId",
+                parameters: [{ name: "@userId", value: userId }]
+            };
+            const { resources: debugUsers } = await usersContainer.items.query(debugQuery).fetchAll();
+            
+            context.log('Debug search results:', debugUsers);
+            
             context.res.status = 404;
-            context.res.body = { error: 'User not found' };
+            context.res.body = { 
+                error: 'User not found',
+                debug: {
+                    searchedUserId: userId,
+                    searchedOrgId: orgId,
+                    foundUsers: debugUsers
+                }
+            };
             return;
         }
         
         const user = users[0];
+        context.log('Found user:', { id: user.id, email: user.email, currentStatus: user.status });
         const { role, status } = updateData;
         
         // If deactivating, check admin constraints
@@ -206,6 +227,13 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
             delete updatedUser.deactivatedAt;
         }
         
+        context.log('Attempting to replace user document with:', { 
+            id: updatedUser.id, 
+            status: updatedUser.status,
+            partitionKey: updatedUser.id
+        });
+        
+        // Use the correct partition key (the user's ID)
         await usersContainer.item(user.id, user.id).replace(updatedUser);
         
         context.res.status = 200;
@@ -214,9 +242,14 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
             user: updatedUser
         };
         
-        context.log('User updated:', userId, 'status:', status);
+        context.log('User updated successfully:', userId, 'new status:', status);
     } catch (error) {
         context.log.error('Error updating user:', error);
+        context.log.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            statusCode: error.statusCode
+        });
         throw error;
     }
 }

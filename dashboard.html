@@ -579,19 +579,28 @@
         // Get test organization ID (find most recent organization)
         async function getTestOrganizationId() {
             try {
-                // This would need to be an API endpoint that returns organizations
-                // For now, we'll simulate getting the most recent test org
+                // First, let's try to get a list of organizations to debug
+                console.log('Fetching organizations list...');
                 
-                // You'd implement this endpoint to return organization IDs
-                // const response = await fetch('/api/organizations');
-                // const orgs = await response.json();
-                // return orgs[0]?.id;
+                const response = await fetch('/api/organizations');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Available organizations:', data.organizations);
+                    
+                    if (data.organizations && data.organizations.length > 0) {
+                        const org = data.organizations[0];
+                        console.log('Using organization:', org.id, org.name);
+                        return org.id;
+                    }
+                }
                 
-                // For demo, return a hardcoded ID if one exists
-                return 'f83f3e72-9202-4599-b7a1-a3c6ec20fc61'; // Use one of your test org IDs
+                // Fallback to hardcoded ID
+                console.log('No organizations found via API, using fallback ID');
+                return 'b730f5d7-43fe-4a08-902a-a6ebbcaa24f9';
             } catch (error) {
                 console.error('Error getting org ID:', error);
-                return null;
+                // Fallback to hardcoded ID
+                return 'b730f5d7-43fe-4a08-902a-a6ebbcaa24f9';
             }
         }
 
@@ -735,6 +744,8 @@
 
         // User management functions
         async function deactivateUser(userId) {
+            console.log('Attempting to deactivate user:', userId, 'in org:', currentOrganization?.id);
+            
             if (!confirm('Are you sure you want to deactivate this user? They will lose access to TIA.')) {
                 return;
             }
@@ -747,19 +758,24 @@
                 });
                 
                 const result = await response.json();
+                console.log('Deactivate response:', result);
                 
                 if (response.ok) {
                     showSuccess('User deactivated successfully');
                     loadDashboardData(); // Refresh
                 } else {
+                    console.error('Deactivation failed:', result);
                     showError(result.error || 'Failed to deactivate user');
                 }
             } catch (error) {
+                console.error('Deactivate error:', error);
                 showError('Failed to deactivate user');
             }
         }
 
         async function reactivateUser(userId) {
+            console.log('Attempting to reactivate user:', userId, 'in org:', currentOrganization?.id);
+            
             try {
                 const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
@@ -768,19 +784,24 @@
                 });
                 
                 const result = await response.json();
+                console.log('Reactivate response:', result);
                 
                 if (response.ok) {
                     showSuccess('User reactivated successfully');
                     loadDashboardData(); // Refresh
                 } else {
+                    console.error('Reactivation failed:', result);
                     showError(result.error || 'Failed to reactivate user');
                 }
             } catch (error) {
+                console.error('Reactivate error:', error);
                 showError('Failed to reactivate user');
             }
         }
 
         async function removeUser(userId) {
+            console.log('Attempting to remove user:', userId, 'in org:', currentOrganization?.id);
+            
             if (!confirm('Are you sure you want to permanently remove this user? This action cannot be undone.')) {
                 return;
             }
@@ -791,14 +812,17 @@
                 });
                 
                 const result = await response.json();
+                console.log('Remove response:', result);
                 
                 if (response.ok) {
                     showSuccess('User removed successfully');
                     loadDashboardData(); // Refresh
                 } else {
+                    console.error('Removal failed:', result);
                     showError(result.error || 'Failed to remove user');
                 }
             } catch (error) {
+                console.error('Remove error:', error);
                 showError('Failed to remove user');
             }
         }
