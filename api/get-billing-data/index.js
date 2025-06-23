@@ -1,10 +1,10 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 
-// Use the same connection setup as your other APIs
 const client = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
-const database = client.database('fdi-chatbot'); // Replace with your actual database name
-const container = database.container('users'); // Replace with your actual container name
+const database = client.database('fdi-chatbot');
+const usersContainer = database.container('users');
+const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
     context.log('Getting organization billing data');
@@ -20,19 +20,20 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Query for the user - same pattern as your other APIs
+        // First, verify the user exists and is admin
         const userQuery = {
-            query: "SELECT * FROM c WHERE c.organizationId = @organizationId AND c.email = @userEmail",
+            query: "SELECT * FROM c WHERE c.email = @userEmail",
             parameters: [
-                { name: "@organizationId", value: organizationId },
                 { name: "@userEmail", value: userEmail }
             ]
         };
 
-        const { resources: users } = await container.items.query(userQuery).fetchAll();
+        const { resources: users } = await usersContainer.items.query(userQuery, {
+            partitionKey: organizationId
+        }).fetchAll();
         
         if (users.length === 0) {
-            context.res = { status: 403, body: { error: 'User not found' } };
+            context.res = { status: 403, body: { error: 'User not found in organization' } };
             return;
         }
 
@@ -43,16 +44,24 @@ module.exports = async function (context, req) {
             return;
         }
 
-        if (!currentUser.stripeCustomerId) {
+        // Now get the organization to find the Stripe customer ID
+        const { resource: organization } = await organizationsContainer.item(organizationId, organizationId).read();
+        
+        if (!organization) {
+            context.res = { status: 404, body: { error: 'Organization not found' } };
+            return;
+        }
+        
+        if (!organization.stripeCustomerId) {
             context.res = { 
                 status: 404, 
-                body: { error: 'No billing setup found' } 
+                body: { error: 'No billing setup found for this organization' } 
             };
             return;
         }
 
         // Get Stripe data
-        const customerId = currentUser.stripeCustomerId;
+        const customerId = organization.stripeCustomerId;
         
         const [customer, subscriptions, invoices] = await Promise.all([
             stripe.customers.retrieve(customerId),
