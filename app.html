@@ -417,6 +417,109 @@
       color: #764ba2; 
     }
     
+    /* Account Status Overlay */
+.account-status-overlay { 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  background: rgba(0, 0, 0, 0.7); 
+  backdrop-filter: blur(10px); 
+  -webkit-backdrop-filter: blur(10px); 
+  z-index: 2001; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  opacity: 0; 
+  visibility: hidden; 
+  transition: opacity 0.3s ease, visibility 0s 0.3s; 
+}
+
+.account-status-overlay.visible { 
+  opacity: 1; 
+  visibility: visible; 
+  transition: opacity 0.3s ease; 
+}
+
+.account-status-modal { 
+  background: var(--content-bg-color); 
+  color: var(--text-color); 
+  border-radius: 20px; 
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); 
+  width: 90%; 
+  max-width: 500px; 
+  padding: 40px; 
+  text-align: center; 
+  transform: scale(0.95); 
+  transition: transform 0.3s ease, background-color var(--transition-speed), color var(--transition-speed); 
+  position: relative;
+  overflow: hidden;
+}
+
+.account-status-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(45deg, #e74c3c, #c0392b);
+}
+
+.account-status-overlay.visible .account-status-modal { 
+  transform: scale(1); 
+}
+
+.account-status-modal h2 { 
+  font-size: 1.8rem; 
+  font-weight: 700; 
+  color: #e74c3c;
+  margin-bottom: 20px; 
+}
+
+.account-status-modal .status-icon {
+  font-size: 4rem;
+  color: #e74c3c;
+  margin-bottom: 20px;
+}
+
+.account-status-modal .status-message { 
+  font-size: 1.1rem; 
+  color: var(--text-color); 
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.account-status-modal .contact-info {
+  background: var(--secondary-color-light);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+body.dark-mode .account-status-modal .contact-info {
+  background: var(--secondary-color-dark);
+}
+
+.contact-info h4 {
+  margin-bottom: 10px;
+  color: var(--primary-color);
+}
+
+.contact-info p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
     body.dark-mode .webchat__bubble__content a { 
       color: #a5b4fc; 
     }
@@ -1149,8 +1252,34 @@
   <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
   <script>
-let subscriptionData = null; // Global state for user's subscription
+let userData = null; // Global state for user's data
 
+<!-- Account Status Overlay -->
+<div id="account-status-overlay" class="account-status-overlay">
+  <div class="account-status-modal">
+    <div class="status-icon">
+      <i class="fas fa-user-slash"></i>
+    </div>
+    <h2>Account Access Required</h2>
+    <div class="status-message" id="account-status-message">
+      Your account is not currently activated. Please contact your administrator to gain access to TIA.
+    </div>
+    <div class="contact-info">
+      <h4><i class="fas fa-envelope"></i> Contact Information</h4>
+      <p><strong>Email:</strong> <a href="mailto:hello@fdintelligence.co.uk" style="color: var(--primary-color);">hello@fdintelligence.co.uk</a></p>
+      <p><strong>Phone:</strong> +44 (0) 141 221 0222</p>
+      <p>Please include your email address and organization name when contacting support.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-button secondary" onclick="goToHomepage()">
+        <i class="fas fa-home"></i> Go to Homepage
+      </button>
+      <button class="modal-button secondary" onclick="signOut()">
+        <i class="fas fa-sign-out-alt"></i> Sign Out
+      </button>
+    </div>
+  </div>
+</div>
 /**********************
  * Subscription Management
  **********************/
@@ -1204,77 +1333,75 @@ function hideSubscriptionOverlay() {
     if (container) container.classList.remove('disabled');
 }
 
-async function checkUserSubscription(account) {
-    const subStatusElem = document.getElementById('subscription-status');
+async function checkUserStatus(account) {
     if (!account) {
-        console.warn("checkUserSubscription called without an account.");
-        return { active: false, error: "Not logged in." };
+        console.warn("checkUserStatus called without an account.");
+        return { userExists: false, accessGranted: false, error: "Not logged in." };
     }
-    
-    if (subStatusElem) subStatusElem.textContent = 'Verifying subscription...';
 
-    // In a real application, you would fetch this from your secure backend.
-    // The backend would validate the MSAL token, look up the user's email in your database (e.g., Cosmos DB),
-    // and check their subscription status (e.g., via Stripe API).
     try {
-        const response = await fetch('/api/check-subscription', {
+        const response = await fetch('/api/check-user-status', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getAuthToken()}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ email: account.username })
         });
 
         if (!response.ok) {
-            // This handles cases like 404 (API not found), 401 (Unauthorized), 500 (Server error)
-            const errorData = await response.json().catch(() => ({ message: 'Failed to check subscription status.' }));
-            console.error('Subscription check failed:', response.status, errorData.message);
-            if (subStatusElem) subStatusElem.textContent = `Error: ${errorData.message || 'Could not verify.'}`;
-            return { active: false, error: errorData.message };
+            const errorData = await response.json().catch(() => ({ message: 'Failed to check user status.' }));
+            console.error('User status check failed:', response.status, errorData.message);
+            return { userExists: false, accessGranted: false, error: errorData.message };
         }
         
         const data = await response.json();
-        if (subStatusElem) subStatusElem.textContent = '';
-        return data; // Expected format: { active: boolean, companyName?: string, usedLicenses?: number, totalLicenses?: number }
+        console.log('User status check result:', data);
+        return data;
 
     } catch (error) {
-        // This catches network errors or if the API endpoint doesn't exist.
-        // FOR DEMONSTRATION: We simulate a "no subscription" response.
-        // In production, you'd want to handle this as a server error.
-        console.warn("API call to /api/check-subscription failed. Simulating 'no subscription'. Error:", error);
-        if (subStatusElem) subStatusElem.textContent = 'Could not reach subscription server.';
-        // In a real scenario, you might want to return { active: false, error: "Network error" }
-        // For this demo, we will consistently show the overlay if the API fails.
-        return { active: false, message: "Simulation: User does not have an active subscription." };
+        console.error("API call to /api/check-user-status failed:", error);
+        return { userExists: false, accessGranted: false, error: "Network error" };
     }
 }
 
-async function verifySubscriptionAndInitialize(account) {
+async function verifyUserAndInitialize(account) {
     if (!account) {
-        updateAuthUI(); // Show "Sign In" button
+        updateAuthUI();
         return;
     }
 
-    // Show loading overlay
     const loadingOverlay = document.getElementById('loading-overlay');
     if (loadingOverlay) loadingOverlay.classList.add('visible');
 
-    const result = await checkUserSubscription(account);
-    subscriptionData = result; // Store subscription details globally
+    const result = await checkUserStatus(account);
+    userData = result; // Store user details globally
 
-    // Hide loading overlay
     if (loadingOverlay) loadingOverlay.classList.remove('visible');
 
-    if (result && result.active) {
-        console.log("Subscription active. Initializing chat.");
-        hideSubscriptionOverlay();
-        updateAuthUI(); // Update UI with subscription details
-        initializeChat(); // This will call newchat() and load history
+    if (result.userExists) {
+        if (result.accessGranted) {
+            console.log("User verified and access granted. Initializing chat.");
+            hideAccountStatusOverlay();
+            hideSubscriptionOverlay();
+            updateAuthUI();
+            initializeChat();
+        } else {
+            console.log("User exists but access denied:", result.message);
+            
+            let message = result.message;
+            if (result.user?.status === 'deactivated') {
+                message = `Your account has been deactivated. Please contact your administrator at hello@fdintelligence.co.uk to reactivate your account.`;
+            } else if (result.organization?.status !== 'active' && result.organization?.status !== 'trialing') {
+                message = `Your organization's subscription is not active. Please contact your administrator at hello@fdintelligence.co.uk to resolve this issue.`;
+            }
+            
+            showAccountStatusOverlay(message);
+            updateAuthUI();
+        }
     } else {
-        console.log("No active subscription. Showing overlay.");
+        console.log("User not found in system. Showing subscription overlay.");
         showSubscriptionOverlay();
-        updateAuthUI(); // Update UI to show user is logged in but has no subscription
+        updateAuthUI();
     }
 }
 
@@ -1338,6 +1465,30 @@ function postSignInEvent() {
         }).subscribe(id => console.log("Generic signin/verifyState sent, client ID:", id),
             error => console.error("Error sending generic signin/verifyState:", error));
     }
+}
+
+function showAccountStatusOverlay(message) {
+    const overlay = document.getElementById('account-status-overlay');
+    const messageElement = document.getElementById('account-status-message');
+    const container = document.getElementById('chat-container');
+    
+    if (messageElement && message) {
+        messageElement.textContent = message;
+    }
+    
+    if (overlay) overlay.classList.add('visible');
+    if (container) container.classList.add('disabled');
+}
+
+function hideAccountStatusOverlay() {
+    const overlay = document.getElementById('account-status-overlay');
+    const container = document.getElementById('chat-container');
+    if (overlay) overlay.classList.remove('visible');
+    if (container) container.classList.remove('disabled');
+}
+
+function goToHomepage() {
+    window.location.href = '/';
 }
 
 /**********************
@@ -1543,7 +1694,7 @@ window.onload = async () => {
     return;
   }
   
-  const result = await checkUserSubscription(account);
+  const result = await checkUserStatus(account);
   subscriptionData = result;
   
   if (result && result.active) {
@@ -1571,7 +1722,7 @@ window.onload = async () => {
                 saveAuthToken(tokenResponse.accessToken);
                 console.log("MSAL token acquired silently.");
                 // Token is ready, now check subscription
-                await verifySubscriptionAndInitialize(account);
+                await verifyUserAndInitialize(account);
             } catch (error) {
                 if (error instanceof msal.InteractionRequiredAuthError) {
                     await msalInstance.acquireTokenRedirect(tokenRequest);
