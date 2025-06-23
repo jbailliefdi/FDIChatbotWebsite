@@ -63,6 +63,7 @@
             color: #ecf0f1;
             text-decoration: none;
             transition: background 0.3s;
+            cursor: pointer;
         }
 
         .nav-link:hover, .nav-link.active {
@@ -113,6 +114,15 @@
             font-weight: bold;
         }
 
+        /* Hide/Show Pages */
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
         /* License Usage Card */
         .license-card {
             background: white;
@@ -161,20 +171,21 @@
         }
 
         #orgSelector {
-    min-width: 200px;
-    background: white;
-    cursor: pointer;
-}
+            min-width: 200px;
+            background: white;
+            cursor: pointer;
+        }
 
-#orgSelector:focus {
-    outline: 2px solid #3498db;
-    outline-offset: 2px;
-}
+        #orgSelector:focus {
+            outline: 2px solid #3498db;
+            outline-offset: 2px;
+        }
 
-.page-header > div:first-child {
-    display: flex;
-    flex-direction: column;
-}
+        .page-header > div:first-child {
+            display: flex;
+            flex-direction: column;
+        }
+
         /* Users Table */
         .users-section {
             background: white;
@@ -292,6 +303,73 @@
             color: white;
         }
 
+        /* Billing Page Styles */
+        .billing-overview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .billing-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .plan-card {
+            border-left: 4px solid #27ae60;
+        }
+
+        .payment-card {
+            border-left: 4px solid #f39c12;
+        }
+
+        .billing-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .invoice-table th,
+        .invoice-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .invoice-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .plan-features li {
+            padding: 0.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .plan-features i {
+            color: #27ae60;
+            width: 16px;
+        }
+
         /* Loading States */
         .loading {
             text-align: center;
@@ -380,6 +458,12 @@
             font-size: 1rem;
         }
 
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
         .modal-actions {
             display: flex;
             gap: 1rem;
@@ -405,6 +489,16 @@
             color: white;
         }
 
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
         @media (max-width: 768px) {
             .dashboard-container {
                 grid-template-columns: 1fr;
@@ -412,6 +506,14 @@
             
             .sidebar {
                 display: none;
+            }
+
+            .billing-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -427,27 +529,15 @@
             
             <ul class="nav-menu">
                 <li class="nav-item">
-                    <a href="#" class="nav-link active">
+                    <a class="nav-link active" data-page="users">
                         <i class="fas fa-users"></i>
                         Users & Teams
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a class="nav-link" data-page="billing">
                         <i class="fas fa-credit-card"></i>
                         Billing & Plans
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-cog"></i>
-                        Organization Settings
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-chart-bar"></i>
-                        Usage Analytics
                     </a>
                 </li>
                 <li class="nav-item" style="margin-top: 2rem; border-top: 1px solid #34495e; padding-top: 1rem;">
@@ -461,61 +551,178 @@
 
         <!-- Main Content -->
         <main class="main-content">
-           <div class="page-header">
-    <div>
-        <h1 class="page-title">Users & Teams</h1>
-        <div style="margin-top: 0.5rem;">
-            <label for="orgSelector" style="font-size: 0.9rem; color: #666; margin-right: 0.5rem;">Organization:</label>
-            <select id="orgSelector" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem;">
-                <option value="">Loading organizations...</option>
-            </select>
-        </div>
-    </div>
-    <div class="user-info">
-        <div class="user-avatar" id="currentUserAvatar">?</div>
-        <div>
-            <div id="currentUserName">Loading...</div>
-            <div style="font-size: 0.8rem; color: #666;" id="currentUserRole">Loading...</div>
-        </div>
-    </div>
-</div>
-
-            <!-- License Usage Card -->
-            <div class="license-card">
-                <div class="license-header">
-                    <h3><i class="fas fa-id-card"></i> License Usage</h3>
-                    <button class="upgrade-btn" onclick="showUpgradeModal()">
-                        <i class="fas fa-arrow-up"></i> Upgrade Plan
-                    </button>
-                </div>
-                <div class="license-usage">
-                    <div style="font-weight: 600;" id="licenseUsageText">Loading...</div>
-                    <div class="usage-bar">
-                        <div class="usage-fill" id="usageBar" style="width: 0%;"></div>
+            <!-- Users & Teams Page -->
+            <div id="usersPage" class="page-content active">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Users & Teams</h1>
+                        <div style="margin-top: 0.5rem;">
+                            <label for="orgSelector" style="font-size: 0.9rem; color: #666; margin-right: 0.5rem;">Organization:</label>
+                            <select id="orgSelector" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem;">
+                                <option value="">Loading organizations...</option>
+                            </select>
+                        </div>
                     </div>
-                    <div style="color: #27ae60; font-weight: 500;" id="availableLicenses">0 available</div>
+                    <div class="user-info">
+                        <div class="user-avatar" id="currentUserAvatar">?</div>
+                        <div>
+                            <div id="currentUserName">Loading...</div>
+                            <div style="font-size: 0.8rem; color: #666;" id="currentUserRole">Loading...</div>
+                        </div>
+                    </div>
                 </div>
-                <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;" id="planDetails">
-                    Loading plan details...
+
+                <!-- License Usage Card -->
+                <div class="license-card">
+                    <div class="license-header">
+                        <h3><i class="fas fa-id-card"></i> License Usage</h3>
+                        <button class="upgrade-btn" onclick="showPage('billing')">
+                            <i class="fas fa-arrow-up"></i> Manage Plan
+                        </button>
+                    </div>
+                    <div class="license-usage">
+                        <div style="font-weight: 600;" id="licenseUsageText">Loading...</div>
+                        <div class="usage-bar">
+                            <div class="usage-fill" id="usageBar" style="width: 0%;"></div>
+                        </div>
+                        <div style="color: #27ae60; font-weight: 500;" id="availableLicenses">0 available</div>
+                    </div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;" id="planDetails">
+                        Loading plan details...
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div id="messageContainer"></div>
+
+                <!-- Users Section -->
+                <div class="users-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-users"></i> Team Members</h3>
+                        <button class="invite-btn" onclick="showInviteModal()">
+                            <i class="fas fa-plus"></i>
+                            Invite User
+                        </button>
+                    </div>
+
+                    <div id="usersTableContainer">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading users...
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Messages -->
-            <div id="messageContainer"></div>
-
-            <!-- Users Section -->
-            <div class="users-section">
-                <div class="section-header">
-                    <h3><i class="fas fa-users"></i> Team Members</h3>
-                    <button class="invite-btn" onclick="showInviteModal()">
-                        <i class="fas fa-plus"></i>
-                        Invite User
-                    </button>
+            <!-- Billing & Plans Page -->
+            <div id="billingPage" class="page-content">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Billing & Plans</h1>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-avatar" id="currentUserAvatar2">?</div>
+                        <div>
+                            <div id="currentUserName2">Loading...</div>
+                            <div style="font-size: 0.8rem; color: #666;" id="currentUserRole2">Loading...</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="usersTableContainer">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i> Loading users...
+                <!-- Billing Overview -->
+                <div class="billing-overview">
+                    <div class="billing-card plan-card">
+                        <h3><i class="fas fa-star"></i> Current Plan</h3>
+                        <div style="margin: 1rem 0;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #27ae60;">Professional Plan</div>
+                            <div style="color: #666; margin-top: 0.5rem;">£50 per user/month</div>
+                        </div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> Unlimited AI conversations</li>
+                            <li><i class="fas fa-check"></i> Advanced analytics</li>
+                            <li><i class="fas fa-check"></i> Priority support</li>
+                            <li><i class="fas fa-check"></i> Team collaboration</li>
+                            <li><i class="fas fa-check"></i> Data export</li>
+                        </ul>
+                        <button class="btn btn-success" style="margin-top: 1rem; width: 100%;" onclick="showUpgradeModal()">
+                            <i class="fas fa-arrow-up"></i> Upgrade Plan
+                        </button>
+                    </div>
+
+                    <div class="billing-card payment-card">
+                        <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
+                        <div style="margin: 1rem 0;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <i class="fas fa-credit-card" style="color: #f39c12;"></i>
+                                <span>**** **** **** 4242</span>
+                            </div>
+                            <div style="color: #666; font-size: 0.9rem;">Expires 12/26</div>
+                        </div>
+                        <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-weight: 600;">Next billing date:</div>
+                            <div style="color: #666;">June 30, 2025</div>
+                            <div style="font-weight: 600; margin-top: 0.5rem;">Amount: <span id="nextBillAmount">£250.00</span></div>
+                        </div>
+                        <button class="btn btn-warning" style="width: 100%;" onclick="updatePaymentMethod()">
+                            <i class="fas fa-edit"></i> Update Payment Method
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Billing History -->
+                <div class="billing-section">
+                    <h3><i class="fas fa-history"></i> Billing History</h3>
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>May 30, 2025</td>
+                                <td>Professional Plan - 5 users</td>
+                                <td>£250.00</td>
+                                <td><span class="status-badge status-active">Paid</span></td>
+                                <td><button class="action-btn" onclick="downloadInvoice('inv_001')"><i class="fas fa-download"></i> Download</button></td>
+                            </tr>
+                            <tr>
+                                <td>April 30, 2025</td>
+                                <td>Professional Plan - 4 users</td>
+                                <td>£200.00</td>
+                                <td><span class="status-badge status-active">Paid</span></td>
+                                <td><button class="action-btn" onclick="downloadInvoice('inv_002')"><i class="fas fa-download"></i> Download</button></td>
+                            </tr>
+                            <tr>
+                                <td>March 30, 2025</td>
+                                <td>Professional Plan - 3 users</td>
+                                <td>£150.00</td>
+                                <td><span class="status-badge status-active">Paid</span></td>
+                                <td><button class="action-btn" onclick="downloadInvoice('inv_003')"><i class="fas fa-download"></i> Download</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Manage Subscription -->
+                <div class="billing-section">
+                    <h3><i class="fas fa-cogs"></i> Manage Subscription</h3>
+                    <p style="color: #666; margin-bottom: 1.5rem;">
+                        Manage your subscription settings, cancel or modify your plan.
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="pauseSubscription()">
+                            <i class="fas fa-pause"></i> Pause Subscription
+                        </button>
+                        <button class="btn btn-warning" onclick="changeSubscription()">
+                            <i class="fas fa-exchange-alt"></i> Change Plan
+                        </button>
+                        <button class="btn" style="background: #dc3545; color: white;" onclick="cancelSubscription()">
+                            <i class="fas fa-times"></i> Cancel Subscription
+                        </button>
                     </div>
                 </div>
             </div>
@@ -531,9 +738,20 @@
             </div>
             
             <form id="inviteForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inviteFirstName">First Name</label>
+                        <input type="text" id="inviteFirstName" name="firstName" required placeholder="John">
+                    </div>
+                    <div class="form-group">
+                        <label for="inviteLastName">Last Name</label>
+                        <input type="text" id="inviteLastName" name="lastName" required placeholder="Smith">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="inviteEmail">Email Address</label>
-                    <input type="email" id="inviteEmail" name="email" required placeholder="user@company.com">
+                    <input type="email" id="inviteEmail" name="email" required placeholder="john.smith@company.com">
                 </div>
                 
                 <div class="form-group">
@@ -561,127 +779,119 @@
         let currentOrganization = null;
         let currentUser = null;
         let organizationUsers = [];
+        let currentPage = 'users';
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
+            initializeNavigation();
         });
+
+        // Navigation system
+        function initializeNavigation() {
+            const navLinks = document.querySelectorAll('.nav-link[data-page]');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    showPage(page);
+                });
+            });
+        }
+
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // Show selected page
+            document.getElementById(pageId + 'Page').classList.add('active');
+
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+
+            currentPage = pageId;
+
+            // Update user info in header for billing page
+            if (pageId === 'billing' && currentUser) {
+                updateBillingPageUserInfo();
+            }
+        }
+
+        function updateBillingPageUserInfo() {
+            const initials = `${currentUser.firstName?.charAt(0) || ''}${currentUser.lastName?.charAt(0) || ''}`.toUpperCase();
+            document.getElementById('currentUserAvatar2').textContent = initials;
+            document.getElementById('currentUserName2').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+            document.getElementById('currentUserRole2').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        }
 
         let allOrganizations = [];
 
-// Replace the getTestOrganizationId function with this:
-async function loadOrganizations() {
-    try {
-        console.log('Fetching organizations list...');
-        
-        const response = await fetch('/api/organizations');
-        if (response.ok) {
-            const data = await response.json();
-            console.log('Available organizations:', data.organizations);
-            
-            allOrganizations = data.organizations || [];
-            populateOrgSelector();
-            
-            // Default to FDI organization if available, otherwise first org
-            const defaultOrg = allOrganizations.find(org => 
-                org.id === 'fdi-test-org-001' || 
-                org.name === 'FD Intelligence'
-            ) || allOrganizations[0];
-            
-            if (defaultOrg) {
-                document.getElementById('orgSelector').value = defaultOrg.id;
-                return defaultOrg.id;
+        // Replace the getTestOrganizationId function with this:
+        async function loadOrganizations() {
+            try {
+                console.log('Fetching organizations list...');
+                
+                const response = await fetch('/api/organizations');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Available organizations:', data.organizations);
+                    
+                    allOrganizations = data.organizations || [];
+                    populateOrgSelector();
+                    
+                    // Default to FDI organization if available, otherwise first org
+                    const defaultOrg = allOrganizations.find(org => 
+                        org.id === 'fdi-test-org-001' || 
+                        org.name === 'FD Intelligence'
+                    ) || allOrganizations[0];
+                    
+                    if (defaultOrg) {
+                        document.getElementById('orgSelector').value = defaultOrg.id;
+                        return defaultOrg.id;
+                    }
+                }
+                
+                return 'fdi-test-org-001'; // fallback
+            } catch (error) {
+                console.error('Error switching organization:', error);
+                showError('Failed to load organization data');
             }
         }
-        
-        return 'fdi-test-org-001'; // fallback
-    } catch (error) {
-        console.error('Error loading organizations:', error);
-        return 'fdi-test-org-001';
-    }
-}
-
-// Populate the organization selector dropdown
-function populateOrgSelector() {
-    const selector = document.getElementById('orgSelector');
-    
-    if (allOrganizations.length === 0) {
-        selector.innerHTML = '<option value="">No organizations found</option>';
-        return;
-    }
-    
-    selector.innerHTML = allOrganizations.map(org => 
-        `<option value="${org.id}">${org.name} (${org.status})</option>`
-    ).join('');
-    
-    // Add change event listener
-    selector.addEventListener('change', function() {
-        const selectedOrgId = this.value;
-        if (selectedOrgId) {
-            switchOrganization(selectedOrgId);
-        }
-    });
-}
-
-// Switch to a different organization
-async function switchOrganization(orgId) {
-    console.log('Switching to organization:', orgId);
-    
-    // Show loading state
-    document.getElementById('usersTableContainer').innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading users...</div>';
-    
-    try {
-        const response = await fetch(`/api/organization/${orgId}/overview`);
-        const data = await response.json();
-        
-        if (response.ok) {
-            currentOrganization = data.organization;
-            organizationUsers = data.users;
-            
-            // Find current user (admin for now)
-            currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
-            
-            updateDashboardUI(data);
-            showSuccess(`Switched to ${currentOrganization.name}`);
-        } else {
-            showError('Error loading organization: ' + data.error);
-        }
-    } catch (error) {
-        console.error('Error switching organization:', error);
-        showError('Failed to load organization data');
-    }
-}
 
         // Load all dashboard data
         async function loadDashboardData() {
-    try {
-        const orgId = await loadOrganizations();
-        
-        if (!orgId) {
-            showError('No organization found. Please create one first using the pricing page.');
-            return;
-        }
+            try {
+                const orgId = await loadOrganizations();
+                
+                if (!orgId) {
+                    showError('No organization found. Please create one first using the pricing page.');
+                    return;
+                }
 
-        const response = await fetch(`/api/organization/${orgId}/overview`);
-        const data = await response.json();
-        
-        if (response.ok) {
-            currentOrganization = data.organization;
-            organizationUsers = data.users;
-            
-            // Find current user (admin for now)
-            currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
-            
-            updateDashboardUI(data);
-        } else {
-            showError('Error loading dashboard: ' + data.error);
+                const response = await fetch(`/api/organization/${orgId}/overview`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentOrganization = data.organization;
+                    organizationUsers = data.users;
+                    
+                    // Find current user (admin for now)
+                    currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
+                    
+                    updateDashboardUI(data);
+                } else {
+                    showError('Error loading dashboard: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showError('Failed to connect to server');
+            }
         }
-    } catch (error) {
-        console.error('Error loading dashboard:', error);
-        showError('Failed to connect to server');
-    }
-}
-
 
         // Update dashboard UI with real data
         function updateDashboardUI(data) {
@@ -696,6 +906,11 @@ async function switchOrganization(orgId) {
                 document.getElementById('currentUserAvatar').textContent = initials;
                 document.getElementById('currentUserName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
                 document.getElementById('currentUserRole').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+                
+                // Update billing page user info if on billing page
+                if (currentPage === 'billing') {
+                    updateBillingPageUserInfo();
+                }
             }
             
             // Update license usage
@@ -706,6 +921,9 @@ async function switchOrganization(orgId) {
             
             // Update invite modal info
             updateInviteModalInfo(usage);
+            
+            // Update billing page data
+            updateBillingData(usage, organization);
         }
 
         // Update license usage display
@@ -716,6 +934,15 @@ async function switchOrganization(orgId) {
             
             const monthlyPrice = usage.total * 50; // £50 per license
             document.getElementById('planDetails').innerHTML = `Professional Plan - £${monthlyPrice}/month - Status: ${organization.status}`;
+        }
+
+        // Update billing page data
+        function updateBillingData(usage, organization) {
+            const monthlyPrice = usage.total * 50;
+            const nextBillElement = document.getElementById('nextBillAmount');
+            if (nextBillElement) {
+                nextBillElement.textContent = `£${monthlyPrice}.00`;
+            }
         }
 
         // Update users table
@@ -906,6 +1133,35 @@ async function switchOrganization(orgId) {
             }
         }
 
+        // Billing functions
+        function showUpgradeModal() {
+            alert('Upgrade plan functionality would integrate with Stripe billing portal here');
+        }
+
+        function updatePaymentMethod() {
+            alert('Update payment method would open Stripe payment portal');
+        }
+
+        function downloadInvoice(invoiceId) {
+            alert(`Download invoice ${invoiceId} - would download PDF from Stripe`);
+        }
+
+        function pauseSubscription() {
+            if (confirm('Are you sure you want to pause your subscription? Your team will lose access to TIA.')) {
+                alert('Pause subscription functionality would integrate with Stripe');
+            }
+        }
+
+        function changeSubscription() {
+            alert('Change subscription would show plan options and integrate with Stripe');
+        }
+
+        function cancelSubscription() {
+            if (confirm('Are you sure you want to cancel your subscription? This action cannot be undone and your team will immediately lose access to TIA.')) {
+                alert('Cancel subscription functionality would integrate with Stripe cancellation flow');
+            }
+        }
+
         // Modal functions
         function showInviteModal() {
             document.getElementById('inviteModal').classList.add('show');
@@ -916,14 +1172,12 @@ async function switchOrganization(orgId) {
             document.getElementById('inviteForm').reset();
         }
 
-        function showUpgradeModal() {
-            alert('License upgrade functionality would integrate with Stripe billing portal');
-        }
-
         // Invite form submission
         document.getElementById('inviteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            const firstName = document.getElementById('inviteFirstName').value;
+            const lastName = document.getElementById('inviteLastName').value;
             const email = document.getElementById('inviteEmail').value;
             const role = document.getElementById('inviteRole').value;
             
@@ -931,13 +1185,13 @@ async function switchOrganization(orgId) {
                 const response = await fetch(`/api/organization/${currentOrganization.id}/invite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, role })
+                    body: JSON.stringify({ firstName, lastName, email, role })
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    showSuccess(`Invitation sent to ${email}`);
+                    showSuccess(`Invitation sent to ${firstName} ${lastName} (${email})`);
                     hideInviteModal();
                     loadDashboardData(); // Refresh
                 } else {
