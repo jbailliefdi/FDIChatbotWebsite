@@ -34,21 +34,23 @@ module.exports = async function (context, req) {
 
         if (users.length === 0) {
             // Fallback for development - allow test email
-            const testEmails = ['j.baillie@fdintelligence.co.uk'];
-            if (testEmails.includes(email.toLowerCase())) {
-                context.res = {
-                    status: 200,
-                    body: {
-                        active: true,
-                        companyName: "FD Intelligence (Test)",
-                        usedLicenses: 1,
-                        totalLicenses: 5,
-                        message: "Test account",
-                        subscriptionStatus: "active"
-                    }
-                };
-                return;
-            }
+            // Fallback for development - allow test email
+const testEmails = ['j.baillie@fdintelligence.co.uk'];
+if (testEmails.includes(email.toLowerCase())) {
+    context.res = {
+        status: 200,
+        body: {
+            active: true,
+            companyName: "FD Intelligence (Test)",
+            usedLicenses: 1,
+            totalLicenses: 5,
+            userRole: "admin", // Add this line
+            message: "Test account",
+            subscriptionStatus: "active"
+        }
+    };
+    return;
+}
 
             context.log('User not found in database');
             context.res = {
@@ -184,20 +186,22 @@ module.exports = async function (context, req) {
         context.log.error('Error checking subscription:', error);
         
         // Fallback for development
-        if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
-            context.res = {
-                status: 200,
-                body: {
-                    active: true,
-                    companyName: "FD Intelligence (Fallback)",
-                    usedLicenses: 1,
-                    totalLicenses: 5,
-                    message: "Database error - using fallback",
-                    subscriptionStatus: "active"
-                }
-            };
-            return;
+        // Fallback for development
+if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
+    context.res = {
+        status: 200,
+        body: {
+            active: true,
+            companyName: "FD Intelligence (Fallback)",
+            usedLicenses: 1,
+            totalLicenses: 5,
+            userRole: "admin", // Add this line
+            message: "Database error - using fallback",
+            subscriptionStatus: "active"
         }
+    };
+    return;
+}
 
         context.res = {
             status: 500,

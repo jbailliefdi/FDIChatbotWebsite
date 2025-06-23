@@ -323,6 +323,12 @@
       justify-self: end; 
     }
     
+    #dashboardBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+  background: #229954;
+}
+
     #user-status { 
       font-size: 0.9rem; 
       color: var(--text-muted-color); 
@@ -1091,6 +1097,16 @@ body.dark-mode .account-status-modal .contact-info {
       .chat-header a.header-logo-link {
         display: none;
       }
+
+      #dashboardBtn {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  margin-right: 8px;
+}
+
+#dashboardBtn span {
+  display: none;
+}
       
       .chat-header .logo-container {
         grid-column: 2 / 3;
@@ -1201,9 +1217,12 @@ body.dark-mode .account-status-modal .contact-info {
   </a>
 </div>
       <div class="login-container" id="auth-container">
-        <span id="user-status">User not signed in</span>
-        <button id="authBtn" onclick="handleAuth()">Sign In</button>
-      </div>
+  <span id="user-status">User not signed in</span>
+<button id="dashboardBtn" onclick="goToDashboard()" style="display: none; margin-right: 10px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s;">
+  <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+</button>
+  <button id="authBtn" onclick="handleAuth()">Sign In</button>
+</div>
     </header>
     <main id="webchat" role="main">
       <!-- Web Chat content goes here -->
@@ -1337,8 +1356,7 @@ function hideSubscriptionOverlay() {
 async function checkUserStatus(account) {
     if (!account) {
         console.warn("checkUserStatus called without an account.");
-        return { userExists: false, accessGranted: false, error: "Not logged in." };
-    }
+return { userExists: false, accessGranted: false, error: "Not logged in." };    }
 
     try {
         const response = await fetch('/api/check-subscription', {  // <-- Changed this line
@@ -1419,6 +1437,11 @@ async function verifyUserAndInitialize(account) {
     }
 }
 
+    function goToDashboard() {
+    window.open('/dashboard', '_blank');
+}
+window.goToDashboard = goToDashboard;
+
 function initializeChat() {
     // This function now centralizes the start of the chat experience
     try {
@@ -1442,11 +1465,20 @@ function getAuthToken() { return localStorage.getItem("authToken"); } function s
 function updateAuthUI() {
     const authBtn = document.getElementById("authBtn");
     const userStatus = document.getElementById("user-status");
+    const dashboardBtn = document.getElementById("dashboardBtn");
     if (!authBtn || !userStatus) return;
 
     const account = msalInstance.getActiveAccount();
     if (account) {
         authBtn.textContent = "Sign Out";
+        
+        // Show/hide dashboard button based on admin role
+        if (userData && userData.userRole === 'admin') {
+            dashboardBtn.style.display = "inline-flex";
+        } else {
+            dashboardBtn.style.display = "none";
+        }
+        
         if (subscriptionData && subscriptionData.active) {
             const companyInfo = subscriptionData.companyName || (account.name ? account.name.split(" ")[0] : "User");
             const licenseInfo = subscriptionData.usedLicenses && subscriptionData.totalLicenses ? ` (${subscriptionData.usedLicenses}/${subscriptionData.totalLicenses} users)` : '';
@@ -1457,6 +1489,7 @@ function updateAuthUI() {
     } else {
         authBtn.textContent = "Sign In";
         userStatus.textContent = "User not signed in";
+        dashboardBtn.style.display = "none";
     }
 }
 function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
@@ -1612,6 +1645,7 @@ function loadExistingChat(chatId, memoryStr) {
             alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`); 
         }
     });
+
 }function showchat(chatId) {
     const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in showchat"); return; }
     if (currentchat === chatId && document.getElementById("webchat_" + chatId)?.style.display !== 'none') { const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); } return; }
