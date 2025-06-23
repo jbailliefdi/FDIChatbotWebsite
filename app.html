@@ -1377,6 +1377,13 @@ async function verifyUserAndInitialize(account) {
 
     const result = await checkUserStatus(account);
     userData = result; // Store user details globally
+    
+    // Set subscriptionData for compatibility with existing code
+    subscriptionData = {
+        active: result.accessGranted,
+        userExists: result.userExists,
+        ...result
+    };
 
     if (loadingOverlay) loadingOverlay.classList.remove('visible');
 
@@ -1619,7 +1626,7 @@ function loadExistingChat(chatId, memoryStr) {
     setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); } else { console.warn("Textarea not found to focus in showchat for container:", container); } }, 150);
 }
 function newchat() {
-    if (!subscriptionData?.active) { showSubscriptionOverlay(); return; }
+    if (!userData?.accessGranted) { showSubscriptionOverlay(); return; }
     console.log("newchat called");
     isInjectingHistory = false; endCurrentDirectLine();
     const tempChatId = "new_" + Date.now();

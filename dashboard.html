@@ -160,6 +160,21 @@
             font-weight: 500;
         }
 
+        #orgSelector {
+    min-width: 200px;
+    background: white;
+    cursor: pointer;
+}
+
+#orgSelector:focus {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+}
+
+.page-header > div:first-child {
+    display: flex;
+    flex-direction: column;
+}
         /* Users Table */
         .users-section {
             background: white;
@@ -446,16 +461,24 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="page-header">
-                <h1 class="page-title">Users & Teams</h1>
-                <div class="user-info">
-                    <div class="user-avatar" id="currentUserAvatar">?</div>
-                    <div>
-                        <div id="currentUserName">Loading...</div>
-                        <div style="font-size: 0.8rem; color: #666;" id="currentUserRole">Loading...</div>
-                    </div>
-                </div>
-            </div>
+           <div class="page-header">
+    <div>
+        <h1 class="page-title">Users & Teams</h1>
+        <div style="margin-top: 0.5rem;">
+            <label for="orgSelector" style="font-size: 0.9rem; color: #666; margin-right: 0.5rem;">Organization:</label>
+            <select id="orgSelector" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem;">
+                <option value="">Loading organizations...</option>
+            </select>
+        </div>
+    </div>
+    <div class="user-info">
+        <div class="user-avatar" id="currentUserAvatar">?</div>
+        <div>
+            <div id="currentUserName">Loading...</div>
+            <div style="font-size: 0.8rem; color: #666;" id="currentUserRole">Loading...</div>
+        </div>
+    </div>
+</div>
 
             <!-- License Usage Card -->
             <div class="license-card">
@@ -544,65 +567,121 @@
             loadDashboardData();
         });
 
+        let allOrganizations = [];
+
+// Replace the getTestOrganizationId function with this:
+async function loadOrganizations() {
+    try {
+        console.log('Fetching organizations list...');
+        
+        const response = await fetch('/api/organizations');
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Available organizations:', data.organizations);
+            
+            allOrganizations = data.organizations || [];
+            populateOrgSelector();
+            
+            // Default to FDI organization if available, otherwise first org
+            const defaultOrg = allOrganizations.find(org => 
+                org.id === 'fdi-test-org-001' || 
+                org.name === 'FD Intelligence'
+            ) || allOrganizations[0];
+            
+            if (defaultOrg) {
+                document.getElementById('orgSelector').value = defaultOrg.id;
+                return defaultOrg.id;
+            }
+        }
+        
+        return 'fdi-test-org-001'; // fallback
+    } catch (error) {
+        console.error('Error loading organizations:', error);
+        return 'fdi-test-org-001';
+    }
+}
+
+// Populate the organization selector dropdown
+function populateOrgSelector() {
+    const selector = document.getElementById('orgSelector');
+    
+    if (allOrganizations.length === 0) {
+        selector.innerHTML = '<option value="">No organizations found</option>';
+        return;
+    }
+    
+    selector.innerHTML = allOrganizations.map(org => 
+        `<option value="${org.id}">${org.name} (${org.status})</option>`
+    ).join('');
+    
+    // Add change event listener
+    selector.addEventListener('change', function() {
+        const selectedOrgId = this.value;
+        if (selectedOrgId) {
+            switchOrganization(selectedOrgId);
+        }
+    });
+}
+
+// Switch to a different organization
+async function switchOrganization(orgId) {
+    console.log('Switching to organization:', orgId);
+    
+    // Show loading state
+    document.getElementById('usersTableContainer').innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading users...</div>';
+    
+    try {
+        const response = await fetch(`/api/organization/${orgId}/overview`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentOrganization = data.organization;
+            organizationUsers = data.users;
+            
+            // Find current user (admin for now)
+            currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
+            
+            updateDashboardUI(data);
+            showSuccess(`Switched to ${currentOrganization.name}`);
+        } else {
+            showError('Error loading organization: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error switching organization:', error);
+        showError('Failed to load organization data');
+    }
+}
+
         // Load all dashboard data
         async function loadDashboardData() {
-            try {
-                // For demo purposes, we'll use a test organization ID
-                // In production, this would come from authentication
-                const testOrgId = await getTestOrganizationId();
-                
-                if (!testOrgId) {
-                    showError('No test organization found. Please create one first using the pricing page.');
-                    return;
-                }
-
-                const response = await fetch(`/api/organization/${testOrgId}/overview`);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentOrganization = data.organization;
-                    organizationUsers = data.users;
-                    
-                    // Find current user (admin for now)
-                    currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
-                    
-                    updateDashboardUI(data);
-                } else {
-                    showError('Error loading dashboard: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-                showError('Failed to connect to server');
-            }
+    try {
+        const orgId = await loadOrganizations();
+        
+        if (!orgId) {
+            showError('No organization found. Please create one first using the pricing page.');
+            return;
         }
 
-        // Get test organization ID (find most recent organization)
-        async function getTestOrganizationId() {
-            try {
-                // First, let's try to get a list of organizations to debug
-                console.log('Fetching organizations list...');
-                
-                const response = await fetch('/api/organizations');
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Available organizations:', data.organizations);
-                    
-                    if (data.organizations && data.organizations.length > 0) {
-                        const org = data.organizations[0];
-                        console.log('Using organization:', org.id, org.name);
-                        return org.id;
-                    }
-                }
-                
-                // Fallback to hardcoded ID
-                console.log('No organizations found via API, using fallback ID');
-                return 'fdi-test-org-001';
-            } catch (error) {
-                console.error('Error getting org ID:', error);
-                // Fallback to hardcoded ID
-                return 'fdi-test-org-001';
-            }
+        const response = await fetch(`/api/organization/${orgId}/overview`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentOrganization = data.organization;
+            organizationUsers = data.users;
+            
+            // Find current user (admin for now)
+            currentUser = organizationUsers.find(u => u.role === 'admin') || organizationUsers[0];
+            
+            updateDashboardUI(data);
+        } else {
+            showError('Error loading dashboard: ' + data.error);
         }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showError('Failed to connect to server');
+    }
+}
+
 
         // Update dashboard UI with real data
         function updateDashboardUI(data) {
