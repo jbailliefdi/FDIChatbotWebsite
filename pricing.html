@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TIA - Pricing & Signup | FD Intelligence</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
     <style>
         * {
             margin: 0;
@@ -120,19 +122,42 @@
             font-size: 1.1rem;
         }
 
-        /* Demo Mode Banner */
-        .demo-banner {
-            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        /* Environment Toggle */
+        .environment-toggle {
+            background: linear-gradient(45deg, #28a745, #20c997);
             color: white;
             padding: 15px 20px;
             border-radius: 10px;
             margin-bottom: 30px;
             text-align: center;
-            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
-        .demo-banner i {
+        .environment-toggle.demo {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        }
+
+        .environment-toggle i {
             margin-right: 8px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin-left: 15px;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         /* Pricing Display */
@@ -348,6 +373,11 @@
             border-radius: 10px;
             padding: 20px;
             margin-top: 30px;
+            display: none;
+        }
+
+        .admin-controls.show {
+            display: block;
         }
 
         .admin-controls h3 {
@@ -556,9 +586,15 @@
                 <h1 class="signup-title">Get Started with TIA</h1>
                 <p class="signup-subtitle">Join thousands of tax professionals already using our AI assistant</p>
 
-                <!-- Demo Mode Banner -->
-                <div class="demo-banner">
-                    <i class="fas fa-flask"></i> Demo Mode Active - Test the complete payment flow with mock data
+                <!-- Environment Toggle -->
+                <div class="environment-toggle" id="environmentBanner">
+                    <div>
+                        <i class="fas fa-credit-card"></i> 
+                        <span id="environmentText">Live Payment Processing - Real Stripe Integration</span>
+                    </div>
+                    <button class="toggle-btn" onclick="toggleDemoMode()">
+                        Switch to Demo Mode
+                    </button>
                 </div>
 
                 <!-- Alert Messages -->
@@ -623,29 +659,29 @@
                             <span id="totalAfterTrial">£60.00</span>
                         </div>
                         <div style="font-size: 0.85rem; color: #666; margin-top: 10px;">
-                            Monthly billing • Cancel anytime
+                            Monthly billing • Cancel anytime • <span id="environmentNote">Powered by Stripe</span>
                         </div>
                     </div>
 
                     <!-- Submit Button -->
                     <button type="submit" class="submit-btn" id="submitBtn">
-                        <i class="fas fa-credit-card"></i> Get TIA (Demo)
+                        <i class="fas fa-credit-card"></i> <span id="submitBtnText">Subscribe with Stripe</span>
                     </button>
 
                     <div class="loading" id="loadingSpinner">
                         <div class="spinner"></div>
-                        <p>Setting up your account...</p>
+                        <p>Setting up your subscription...</p>
                     </div>
 
                     <div class="security-notice">
-                        <i class="fas fa-shield-alt"></i> Secure demo payment processing
+                        <i class="fas fa-shield-alt"></i> <span id="securityText">Secure payment processing with Stripe</span>
                         <br>
                         <i class="fas fa-clock"></i> No setup fees • Cancel anytime
                     </div>
                 </form>
 
-                <!-- Admin Test Controls -->
-                <div class="admin-controls">
+                <!-- Admin Test Controls (only shown in demo mode) -->
+                <div class="admin-controls" id="adminControls">
                     <h3><i class="fas fa-cogs"></i> Demo Testing Controls</h3>
                     <p style="margin-bottom: 15px; color: #856404;">Test different subscription scenarios:</p>
                     <div class="test-buttons">
@@ -701,9 +737,49 @@
     </footer>
 
     <script>
+        // Initialize Stripe
+        const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
+        
         let currentLicenses = 1;
         const pricePerLicense = 50;
         const vatRate = 0.20;
+        let isDemoMode = false;
+
+        // Check URL parameters for demo mode
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('demo') === '1') {
+            isDemoMode = true;
+            toggleDemoMode();
+        }
+
+        function toggleDemoMode() {
+            isDemoMode = !isDemoMode;
+            const banner = document.getElementById('environmentBanner');
+            const environmentText = document.getElementById('environmentText');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const securityText = document.getElementById('securityText');
+            const environmentNote = document.getElementById('environmentNote');
+            const adminControls = document.getElementById('adminControls');
+            const toggleBtn = banner.querySelector('.toggle-btn');
+
+            if (isDemoMode) {
+                banner.className = 'environment-toggle demo';
+                environmentText.innerHTML = '<i class="fas fa-flask"></i> Demo Mode Active - Test the complete payment flow with mock data';
+                submitBtnText.textContent = 'Get TIA (Demo)';
+                securityText.textContent = 'Secure demo payment processing';
+                environmentNote.textContent = 'Demo mode active';
+                adminControls.classList.add('show');
+                toggleBtn.textContent = 'Switch to Live Mode';
+            } else {
+                banner.className = 'environment-toggle';
+                environmentText.innerHTML = '<i class="fas fa-credit-card"></i> Live Payment Processing - Real Stripe Integration';
+                submitBtnText.textContent = 'Subscribe with Stripe';
+                securityText.textContent = 'Secure payment processing with Stripe';
+                environmentNote.textContent = 'Powered by Stripe';
+                adminControls.classList.remove('show');
+                toggleBtn.textContent = 'Switch to Demo Mode';
+            }
+        }
 
         function updateLicenses(change) {
             const input = document.getElementById('licenseCount');
@@ -763,11 +839,35 @@
             };
 
             try {
-                // Store form data for the payment page
-                localStorage.setItem('signup_data', JSON.stringify(formData));
-                
-                // Redirect to mock payment page
-                window.location.href = '/mock-payment.html?demo=1';
+                if (isDemoMode) {
+                    // Demo mode - use mock payment flow
+                    localStorage.setItem('signup_data', JSON.stringify(formData));
+                    window.location.href = '/mock-payment.html?demo=1';
+                } else {
+                    // Live mode - create Stripe checkout session
+                    const response = await fetch('/api/create-checkout-session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok && result.sessionId) {
+                        // Redirect to Stripe Checkout
+                        const { error } = await stripe.redirectToCheckout({
+                            sessionId: result.sessionId
+                        });
+
+                        if (error) {
+                            throw new Error(error.message);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Failed to create checkout session');
+                    }
+                }
 
             } catch (error) {
                 console.error('Error:', error);
@@ -779,8 +879,13 @@
             }
         });
 
-        // Simulate webhook events for testing
+        // Simulate webhook events for testing (demo mode only)
         async function simulateEvent(eventType) {
+            if (!isDemoMode) {
+                showAlert('Simulation is only available in demo mode.', 'error');
+                return;
+            }
+
             try {
                 const testEmail = 'j.baillie@fdintelligence.co.uk';
                 
@@ -818,12 +923,13 @@
         }
 
         // Handle URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('payment') === 'success') {
             showAlert('Payment successful! Welcome to TIA Professional.', 'success');
         } else if (urlParams.get('payment') === 'failed') {
             const reason = urlParams.get('reason') || 'Payment failed';
             showAlert(reason, 'error');
+        } else if (urlParams.get('payment') === 'cancelled') {
+            showAlert('Payment was cancelled. You can try again when ready.', 'error');
         }
 
         // Initialize price display
