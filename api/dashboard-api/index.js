@@ -191,7 +191,15 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
         }
         
         const user = users[0];
-        context.log('Found user:', { id: user.id, email: user.email, currentStatus: user.status });
+        context.log('Found user:', { 
+            id: user.id, 
+            email: user.email, 
+            currentStatus: user.status,
+            organizationId: user.organizationId
+        });
+        
+        // Your container uses /organizationId as partition key
+        const partitionKeyValue = user.organizationId;
         const { role, status } = updateData;
         
         // If deactivating, check admin constraints
@@ -238,11 +246,36 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
         context.log('Attempting to replace user document with:', { 
             id: updatedUser.id, 
             status: updatedUser.status,
-            partitionKey: updatedUser.id
+            partitionKey: updatedUser.id,
+            allFields: Object.keys(updatedUser)
         });
         
-        // Use the correct partition key (the user's ID)
-        await usersContainer.item(user.id, user.id).replace(updatedUser);
+        // Log the original user for comparison
+        context.log('Original user document:', {
+            id: user.id,
+            _rid: user._rid,
+            _etag: user._etag,
+            allFields: Object.keys(user)
+        });
+        
+        // Try to read the document first to make sure it exists
+        try {
+            const readResult = await usersContainer.item(user.id, partitionKeyValue).read();
+            context.log('Document read successfully before update:', {
+                id: readResult.resource.id,
+                status: readResult.resource.status
+            });
+        } catch (readError) {
+            context.log.error('Error reading document before update:', readError);
+            throw new Error(`Cannot read user document: ${readError.message}`);
+        }
+        
+        // Use organizationId as partition key for the replace operation
+        const replaceResult = await usersContainer.item(user.id, partitionKeyValue).replace(updatedUser);
+        context.log('Replace operation successful:', {
+            statusCode: replaceResult.statusCode,
+            activityId: replaceResult.activityId
+        });
         
         context.res.status = 200;
         context.res.body = {
@@ -306,8 +339,8 @@ async function handleDeleteUser(context, orgId, userId) {
             }
         }
         
-        // Delete user
-        await usersContainer.item(user.id, user.id).delete();
+        // Delete user using organizationId as partition key
+        await usersContainer.item(user.id, user.organizationId).delete();
         
         context.res.status = 200;
         context.res.body = { message: 'User removed successfully' };
