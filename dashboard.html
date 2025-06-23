@@ -806,39 +806,62 @@
 
         // Authentication functions
         async function checkAdminAuth() {
-            try {
-                await msalInstance.handleRedirectPromise();
-                let account = msalInstance.getActiveAccount();
-                
-                if (!account && msalInstance.getAllAccounts().length > 0) {
-                    account = msalInstance.getAllAccounts()[0];
-                    msalInstance.setActiveAccount(account);
-                }
+    try {
+        await msalInstance.handleRedirectPromise();
+        let account = msalInstance.getActiveAccount();
+        
+        if (!account && msalInstance.getAllAccounts().length > 0) {
+            account = msalInstance.getAllAccounts()[0];
+            msalInstance.setActiveAccount(account);
+        }
 
-                if (!account) {
-                    redirectToLogin();
+        // Check for email hint in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailHint = urlParams.get('email');
+
+        if (!account) {
+            if (emailHint) {
+                // Try to find existing account with that email first
+                const existingAccount = msalInstance.getAllAccounts().find(acc => acc.username === emailHint);
+                if (existingAccount) {
+                    msalInstance.setActiveAccount(existingAccount);
+                    account = existingAccount;
+                } else {
+                    // No existing account, redirect to login with email hint
+                    redirectToLoginWithEmail(emailHint);
                     return false;
                 }
-
-                // Verify user is admin and get organization
-                const userStatus = await verifyAdminStatus(account);
-                
-                if (!userStatus.isAdmin || !userStatus.hasAccess) {
-                    showUnauthorizedError(userStatus.message);
-                    return false;
-                }
-
-                // Set global user data
-                currentUser = userStatus.user;
-                currentUserOrganization = userStatus.organization;
-                
-                return true;
-            } catch (error) {
-                console.error("Authentication check failed:", error);
-                showError("Authentication failed. Please try again.");
+            } else {
+                redirectToLogin();
                 return false;
             }
         }
+
+        // Verify user is admin and get organization
+        const userStatus = await verifyAdminStatus(account);
+        
+        if (!userStatus.isAdmin || !userStatus.hasAccess) {
+            showUnauthorizedError(userStatus.message);
+            return false;
+        }
+
+        // Set global user data
+        currentUser = userStatus.user;
+        currentUserOrganization = userStatus.organization;
+        
+        // Clean up URL parameters after successful auth
+        if (emailHint) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error("Authentication check failed:", error);
+        showError("Authentication failed. Please try again.");
+        return false;
+    }
+}
 
         async function verifyAdminStatus(account) {
     try {
@@ -879,7 +902,20 @@
         };
     }
 }
-
+        function redirectToLoginWithEmail(email) {
+    const loginRequest = {
+        scopes: ["openid", "profile", "email"],
+        prompt: "select_account",
+        loginHint: email,
+        redirectUri: window.location.href.split('?')[0] // Clean URL without parameters
+    };
+    
+    msalInstance.loginRedirect(loginRequest).catch(error => {
+        console.error("Login redirect with email hint failed:", error);
+        // Fallback to regular login
+        redirectToLogin();
+    });
+}
         function redirectToLogin() {
             alert("Please sign in to access the dashboard.");
             window.location.href = '/app';
