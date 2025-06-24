@@ -357,28 +357,19 @@
             background: linear-gradient(45deg, #667eea, #764ba2);
         }
 
-        .pricing-card.featured {
-            transform: scale(1.05);
-            border: 3px solid #667eea;
-        }
 
-        .pricing-card.featured::before {
-            height: 8px;
-            background: linear-gradient(45deg, #27ae60, #20c997);
-        }
-
-        .pricing-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #27ae60;
-            color: white;
-            font-size: 0.8rem;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
+       .pricing-badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #27ae60;
+    color: white;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
 
         .pricing-badge.save {
             background: #e74c3c;
@@ -444,12 +435,12 @@
         }
 
         .pricing-cta.trial {
-            background: linear-gradient(45deg, #27ae60, #20c997);
-        }
+    background: linear-gradient(45deg, #667eea, #764ba2);
+}
 
-        .pricing-cta.trial:hover {
-            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
-        }
+.pricing-cta.trial:hover {
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+}
 
         .pricing-note {
             color: #666;
@@ -599,9 +590,6 @@
                 gap: 2rem;
             }
 
-            .pricing-card.featured {
-                transform: none;
-            }
 
             /* Responsive Footer */
             .footer-main {
@@ -741,8 +729,8 @@
             <div class="pricing-grid">
                 <!-- Free Trial Card -->
                 <div class="pricing-card featured">
-                    <div class="pricing-badge">Most Popular</div>
-                    <h3>Free Trial</h3>
+                    <div class="pricing-badge">Free</div>
+                    <h3>3-Day Trial</h3>
                     <div class="price">
                         £0
                         <div class="price-period">for 3 days</div>
@@ -798,7 +786,6 @@
                         £550
                         <div class="price-period">per user/year + VAT</div>
                     </div>
-                    <p class="pricing-note">Equivalent to £45.83/month per user</p>
                     <ul class="pricing-features">
                         <li>Everything in Monthly Plan</li>
                         <li>Save £600 per user per year</li>

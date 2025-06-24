@@ -496,7 +496,7 @@
                     <div class="plan-toggle">
                         <div class="toggle-switch">
                             <div class="toggle-option active" id="trialOption" onclick="selectPlan('trial')">
-                                <span>3-Day Free Trial</span>
+                                <span>3-Day Trial</span>
                                 <div class="trial-badge">FREE</div>
                             </div>
                             <div class="toggle-option" id="monthlyOption" onclick="selectPlan('monthly')">
@@ -511,18 +511,18 @@
 
                     <div class="pricing-summary">
                         <div class="price-display" id="totalPrice">£0</div>
-                        <div class="price-details" id="priceDetails">3-day free trial • Card required</div>
+                        <div class="price-details" id="priceDetails">3-day free trial for up to 3 users • Card required</div>
+        <div class="price-details" id="priceDetails">Card required</div>
+
+<div class="trial-info" id="trialInfo" style="display: none;">
+    <i class="fas fa-gift"></i><strong>3-User Free Trial</strong> - Full access to all features. Cancel anytime.
+</div>
                         
-                        <div class="trial-info show" id="trialInfo">
-                            <i class="fas fa-gift"></i>
-                            <strong>5-User Free Trial</strong> - Full access to all features. Cancel anytime.
-                        </div>
-                        
-                        <div class="license-selector" id="licenseSelectorContainer" style="display: none;">
+                        <div class="license-selector" id="licenseSelectorContainer" style="display: flex;">
                             <label for="licenseCount">Number of users:</label>
                             <div class="license-input">
                                 <button type="button" onclick="updateLicenses(-1)">-</button>
-                                <input type="number" id="licenseCount" value="1" min="1" max="3" onchange="updatePrice()">
+                                <input type="number" id="licenseCount" value="3" min="1" max="3" onchange="updatePrice()">
                                 <button type="button" onclick="updateLicenses(1)">+</button>
                             </div>
                         </div>
@@ -558,16 +558,13 @@
                     </div>
 
                     <!-- Order Summary -->
-                    <div class="order-summary" id="orderSummary">
+                    <div class="order-summary trial-summary" id="orderSummary">
                         <h3>Order Summary</h3>
                         <div class="summary-row">
-                            <span>TIA Professional (<span id="summaryLicenses">5</span> user<span id="summaryPlural">s</span>)</span>
+                            <span>TIA Professional (<span id="summaryLicenses">3</span> user<span id="summaryPlural">s</span>)</span>
                             <span id="summaryPrice">Free Trial</span>
                         </div>
-                        <div class="summary-row" id="vatRow" style="display: none;">
-                            <span>VAT (20%)</span>
-                            <span id="summaryVAT">£0.00</span>
-                        </div>
+            
                         <div class="summary-row summary-total" id="summaryTotal">
                             <span>Total Due Today</span>
                             <span id="totalDue">£0.00</span>
@@ -630,7 +627,6 @@
         
         let currentPlan = 'trial'; // Default to trial
         const pricePerLicense = 50;
-        const vatRate = 0.20;
 
         // Parse URL parameters to determine initial plan
         function getURLParameter(name) {
@@ -641,7 +637,9 @@
         // Initialize plan based on URL parameter
         function initializePlan() {
             const planParam = getURLParameter('plan');
+            console.log('URL plan parameter:', planParam); // Debug log
             if (planParam && ['trial', 'monthly', 'annual'].includes(planParam)) {
+                currentPlan = planParam;
                 selectPlan(planParam);
             } else {
                 selectPlan('trial'); // Default to trial
@@ -649,19 +647,22 @@
         }
 
         function selectPlan(plan) {
+            console.log('Selecting plan:', plan); // Debug log
             currentPlan = plan;
-            document.getElementById('trialOption').classList.toggle('active', plan === 'trial');
-            document.getElementById('monthlyOption').classList.toggle('active', plan === 'monthly');
-            document.getElementById('annualOption').classList.toggle('active', plan === 'annual');
             
-            // Update license limits based on plan
+            // Remove active class from all options
+            document.getElementById('trialOption').classList.remove('active');
+            document.getElementById('monthlyOption').classList.remove('active');
+            document.getElementById('annualOption').classList.remove('active');
+            
+            // Add active class to selected option
+            document.getElementById(plan + 'Option').classList.add('active');
+            
+            // Update license limits and defaults based on plan
             const licenseInput = document.getElementById('licenseCount');
             if (plan === 'trial') {
-                licenseInput.max = 5;
-                licenseInput.value = 5; // Set to 5 for trial
-                if (parseInt(licenseInput.value) > 5) {
-                    licenseInput.value = 5;
-                }
+                licenseInput.max = 3;
+                licenseInput.value = 1; 
             } else {
                 licenseInput.max = 500;
                 licenseInput.value = 1; // Reset to 1 for paid plans
@@ -688,7 +689,7 @@
             const newValue = parseInt(input.value) + change;
             
             let minValue = 1;
-            let maxValue = currentPlan === 'trial' ? 5 : 500;
+            let maxValue = currentPlan === 'trial' ? 3 : 500;
             
             if (newValue >= minValue && newValue <= maxValue) { 
                 input.value = newValue; 
@@ -697,21 +698,33 @@
         }
 
         function updatePrice() {
-            const licenseCount = parseInt(document.getElementById('licenseCount').value) || 1;
-            let subtotal, priceText, billingNote;
+    const licenseInput = document.getElementById('licenseCount');
+    let licenseCount = parseInt(licenseInput.value) || 1;
+    
+    // Validate and reset if outside allowed range
+    const minValue = 1;
+    const maxValue = currentPlan === 'trial' ? 3 : 500;
+    
+    if (licenseCount < minValue || licenseCount > maxValue) {
+        licenseCount = 1;
+        licenseInput.value = 1;
+    }
+    
+    let subtotal, priceText, billingNote;
+            
+            console.log('Updating price for plan:', currentPlan, 'licenses:', licenseCount); // Debug log
             
             if (currentPlan === 'annual') {
                 subtotal = licenseCount * 550; // £550 per user per year
-                priceText = 'per year + VAT • Save £600 per user';
+                priceText = 'per year • Save £50 per user';
                 billingNote = 'Billed annually. Equivalent to £45.83/month per user.';
             } else {
                 subtotal = licenseCount * pricePerLicense; // £50 monthly
-                priceText = currentPlan === 'trial' ? `for 3 days, then £${subtotal}/month + VAT` : 'per month + VAT • No setup fees';
+                priceText = currentPlan === 'trial' ? `for 3 days, then £${subtotal}/month` : 'per month • No setup fees';
                 billingNote = currentPlan === 'trial' ? `After your 3-day trial, your plan will renew automatically. Cancel anytime.` : 'You will be redirected to Stripe for secure payment.';
             }
             
-            const vat = subtotal * vatRate;
-            const total = subtotal + vat;
+            const total = subtotal; // Remove VAT calculation
             
             const licenseSelector = document.getElementById('licenseSelectorContainer');
             const trialInfo = document.getElementById('trialInfo');
@@ -724,10 +737,10 @@
             if (currentPlan === 'trial') {
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.add('show');
-                trialInfo.innerHTML = '<i class="fas fa-gift"></i><strong>5-User Free Trial</strong> - Full access to all features. Cancel anytime.';
+                trialInfo.innerHTML = '<i class="fas fa-gift"></i><strong>3-User Free Trial</strong> - Full access to all features. Cancel anytime.';
                 orderSummary.className = 'order-summary trial-summary';
                 document.getElementById('totalPrice').textContent = '£0';
-                document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal}/month + VAT`;
+                document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal}/month`;
                 document.getElementById('summaryPrice').textContent = 'Free Trial';
                 vatRow.style.display = 'none';
                 document.getElementById('totalDue').textContent = '£0.00';
@@ -742,14 +755,13 @@
                 document.getElementById('totalPrice').textContent = `£${subtotal}`;
                 document.getElementById('priceDetails').textContent = priceText;
                 document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
-                document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
-                vatRow.style.display = 'flex';
+                vatRow.style.display = 'none'; // Always hide VAT row
                 document.getElementById('totalDue').textContent = `£${total.toFixed(2)}`;
                 document.getElementById('billingNote').textContent = billingNote;
                 securityText.textContent = 'Secure checkout powered by Stripe';
                 summaryLicenses.textContent = licenseCount;
                 summaryPlural.textContent = licenseCount > 1 ? 's' : '';
-            } else {
+            } else { // monthly
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.remove('show');
                 orderSummary.className = 'order-summary';
@@ -840,7 +852,11 @@
 
         // Initialize UI on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing...'); // Debug log
             initializePlan(); // This will read URL params and set the correct plan
             updatePrice();
             updateButtonText();
         });
+          </script>
+</body>
+</html>
