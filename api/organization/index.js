@@ -28,21 +28,19 @@ module.exports = async function (context, req) {
     // Extract orgId and action from URL
     const orgId = context.bindingData.orgId;
     let action = context.bindingData.action;
-    
-    // If action is not captured by binding, extract from URL path
+
+    // Extract action from URL if not provided by binding
     if (!action) {
-        const urlPath = req.url;
-        const pathParts = urlPath.split('/');
-        const orgIndex = pathParts.findIndex(part => part === orgId);
-        if (orgIndex !== -1 && orgIndex + 1 < pathParts.length) {
-            action = pathParts[orgIndex + 1].split('?')[0]; // Remove query params if any
+        const segments = req.url.split('/').filter(s => s.length > 0);
+        const orgIndex = segments.findIndex(s => s === orgId);
+        if (orgIndex !== -1 && orgIndex + 1 < segments.length) {
+            action = segments[orgIndex + 1];
         }
     }
 
     context.log('Organization ID:', orgId);
-    context.log('Action:', action);
+    context.log('Final action determined:', action);
     context.log('URL Path:', req.url);
-    context.log('Binding Data:', context.bindingData);
 
     if (!orgId) {
         context.res.status = 400;
@@ -66,25 +64,16 @@ module.exports = async function (context, req) {
                 await handleUsers(context, req, orgId);
                 break;
             default:
-    // Extract action from segments if action is undefined
-    const segments = req.url.split('/').filter(s => s.length > 0);
-    const orgIndex = segments.findIndex(s => s === orgId);
-    const extractedAction = orgIndex !== -1 ? segments[orgIndex + 1] : null;
-    
-    if (extractedAction === 'billing') {
-        await handleBilling(context, req, orgId);
-        return;
-    }
-    
-    context.res.status = 404;
-    context.res.body = { 
-        error: 'Endpoint not found',
-        debug: {
-            method: req.method,
-            orgId: orgId,
-            segments: segments
-        }
-    };
+                context.res.status = 404;
+                context.res.body = { 
+                    error: 'Endpoint not found',
+                    debug: {
+                        method: req.method,
+                        orgId: orgId,
+                        action: action,
+                        segments: req.url.split('/').filter(s => s.length > 0)
+                    }
+                };
         }
     } catch (error) {
         context.log.error('Error in organization API:', error);
