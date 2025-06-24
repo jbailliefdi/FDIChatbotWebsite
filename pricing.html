@@ -425,7 +425,6 @@
             padding: 3rem 0 2rem 0;
         }
         
-        /* ... (rest of the CSS is identical, no changes needed) ... */
         .footer-content { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
         .footer-main { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); }
         .footer-column { display: flex; flex-direction: column; }
@@ -497,7 +496,11 @@
                                 <div class="trial-badge">FREE</div>
                             </div>
                             <div class="toggle-option" id="monthlyOption" onclick="selectPlan('monthly')">
-                                Monthly Subscription
+                                Monthly
+                            </div>
+                            <div class="toggle-option" id="annualOption" onclick="selectPlan('annual')">
+                                <span>Annual</span>
+                                <div class="trial-badge" style="background: #27ae60;">SAVE £50</div>
                             </div>
                         </div>
                     </div>
@@ -515,7 +518,7 @@
                             <label for="licenseCount">Number of users:</label>
                             <div class="license-input">
                                 <button type="button" onclick="updateLicenses(-1)">-</button>
-                                <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
+                                <input type="number" id="licenseCount" value="1" min="1" max="3" onchange="updatePrice()">
                                 <button type="button" onclick="updateLicenses(1)">+</button>
                             </div>
                         </div>
@@ -629,9 +632,23 @@
             currentPlan = plan;
             document.getElementById('trialOption').classList.toggle('active', plan === 'trial');
             document.getElementById('monthlyOption').classList.toggle('active', plan === 'monthly');
+            document.getElementById('annualOption').classList.toggle('active', plan === 'annual');
+            
+            // Update license limits based on plan
+            const licenseInput = document.getElementById('licenseCount');
+            if (plan === 'trial') {
+                licenseInput.max = 3;
+                if (parseInt(licenseInput.value) > 3) {
+                    licenseInput.value = 3;
+                }
+            } else {
+                licenseInput.max = 500;
+            }
+            
             updatePrice();
             updateButtonText();
         }
+
         function updateButtonText() {
             const submitBtn = document.getElementById('submitBtn');
             const submitBtnText = document.getElementById('submitBtnText');
@@ -643,16 +660,37 @@
                 submitBtnText.textContent = 'Subscribe with Stripe';
             }
         }
+
         function updateLicenses(change) {
             const input = document.getElementById('licenseCount');
             const newValue = parseInt(input.value) + change;
-            if (newValue >= 1 && newValue <= 100) { input.value = newValue; updatePrice(); }
+            
+            let minValue = 1;
+            let maxValue = currentPlan === 'trial' ? 3 : 500;
+            
+            if (newValue >= minValue && newValue <= maxValue) { 
+                input.value = newValue; 
+                updatePrice(); 
+            }
         }
+
         function updatePrice() {
             const licenseCount = parseInt(document.getElementById('licenseCount').value) || 1;
-            const subtotal = licenseCount * pricePerLicense;
+            let subtotal, priceText, billingNote;
+            
+            if (currentPlan === 'annual') {
+                subtotal = licenseCount * 550; // £550 per user per year
+                priceText = 'per year + VAT • Save £50 per user';
+                billingNote = 'Billed annually. Equivalent to £45.83/month per user.';
+            } else {
+                subtotal = licenseCount * pricePerLicense; // £50 monthly
+                priceText = currentPlan === 'trial' ? 'for 3 days, then £250/month + VAT' : 'per month + VAT • No setup fees';
+                billingNote = currentPlan === 'trial' ? 'After your 3-day trial, your plan will renew automatically. Cancel anytime.' : 'You will be redirected to Stripe for secure payment.';
+            }
+            
             const vat = subtotal * vatRate;
             const total = subtotal + vat;
+            
             const licenseSelector = document.getElementById('licenseSelectorContainer');
             const trialInfo = document.getElementById('trialInfo');
             const orderSummary = document.getElementById('orderSummary');
@@ -660,35 +698,51 @@
             const summaryPlural = document.getElementById('summaryPlural');
             const vatRow = document.getElementById('vatRow');
             const securityText = document.getElementById('securityText');
+
             if (currentPlan === 'trial') {
-    licenseSelector.style.display = 'flex'; // Change from 'none' to 'flex'
-    trialInfo.classList.add('show');
-    orderSummary.className = 'order-summary trial-summary';
-    document.getElementById('totalPrice').textContent = '£0';
-    document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal}/month + VAT`;
-    document.getElementById('summaryPrice').textContent = 'Free Trial';
-    vatRow.style.display = 'none';
-    document.getElementById('totalDue').textContent = '£0.00';
-    document.getElementById('billingNote').textContent = `After your 3-day trial, your plan will renew at £${total.toFixed(2)}/month. Cancel anytime.`;
-    securityText.textContent = 'Secure checkout powered by Stripe';
-    summaryLicenses.textContent = licenseCount;
-    summaryPlural.textContent = licenseCount > 1 ? 's' : '';
-} else {
+                licenseSelector.style.display = 'flex';
+                trialInfo.classList.add('show');
+                orderSummary.className = 'order-summary trial-summary';
+                document.getElementById('totalPrice').textContent = '£0';
+                document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal}/month + VAT`;
+                document.getElementById('summaryPrice').textContent = 'Free Trial';
+                vatRow.style.display = 'none';
+                document.getElementById('totalDue').textContent = '£0.00';
+                document.getElementById('billingNote').textContent = `After your 3-day trial, your plan will renew at £${total.toFixed(2)}/month. Cancel anytime.`;
+                securityText.textContent = 'Secure checkout powered by Stripe';
+                summaryLicenses.textContent = licenseCount;
+                summaryPlural.textContent = licenseCount > 1 ? 's' : '';
+            } else if (currentPlan === 'annual') {
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.remove('show');
                 orderSummary.className = 'order-summary';
                 document.getElementById('totalPrice').textContent = `£${subtotal}`;
-                document.getElementById('priceDetails').textContent = 'per month + VAT • No setup fees';
+                document.getElementById('priceDetails').textContent = priceText;
                 document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
                 document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
                 vatRow.style.display = 'flex';
                 document.getElementById('totalDue').textContent = `£${total.toFixed(2)}`;
-                document.getElementById('billingNote').textContent = 'You will be redirected to Stripe for secure payment.';
+                document.getElementById('billingNote').textContent = billingNote;
+                securityText.textContent = 'Secure checkout powered by Stripe';
+                summaryLicenses.textContent = licenseCount;
+                summaryPlural.textContent = licenseCount > 1 ? 's' : '';
+            } else {
+                licenseSelector.style.display = 'flex';
+                trialInfo.classList.remove('show');
+                orderSummary.className = 'order-summary';
+                document.getElementById('totalPrice').textContent = `£${subtotal}`;
+                document.getElementById('priceDetails').textContent = priceText;
+                document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
+                document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
+                vatRow.style.display = 'flex';
+                document.getElementById('totalDue').textContent = `£${total.toFixed(2)}`;
+                document.getElementById('billingNote').textContent = billingNote;
                 securityText.textContent = 'Secure checkout powered by Stripe';
                 summaryLicenses.textContent = licenseCount;
                 summaryPlural.textContent = licenseCount > 1 ? 's' : '';
             }
         }
+
         function showAlert(message, type = 'error') {
             const alertBox = document.getElementById('alertMessage');
             alertBox.textContent = message;

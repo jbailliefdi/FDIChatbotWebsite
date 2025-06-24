@@ -1596,8 +1596,35 @@ function initializeChat() {
  * MSAL & Authentication Setup
  **********************/
 let subscriptionData = null;
-const msalConfig = { auth: { clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2", authority: "https://login.microsoftonline.com/common", redirectUri: window.location.origin + window.location.pathname, }, cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false, } };
-let msalInstance; try { msalInstance = new msal.PublicClientApplication(msalConfig); } catch (e) { alert("Critical error initializing authentication library. Please refresh the page or contact support."); throw new Error("MSAL Initialization Failed"); }
+// Remove hardcoded config and replace with:
+let msalConfig = null;
+let msalInstance = null;
+
+async function initializeMSAL() {
+    try {
+        const response = await fetch('/api/get-auth-config');
+        const config = await response.json();
+        
+        msalConfig = {
+            auth: {
+                clientId: config.clientId,
+                authority: config.authority,
+                redirectUri: window.location.origin + window.location.pathname,
+            },
+            cache: {
+                cacheLocation: "localStorage",
+                storeAuthStateInCookie: false,
+            }
+        };
+        
+        msalInstance = new msal.PublicClientApplication(msalConfig);
+        return true;
+    } catch (e) {
+        console.error("MSAL Initialization Failed:", e);
+        alert("Critical error initializing authentication library. Please refresh the page or contact support.");
+        return false;
+    }
+}
 function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
 
 function updateAuthUI() {
@@ -1699,7 +1726,26 @@ function goToHomepage() {
 /**********************
  * Chatbot & Web Chat Setup
  **********************/
-let currentchat = null; const chats = {}; let fontSize = 16; let prepopulatedChats = {}; let initialSidebarLoaded = false; const DIRECT_LINE_TOKEN = "95yFvDSvcJbU9w7KPugSBmVU4YoF9K9slvbda1Vi2MsSlTsWCPkpJQQJ99BBACYeBjFAArohAAABAZBS3H3w.8S73IKZ4DivJDHCUZF2zChWUS3k8VBBBTaVEYgV6xFqWfGC1NTSqJQQJ99BEAC5T7U2AArohAAABAZBS2lZK"; let isInjectingHistory = false; window.directLine = null; let currentDirectLineSubscription = null; const webChatStyleOptions = { bubbleBorderRadius: 18, bubbleFromUserBorderRadius: 18, botAvatarImage: "FDi_Logo_Device_Transparent_Outer.png", userAvatarImage: "Unknown.png", botAvatarInitials: "TIA", sendBoxTextWrap: true, hideUploadButton: true, sendBoxButtonAlignment: 'end', };
+let currentchat = null; const chats = {}; let fontSize = 16; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
+async function getDirectLineToken(email) {
+    try {
+        const response = await fetch('/api/get-bot-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to get bot token');
+        }
+        
+        const data = await response.json();
+        return data.token;
+    } catch (error) {
+        console.error('Error getting DirectLine token:', error);
+        throw error;
+    }
+}; let isInjectingHistory = false; window.directLine = null; let currentDirectLineSubscription = null; const webChatStyleOptions = { bubbleBorderRadius: 18, bubbleFromUserBorderRadius: 18, botAvatarImage: "FDi_Logo_Device_Transparent_Outer.png", userAvatarImage: "Unknown.png", botAvatarInitials: "TIA", sendBoxTextWrap: true, hideUploadButton: true, sendBoxButtonAlignment: 'end', };
 function getScrollableTranscript(container) { return container?.querySelector('.webchat__basic-transcript__scrollable') || container?.querySelector('.webchat__basic-transcript'); } function scrollToBottom(container) { setTimeout(() => { const scrollable = getScrollableTranscript(container); if (scrollable) { scrollable.scrollTop = scrollable.scrollHeight; } else { console.warn("Could not find scrollable element in scrollToBottom for container:", container); } }, 250); } function parseMemory(memoryStr) { const activities = []; if (!memoryStr) return activities; const lines = memoryStr.split("\n"); let currentActivity = null; const regex = /^(User(?: Query)?|Bot(?: Answer)?)\s*\d*\s*:\s*(.*)$/i; lines.forEach(line => { const trimmed = line.trim(); if (!trimmed) return; const match = trimmed.match(regex); if (match) { if (currentActivity) activities.push(currentActivity); const marker = match[1].toLowerCase(); const text = match[2]; const isUser = marker.startsWith("user"); const from = isUser ? { id: "user", name: "User", role: "user" } : { id: "bot", name: "FDI Chatbot", role: "bot" }; currentActivity = { type: "message", from: from, text: text.trim(), timestamp: new Date(Date.now() - ((lines.length - activities.length) * 100)).toISOString() }; } else if (currentActivity) { currentActivity.text += "\n" + trimmed; } }); if (currentActivity) activities.push(currentActivity); activities.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); return activities; } function truncateTitle(title) { if (title.length > 25) { return title.slice(0, 22) + "..."; } return title; }
 function updateSidebar(memories) { const sidebar = document.querySelector(".sidebar"); if (!sidebar) { return; } let tempPrepopulatedChats = {}; let hasValidChatsInUpdate = false; const updatedChatIds = new Set(); if (memories && typeof memories === 'object' && Object.keys(memories).length > 0) { const conversationIds = Object.keys(memories); conversationIds.forEach(convId => { updatedChatIds.add(convId); try { if (!memories[convId]) { return; } const memoryDataStr = memories[convId]; const memoryData = (typeof memoryDataStr === 'string') ? JSON.parse(memoryDataStr) : memoryDataStr; const transcript = memoryData.memory || ""; const title = memoryData.title ? memoryData.title.trim() : ""; const activities = parseMemory(transcript); const hasTitle = title.length > 0; const hasUserMessages = activities.some(act => act.from.role === 'user'); if (hasTitle || hasUserMessages) { hasValidChatsInUpdate = true; tempPrepopulatedChats[convId] = transcript; let label = "Untitled Chat"; if (hasTitle && title !== "New Chat...") { label = truncateTitle(title); } else if (hasUserMessages) { const firstUserActivity = activities.find(a => a.from.role === "user"); label = firstUserActivity?.text ? truncateTitle(firstUserActivity.text.split('\n')[0]) : "Chat " + convId.substring(convId.length - 5); } else { label = "Chat " + convId.substring(convId.length - 5); } addchatTab(convId, label); } } catch (e) { console.error("Failed to process memory for sidebar update:", convId, e); } }); }
 Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebar.querySelectorAll('.chat-tab').length; if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } initialSidebarLoaded = true; }
@@ -1708,7 +1754,7 @@ function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatc
 dispatch({ type: 'WEB_CHAT/SEND_EVENT', payload: { name: 'webchat/join', value: { language: window.navigator.language } } }); } return next(action); }); }
 function endCurrentDirectLine() { if (currentDirectLineSubscription) { currentDirectLineSubscription.unsubscribe(); currentDirectLineSubscription = null; } if (window.directLine) { window.directLine.end(); window.directLine = null; } }
 
-function loadExistingChat(chatId, memoryStr) {
+async function loadExistingChat(chatId, memoryStr) {
     console.log("loadExistingChat called for chatId:", chatId);
     isInjectingHistory = true;
     const mainWebchatArea = document.getElementById("webchat"); 
@@ -1727,7 +1773,9 @@ function loadExistingChat(chatId, memoryStr) {
         return;
     }
     
-    try { window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: DIRECT_LINE_TOKEN }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
+    try { 
+    const token = await getDirectLineToken(account.username);
+    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
     currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
@@ -1821,7 +1869,7 @@ function loadExistingChat(chatId, memoryStr) {
     scrollToBottom(container);
     setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); } else { console.warn("Textarea not found to focus in showchat for container:", container); } }, 150);
 }
-function newchat() {
+async function newchat() {
     if (!userData?.accessGranted) { showSubscriptionOverlay(); return; }
     console.log("newchat called");
     isInjectingHistory = false; endCurrentDirectLine();
@@ -1834,7 +1882,9 @@ function newchat() {
     const tempTabElement = addchatTab(tempChatId, tempLabel); if (!tempTabElement) { console.error("Failed to add temp tab for new chat"); }
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${tempChatId}`); });
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
-    try { window.directLine = window.WebChat.createDirectLine({ token: DIRECT_LINE_TOKEN }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    try { 
+    const token = await getDirectLineToken(account.username);
+    window.directLine = window.WebChat.createDirectLine({ token: token }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); } catch(e) { alert("Error displaying new chat interface."); console.error("Error rendering WebChat for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     applyCurrentFontSize(container);
@@ -1887,6 +1937,12 @@ window.confirmDelete = confirmDelete;
 window.onload = async () => {
     console.log("Window onload started.");
     handleTrialUrlParams();
+    
+    // Initialize MSAL first
+    const msalInitialized = await initializeMSAL();
+    if (!msalInitialized) {
+        return;
+    }
     // Setup theme
     const preferredTheme = localStorage.getItem('theme');
     setDarkMode(preferredTheme === 'dark');
