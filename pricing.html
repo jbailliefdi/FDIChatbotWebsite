@@ -617,7 +617,7 @@
         </div>
     </footer>
 
-    <script>
+        <script>
         // Initialize Stripe
         const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
         
@@ -625,20 +625,17 @@
         const pricePerLicense = 50;
         const vatRate = 0.20;
 
+        // All the UI functions (selectPlan, updateButtonText, updateLicenses, updatePrice) are the same...
         function selectPlan(plan) {
             currentPlan = plan;
-            
             document.getElementById('trialOption').classList.toggle('active', plan === 'trial');
             document.getElementById('monthlyOption').classList.toggle('active', plan === 'monthly');
-            
             updatePrice();
             updateButtonText();
         }
-
         function updateButtonText() {
             const submitBtn = document.getElementById('submitBtn');
             const submitBtnText = document.getElementById('submitBtnText');
-            
             if (currentPlan === 'trial') {
                 submitBtn.className = 'submit-btn trial';
                 submitBtnText.textContent = 'Start Free Trial';
@@ -647,24 +644,16 @@
                 submitBtnText.textContent = 'Subscribe with Stripe';
             }
         }
-
         function updateLicenses(change) {
             const input = document.getElementById('licenseCount');
             const newValue = parseInt(input.value) + change;
-            if (newValue >= 1 && newValue <= 100) {
-                input.value = newValue;
-                updatePrice();
-            }
+            if (newValue >= 1 && newValue <= 100) { input.value = newValue; updatePrice(); }
         }
-
         function updatePrice() {
             const licenseCount = parseInt(document.getElementById('licenseCount').value) || 1;
-            
             const subtotal = licenseCount * pricePerLicense;
             const vat = subtotal * vatRate;
             const total = subtotal + vat;
-            
-            // UI Elements
             const licenseSelector = document.getElementById('licenseSelectorContainer');
             const trialInfo = document.getElementById('trialInfo');
             const orderSummary = document.getElementById('orderSummary');
@@ -672,13 +661,10 @@
             const summaryPlural = document.getElementById('summaryPlural');
             const vatRow = document.getElementById('vatRow');
             const securityText = document.getElementById('securityText');
-            
             if (currentPlan === 'trial') {
-                // TRIAL VIEW
                 licenseSelector.style.display = 'none';
                 trialInfo.classList.add('show');
                 orderSummary.className = 'order-summary trial-summary';
-
                 document.getElementById('totalPrice').textContent = '£0';
                 document.getElementById('priceDetails').textContent = '3-day free trial • No credit card required';
                 document.getElementById('summaryPrice').textContent = 'Free Trial';
@@ -686,16 +672,12 @@
                 document.getElementById('totalDue').textContent = 'Free for 3 days';
                 document.getElementById('billingNote').textContent = '3-day free trial • No payment required';
                 securityText.textContent = 'Secure signup • No payment required for trial';
-                
-                summaryLicenses.textContent = 5; // Trial is fixed at 5 users
+                summaryLicenses.textContent = 5;
                 summaryPlural.textContent = 's';
-
             } else {
-                // MONTHLY VIEW
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.remove('show');
                 orderSummary.className = 'order-summary';
-                
                 document.getElementById('totalPrice').textContent = `£${subtotal}`;
                 document.getElementById('priceDetails').textContent = 'per month + VAT • No setup fees';
                 document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
@@ -704,29 +686,26 @@
                 document.getElementById('totalDue').textContent = `£${total.toFixed(2)}`;
                 document.getElementById('billingNote').textContent = 'You will be redirected to Stripe for secure payment.';
                 securityText.textContent = 'Secure checkout powered by Stripe';
-
                 summaryLicenses.textContent = licenseCount;
                 summaryPlural.textContent = licenseCount > 1 ? 's' : '';
             }
         }
-
         function showAlert(message, type = 'error') {
             const alertBox = document.getElementById('alertMessage');
             alertBox.textContent = message;
             alertBox.className = `alert ${type}`;
             alertBox.style.display = 'block';
-            
-            setTimeout(() => {
-                alertBox.style.display = 'none';
-            }, 6000);
+            setTimeout(() => { alertBox.style.display = 'none'; }, 6000);
         }
 
+        // ===================================================================
+        // THIS IS THE UPDATED FORM SUBMISSION LOGIC
+        // ===================================================================
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
-            
             submitBtn.disabled = true;
             submitBtn.style.display = 'none';
             loadingSpinner.style.display = 'block';
@@ -741,54 +720,65 @@
                 licenseCount: currentPlan === 'trial' ? 5 : parseInt(document.getElementById('licenseCount').value)
             };
 
+            let response;
+            let result;
+
             try {
                 if (currentPlan === 'trial') {
-                    // --- Create trial subscription ---
-                    const response = await fetch('/api/create-trial-subscription', {
+                    response = await fetch('/api/create-trial-subscription', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(formData)
                     });
-                    const result = await response.json();
-                    if (!response.ok) throw new Error(result.message || 'Failed to create trial');
-                    
-                    localStorage.setItem('signup_data', JSON.stringify(formData));
-                    window.location.href = `/dashboard.html?trial=started&email=${formData.email}`;
-
                 } else {
-                    // --- Create paid subscription checkout session ---
-                    const response = await fetch('/api/create-checkout-session', {
+                    response = await fetch('/api/create-checkout-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(formData)
                     });
-                    const result = await response.json();
-                    if (!response.ok || !result.sessionId) throw new Error(result.message || 'Failed to create checkout session');
-                    
-                    // Redirect to Stripe Checkout
+                }
+                
+                result = await response.json();
+
+                if (!response.ok) {
+                    // This is where we handle the 500 error from the server
+                    const err = new Error(result.message || 'Server returned an error.');
+                    err.details = result; // Attach the full JSON body to the error object
+                    throw err; // This will be caught by the catch block below
+                }
+
+                // --- Handle Success ---
+                if (currentPlan === 'trial') {
+                    window.location.href = `/dashboard.html?trial=started&email=${formData.email}`;
+                } else {
                     const { error } = await stripe.redirectToCheckout({ sessionId: result.sessionId });
                     if (error) throw new Error(error.message);
                 }
 
             } catch (error) {
-                console.error('Error:', error);
-                showAlert(`Error: ${error.message}. Please check your details and try again.`, 'error');
+                // THIS IS THE IMPORTANT PART: It logs the detailed error to the console
+                console.error("❌ An error occurred during submission:");
+
+                if (error.details && error.details.debugInfo) {
+                    // This is our detailed server error
+                    console.error("🕵️‍♂️ DETAILED DEBUG INFO FROM SERVER:", error.details.debugInfo);
+                    showAlert(`Server Error: ${error.details.debugInfo.message || error.message}`, 'error');
+                } else if (error.details) {
+                    // This is a server error without our specific debugInfo object
+                    console.error("📄 Full server response object:", error.details);
+                    showAlert(`Server Error: ${error.message}`, 'error');
+                } else {
+                    // This is a generic network error or a different kind of JavaScript error
+                    console.error("Generic/Network error:", error);
+                    showAlert(`Error: ${error.message}. Please check your network and try again.`, 'error');
+                }
                 
+                // Reset the button so the user can try again
                 submitBtn.disabled = false;
                 submitBtn.style.display = 'block';
                 loadingSpinner.style.display = 'none';
             }
         });
-
-        // Handle messages from URL params
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('payment') === 'success') {
-            showAlert('Payment successful! Welcome to TIA Professional.', 'success');
-        } else if (urlParams.get('payment') === 'failed') {
-            showAlert(urlParams.get('reason') || 'Payment failed. Please try again.', 'error');
-        } else if (urlParams.get('payment') === 'cancelled') {
-            showAlert('Payment was cancelled. You can try again when you are ready.', 'error');
-        }
 
         // Initialize UI on page load
         document.addEventListener('DOMContentLoaded', function() {
