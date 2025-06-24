@@ -717,7 +717,7 @@
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 planType: currentPlan,
-                licenseCount: currentPlan === 'trial' ? 5 : parseInt(document.getElementById('licenseCount').value)
+                licenseCount: currentPlan === 'trial' ? parseInt(document.getElementById('licenseCount').value) : parseInt(document.getElementById('licenseCount').value)
             };
 
             try {
