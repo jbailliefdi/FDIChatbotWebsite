@@ -321,16 +321,30 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
 
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .pricing-card {
             background: white;
             border-radius: 20px;
             padding: 3rem 2rem;
             text-align: center;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 400px;
-            margin: 0 auto;
             position: relative;
             overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
         }
 
         .pricing-card::before {
@@ -343,6 +357,39 @@
             background: linear-gradient(45deg, #667eea, #764ba2);
         }
 
+        .pricing-card.featured {
+            transform: scale(1.05);
+            border: 3px solid #667eea;
+        }
+
+        .pricing-card.featured::before {
+            height: 8px;
+            background: linear-gradient(45deg, #27ae60, #20c997);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #27ae60;
+            color: white;
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .pricing-badge.save {
+            background: #e74c3c;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
         .price {
             font-size: 3rem;
             font-weight: bold;
@@ -353,6 +400,7 @@
         .price-period {
             color: #666;
             font-size: 1rem;
+            margin-bottom: 1rem;
         }
 
         .pricing-features {
@@ -371,6 +419,42 @@
             color: #4CAF50;
             font-weight: bold;
             margin-right: 10px;
+        }
+
+        .pricing-cta {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 100%;
+            margin-top: 1rem;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .pricing-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .pricing-cta.trial {
+            background: linear-gradient(45deg, #27ae60, #20c997);
+        }
+
+        .pricing-cta.trial:hover {
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
+        }
+
+        .pricing-note {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 1rem;
         }
 
         /* Enhanced Footer */
@@ -510,6 +594,15 @@
                 font-size: 0.9rem;
             }
 
+            .pricing-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .pricing-card.featured {
+                transform: none;
+            }
+
             /* Responsive Footer */
             .footer-main {
                 grid-template-columns: 1fr;
@@ -558,7 +651,7 @@
                 <h1>Meet TIA: Your Tax Investigation Assistant</h1>
                 <p>The AI-powered assistant designed specifically for accountants and tax professionals. Get instant, accurate answers to complex VAT, Corporation Tax, and Private Client Tax queries.</p>
                 <div class="hero-buttons">
-                    <a href="/pricing" class="cta-button">View Pricing</a>
+                    <a href="/pricing?plan=trial" class="cta-button">Start Free Trial</a>
                     <a href="#features" class="btn-secondary">Learn More</a>
                 </div>
                 <div class="hero-robot-icon">
@@ -577,7 +670,7 @@
                             <p class="testimonial-quote">"We found this bot to be much better than competitors, giving us accurate answers to the most complex of tax queries"</p>
                             <p class="testimonial-author">- WBG</p>
                         </div>
-<div class="testimonial" data-index="2">
+                        <div class="testimonial" data-index="2">
                             <p class="testimonial-quote">"We use TIA in our day to day workflow to help us quickly gather references to everyday issues, saving us time."</p>
                             <p class="testimonial-author">- Johnston Smilie</p>
                         </div>
@@ -644,25 +737,85 @@
     <!-- Pricing Section -->
     <section id="pricing" class="pricing">
         <div class="container">
-            <h2 class="section-title">TIA Pricing</h2>
-            <div class="pricing-card">
-                <h3>TIA Professional</h3>
-                <div class="price">
-                    £50
-                    <span class="price-period">per user/month</span>
+            <h2 class="section-title">Choose Your TIA Plan</h2>
+            <div class="pricing-grid">
+                <!-- Free Trial Card -->
+                <div class="pricing-card featured">
+                    <div class="pricing-badge">Most Popular</div>
+                    <h3>Free Trial</h3>
+                    <div class="price">
+                        £0
+                        <div class="price-period">for 3 days</div>
+                    </div>
+                    <p class="pricing-note">Then £50/month per user + VAT</p>
+                    <ul class="pricing-features">
+                        <li>Up to 5 users during trial</li>
+                        <li>Unlimited tax queries</li>
+                        <li>UK Tax Expertise</li>
+                        <li>Microsoft SSO Login</li>
+                        <li>Secure Data Management</li>
+                        <li>Professional Support</li>
+                        <li>99.9% uptime guarantee</li>
+                    </ul>
+                    <a href="/pricing?plan=trial" class="pricing-cta trial">
+                        <i class="fas fa-rocket"></i> Start Free Trial
+                    </a>
+                    <p class="pricing-note">
+                        <i class="fas fa-lock"></i> No setup fees • Cancel anytime
+                    </p>
                 </div>
-                <ul class="pricing-features">
-                    <li>Unlimited tax queries and conversations</li>
-                    <li>Accurate Tax Expertise</li>
-                    <li>Microsoft SSO Login System</li>
-                    <li>Secure Data Management</li>
-                    <li>Professional Support</li>
-                    <li>99.9% uptime guarantee</li>
-                </ul>
-                <a href="/pricing" class="cta-button" style="width: 100%; display: block; text-align: center; margin-top: 2rem;">Get TIA</a>
-                <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
-                    <i class="fas fa-lock"></i> No setup fees • Cancel anytime
-                </p>
+
+                <!-- Monthly Plan Card -->
+                <div class="pricing-card">
+                    <h3>Monthly Plan</h3>
+                    <div class="price">
+                        £50
+                        <div class="price-period">per user/month + VAT</div>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>Unlimited tax queries</li>
+                        <li>UK Tax Expertise</li>
+                        <li>Microsoft SSO Login</li>
+                        <li>Secure Data Management</li>
+                        <li>Professional Support</li>
+                        <li>99.9% uptime guarantee</li>
+                        <li>Multi-user collaboration</li>
+                        <li>Practice analytics</li>
+                    </ul>
+                    <a href="/pricing?plan=monthly" class="pricing-cta">
+                        <i class="fas fa-credit-card"></i> Get Monthly Plan
+                    </a>
+                    <p class="pricing-note">
+                        <i class="fas fa-lock"></i> No setup fees • Cancel anytime
+                    </p>
+                </div>
+
+                <!-- Annual Plan Card -->
+                <div class="pricing-card">
+                    <div class="pricing-badge save">Save £50</div>
+                    <h3>Annual Plan</h3>
+                    <div class="price">
+                        £550
+                        <div class="price-period">per user/year + VAT</div>
+                    </div>
+                    <p class="pricing-note">Equivalent to £45.83/month per user</p>
+                    <ul class="pricing-features">
+                        <li>Everything in Monthly Plan</li>
+                        <li>Save £600 per user per year</li>
+                        <li>Priority support</li>
+                        <li>Advanced analytics</li>
+                        <li>Custom integrations</li>
+                        <li>Dedicated account manager</li>
+                        <li>Annual strategy sessions</li>
+                        <li>Early access to new features</li>
+                    </ul>
+                    <a href="/pricing?plan=annual" class="pricing-cta">
+                        <i class="fas fa-calendar-alt"></i> Get Annual Plan
+                    </a>
+                    <p class="pricing-note">
+                        <i class="fas fa-lock"></i> Billed annually • Cancel anytime
+                    </p>
+                </div>
             </div>
         </div>
     </section>

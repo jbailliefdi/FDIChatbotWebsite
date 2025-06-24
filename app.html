@@ -1774,7 +1774,12 @@ async function loadExistingChat(chatId, memoryStr) {
     }
     
     try { 
-    const token = await getDirectLineToken(account.username);
+    const account = msalInstance.getActiveAccount();
+if (!account) {
+    alert("Please sign in to start a new chat.");
+    return;
+}
+const token = await getDirectLineToken(account.username);
     window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
@@ -1883,6 +1888,11 @@ async function newchat() {
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${tempChatId}`); });
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
     try { 
+    const account = msalInstance.getActiveAccount();
+    if (!account) {
+        alert("Please sign in to start a new chat.");
+        return;
+    }
     const token = await getDirectLineToken(account.username);
     window.directLine = window.WebChat.createDirectLine({ token: token }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     const store = createWebChatStore();

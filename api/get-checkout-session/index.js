@@ -37,9 +37,13 @@ module.exports = async function (context, req) {
         const licenseCount = lineItems.data.reduce((total, item) => total + item.quantity, 0);
         
         // Format amount
-        const totalAmount = session.amount_total ? 
-            `£${(session.amount_total / 100).toFixed(2)}/month (inc. VAT)` : 
-            'Amount not available';
+        // Determine billing period based on plan type
+const planType = metadata.planType || 'monthly';
+const billingPeriod = planType === 'annual' ? '/year' : '/month';
+
+const totalAmount = session.amount_total ? 
+    `£${(session.amount_total / 100).toFixed(2)}${billingPeriod} (inc. VAT)` : 
+    'Amount not available';
 
         // Extract customer email
         let customerEmail = null;
