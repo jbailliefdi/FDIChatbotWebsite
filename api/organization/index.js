@@ -27,10 +27,22 @@ module.exports = async function (context, req) {
 
     // Extract orgId and action from URL
     const orgId = context.bindingData.orgId;
-    const action = context.bindingData.action;
+    let action = context.bindingData.action;
+    
+    // If action is not captured by binding, extract from URL path
+    if (!action) {
+        const urlPath = req.url;
+        const pathParts = urlPath.split('/');
+        const orgIndex = pathParts.findIndex(part => part === orgId);
+        if (orgIndex !== -1 && orgIndex + 1 < pathParts.length) {
+            action = pathParts[orgIndex + 1].split('?')[0]; // Remove query params if any
+        }
+    }
 
     context.log('Organization ID:', orgId);
     context.log('Action:', action);
+    context.log('URL Path:', req.url);
+    context.log('Binding Data:', context.bindingData);
 
     if (!orgId) {
         context.res.status = 400;
@@ -255,10 +267,19 @@ async function handleInvite(context, req, orgId) {
     };
 }
 
-// Handle user management operations
+// Handle user management operations  
 async function handleUsers(context, req, orgId) {
-    const segments = req.url.split('/');
-    const userId = segments[segments.length - 1]; // Extract userId from end of URL
+    // For user operations, the URL will be: /api/organization/{orgId}/users/{userId}
+    // We need to extract userId from the URL path after 'users'
+    const urlPath = req.url;
+    const userIdMatch = urlPath.match(/\/users\/([^\/\?]+)/);
+    const userId = userIdMatch ? userIdMatch[1] : null;
+    
+    if (!userId) {
+        context.res.status = 400;
+        context.res.body = { error: 'User ID is required for user operations' };
+        return;
+    }
 
     if (req.method === 'PUT') {
         // Update user (activate/deactivate)
