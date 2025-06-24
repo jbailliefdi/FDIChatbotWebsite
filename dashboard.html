@@ -1342,15 +1342,131 @@ function updateTrialBillingInfo() {
 }
 
 function updateBillingInfo(data) {
-    // Update with real billing data for paid users
-    // This would be implemented when you have paying customers
-    document.getElementById('paymentMethodContent').innerHTML = `
-        <div>Payment method details would go here</div>
-    `;
-    
-    document.getElementById('nextBillingContent').innerHTML = `
-        <div>Next billing info would go here</div>
-    `;
+    // Update payment method
+    const paymentMethodContent = document.getElementById('paymentMethodContent');
+    if (data.paymentMethod) {
+        paymentMethodContent.innerHTML = `
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <i class="fas fa-credit-card" style="font-size: 2rem; color: #3498db;"></i>
+                    <div>
+                        <div style="font-weight: 600; text-transform: capitalize;">${data.paymentMethod.brand} •••• ${data.paymentMethod.last4}</div>
+                        <div style="color: #666; font-size: 0.9rem;">Expires ${data.paymentMethod.expiryMonth}/${data.paymentMethod.expiryYear}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        paymentMethodContent.innerHTML = `
+            <div style="text-align: center; color: #666; padding: 20px;">
+                <i class="fas fa-credit-card" style="font-size: 2rem; color: #ddd; margin-bottom: 10px;"></i>
+                <p>No payment method on file</p>
+            </div>
+        `;
+    }
+
+    // Update next billing
+    const nextBillingContent = document.getElementById('nextBillingContent');
+    if (data.subscription) {
+        const nextBillDate = new Date(data.subscription.currentPeriodEnd);
+        const formatDate = nextBillDate.toLocaleDateString('en-GB', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        nextBillingContent.innerHTML = `
+            <div>
+                <div style="font-size: 2rem; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">
+                    £${data.subscription.totalMonthly}.00
+                </div>
+                <div style="color: #666;">
+                    <div style="margin-bottom: 5px;">Next billing date: ${formatDate}</div>
+                    <div style="font-size: 0.9rem;">
+                        ${data.organization.licenseCount} licenses × £${data.subscription.pricePerLicense}/month
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <span class="status-badge status-${data.subscription.status}">
+                        ${data.subscription.status.charAt(0).toUpperCase() + data.subscription.status.slice(1)}
+                    </span>
+                </div>
+            </div>
+        `;
+    } else if (data.organization.status === 'trialing' && data.organization.trialEndDate) {
+        const trialEnd = new Date(data.organization.trialEndDate);
+        const formatDate = trialEnd.toLocaleDateString('en-GB', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        nextBillingContent.innerHTML = `
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #27ae60; margin-bottom: 10px;">
+                    Free Trial
+                </div>
+                <div style="font-size: 1.1rem; margin-bottom: 5px;">
+                    Trial ends: ${formatDate}
+                </div>
+                <div style="color: #666; font-size: 0.9rem;">
+                    Then £${data.organization.licenseCount * 50}/month
+                </div>
+            </div>
+        `;
+    }
+
+    // Update billing history
+    const billingTable = document.querySelector('.invoice-table tbody');
+    if (billingTable) {
+        if (data.invoices && data.invoices.length > 0) {
+            billingTable.innerHTML = data.invoices.map(invoice => {
+                const invoiceDate = new Date(invoice.date).toLocaleDateString('en-GB');
+                const statusClass = invoice.status === 'paid' ? 'status-active' : 
+                                  invoice.status === 'open' ? 'status-trialing' : 'status-deactivated';
+                
+                return `
+                    <tr>
+                        <td>${invoiceDate}</td>
+                        <td>${invoice.description}</td>
+                        <td>£${invoice.amount.toFixed(2)}</td>
+                        <td><span class="status-badge ${statusClass}">${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span></td>
+                        <td>
+                            ${invoice.invoicePdf ? 
+                                `<a href="${invoice.invoicePdf}" target="_blank" class="action-btn" style="color: #3498db;">
+                                    <i class="fas fa-download"></i> Download
+                                </a>` : 
+                                '-'
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else if (data.organization.status === 'trialing') {
+            // Show trial started entry
+            const trialStart = new Date(data.organization.createdAt || Date.now());
+            billingTable.innerHTML = `
+                <tr>
+                    <td>${trialStart.toLocaleDateString('en-GB')}</td>
+                    <td>Free Trial Started - ${data.organization.licenseCount} licenses</td>
+                    <td>£0.00</td>
+                    <td><span class="status-badge status-active">Active</span></td>
+                    <td>-</td>
+                </tr>
+            `;
+        } else {
+            billingTable.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
+                        No billing history available
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // Store billing data globally for other functions
+    currentBillingData = data;
 }
 
 // Billing action functions (placeholders for now)
@@ -1358,8 +1474,44 @@ function updatePaymentMethod() {
     openBillingPortal();
 }
 
-function openBillingPortal() {
-    alert('Billing portal integration coming soon. Please contact support for billing changes.');
+async function openBillingPortal() {
+    if (!currentOrganization || !currentBillingData) {
+        alert('Unable to open billing portal. Please try again.');
+        return;
+    }
+
+    if (!currentBillingData.organization.stripeCustomerId && currentOrganization.stripeCustomerId) {
+        currentBillingData.organization.stripeCustomerId = currentOrganization.stripeCustomerId;
+    }
+
+    if (!currentBillingData.organization.stripeCustomerId) {
+        alert('No billing account found. Please contact support.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/create-billing-portal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customerId: currentBillingData.organization.stripeCustomerId || currentOrganization.stripeCustomerId,
+                userEmail: currentUser.email,
+                organizationId: currentOrganization.id,
+                returnUrl: window.location.href
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.url) {
+            window.open(data.url, '_blank');
+        } else {
+            alert('Failed to open billing portal: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Billing portal error:', error);
+        alert('Failed to open billing portal. Please try again.');
+    }
 }
 
 function pauseSubscription() {
