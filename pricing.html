@@ -160,12 +160,66 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* Pricing Display */
-        .pricing-summary {
+        /* Plan Selection */
+        .plan-selection {
             background: linear-gradient(145deg, #f8f9ff, #e8ecff);
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 3rem;
+        }
+
+        .plan-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .toggle-switch {
+            background: white;
+            border-radius: 25px;
+            padding: 4px;
+            display: flex;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .toggle-option {
+            padding: 12px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            position: relative;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .toggle-option.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .toggle-option:not(.active) {
+            color: #666;
+        }
+
+        .toggle-option:not(.active):hover {
+            color: #333;
+        }
+
+        .trial-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #27ae60;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        /* Pricing Display */
+        .pricing-summary {
             text-align: center;
         }
 
@@ -179,6 +233,27 @@
         .price-details {
             color: #666;
             margin-bottom: 1rem;
+        }
+
+        .trial-info {
+            background: #e8f5e8;
+            border: 2px solid #27ae60;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+            color: #27ae60;
+            font-weight: 500;
+            display: none;
+        }
+
+        .trial-info.show {
+            display: block;
+        }
+
+        .trial-info i {
+            margin-right: 8px;
+            font-size: 1.2rem;
         }
 
         .license-selector {
@@ -283,6 +358,13 @@
             margin-top: 0.5rem;
         }
 
+        .trial-summary {
+            background: #e8f5e8;
+            border: 1px solid #27ae60;
+            color: #27ae60;
+            font-weight: 500;
+        }
+
         /* Submit Button */
         .submit-btn {
             background: linear-gradient(45deg, #667eea, #764ba2);
@@ -307,6 +389,14 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .submit-btn.trial {
+            background: linear-gradient(45deg, #27ae60, #20c997);
+        }
+
+        .submit-btn.trial:hover {
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
         }
 
         /* Alert Messages */
@@ -542,6 +632,15 @@
                 gap: 1rem;
             }
 
+            .toggle-switch {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .toggle-option {
+                width: 100%;
+            }
+
             .footer-main {
                 grid-template-columns: 1fr;
                 gap: 2rem;
@@ -600,17 +699,36 @@
                 <!-- Alert Messages -->
                 <div id="alertMessage" class="alert"></div>
 
-                <!-- Pricing Summary -->
-                <div class="pricing-summary">
-                    <div class="price-display" id="totalPrice">£50</div>
-                    <div class="price-details">per month • No setup fees</div>
-                    
-                    <div class="license-selector">
-                        <label for="licenseCount">Number of users:</label>
-                        <div class="license-input">
-                            <button type="button" onclick="updateLicenses(-1)">-</button>
-                            <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
-                            <button type="button" onclick="updateLicenses(1)">+</button>
+                <!-- Plan Selection -->
+                <div class="plan-selection">
+                    <div class="plan-toggle">
+                        <div class="toggle-switch">
+                            <div class="toggle-option active" id="trialOption" onclick="selectPlan('trial')">
+                                <span>3-Day Free Trial</span>
+                                <div class="trial-badge">FREE</div>
+                            </div>
+                            <div class="toggle-option" id="monthlyOption" onclick="selectPlan('monthly')">
+                                Monthly Subscription
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pricing-summary">
+                        <div class="price-display" id="totalPrice">£0</div>
+                        <div class="price-details" id="priceDetails">3-day free trial • No credit card required</div>
+                        
+                        <div class="trial-info show" id="trialInfo">
+                            <i class="fas fa-gift"></i>
+                            <strong>3-Day Free Trial</strong> - Full access to all features. Cancel anytime before trial ends.
+                        </div>
+                        
+                        <div class="license-selector">
+                            <label for="licenseCount">Number of users:</label>
+                            <div class="license-input">
+                                <button type="button" onclick="updateLicenses(-1)">-</button>
+                                <input type="number" id="licenseCount" value="1" min="1" max="100" onchange="updatePrice()">
+                                <button type="button" onclick="updateLicenses(1)">+</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -644,39 +762,39 @@
                     </div>
 
                     <!-- Order Summary -->
-                    <div class="order-summary">
+                    <div class="order-summary" id="orderSummary">
                         <h3>Order Summary</h3>
                         <div class="summary-row">
                             <span>TIA Professional (<span id="summaryLicenses">1</span> user<span id="summaryPlural"></span>)</span>
-                            <span id="summaryPrice">£50.00</span>
+                            <span id="summaryPrice">Free Trial</span>
                         </div>
-                        <div class="summary-row">
+                        <div class="summary-row" id="vatRow" style="display: none;">
                             <span>VAT (20%)</span>
-                            <span id="summaryVAT">£10.00</span>
+                            <span id="summaryVAT">£0.00</span>
                         </div>
-                        <div class="summary-row summary-total">
-                            <span>Total Monthly</span>
-                            <span id="totalAfterTrial">£60.00</span>
+                        <div class="summary-row summary-total" id="summaryTotal">
+                            <span>Total</span>
+                            <span id="totalAfterTrial">Free for 3 days</span>
                         </div>
-                        <div style="font-size: 0.85rem; color: #666; margin-top: 10px;">
-                            Monthly billing • Cancel anytime • <span id="environmentNote">Powered by Stripe</span>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 10px;" id="billingNote">
+                            <span id="environmentNote">3-day free trial • No payment required</span>
                         </div>
                     </div>
 
                     <!-- Submit Button -->
-                    <button type="submit" class="submit-btn" id="submitBtn">
-                        <i class="fas fa-credit-card"></i> <span id="submitBtnText">Subscribe with Stripe</span>
+                    <button type="submit" class="submit-btn trial" id="submitBtn">
+                        <i class="fas fa-rocket"></i> <span id="submitBtnText">Start Free Trial</span>
                     </button>
 
                     <div class="loading" id="loadingSpinner">
                         <div class="spinner"></div>
-                        <p>Setting up your subscription...</p>
+                        <p>Setting up your trial...</p>
                     </div>
 
                     <div class="security-notice">
-                        <i class="fas fa-shield-alt"></i> <span id="securityText">Secure payment processing with Stripe</span>
+                        <i class="fas fa-shield-alt"></i> <span id="securityText">Secure signup • No payment required for trial</span>
                         <br>
-                        <i class="fas fa-clock"></i> No setup fees • Cancel anytime
+                        <i class="fas fa-clock"></i> Cancel anytime during trial • No commitment
                     </div>
                 </form>
 
@@ -685,17 +803,17 @@
                     <h3><i class="fas fa-cogs"></i> Demo Testing Controls</h3>
                     <p style="margin-bottom: 15px; color: #856404;">Test different subscription scenarios:</p>
                     <div class="test-buttons">
-                        <button class="test-btn success" onclick="simulateEvent('checkout.session.completed')">
-                            ✓ Simulate Successful Signup
+                        <button class="test-btn success" onclick="simulateEvent('trial.started')">
+                            ✓ Simulate Trial Started
                         </button>
-                        <button class="test-btn danger" onclick="simulateEvent('admin.simulate_cancellation')">
-                            ✗ Simulate Cancellation
+                        <button class="test-btn warning" onclick="simulateEvent('trial.ending_soon')">
+                            ⚠ Simulate Trial Ending Soon
                         </button>
-                        <button class="test-btn warning" onclick="simulateEvent('admin.simulate_payment_failure')">
-                            ⚠ Simulate Payment Failure
+                        <button class="test-btn success" onclick="simulateEvent('trial.converted')">
+                            ✓ Simulate Trial Converted
                         </button>
-                        <button class="test-btn success" onclick="simulateEvent('admin.simulate_reactivation')">
-                            ↻ Simulate Reactivation
+                        <button class="test-btn danger" onclick="simulateEvent('trial.expired')">
+                            ✗ Simulate Trial Expired
                         </button>
                     </div>
                     <p style="margin-top: 15px; font-size: 0.85rem; color: #856404;">
@@ -741,6 +859,7 @@
         const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
         
         let currentLicenses = 1;
+        let currentPlan = 'trial'; // Default to trial
         const pricePerLicense = 50;
         const vatRate = 0.20;
         let isDemoMode = false;
@@ -756,28 +875,56 @@
             isDemoMode = !isDemoMode;
             const banner = document.getElementById('environmentBanner');
             const environmentText = document.getElementById('environmentText');
-            const submitBtnText = document.getElementById('submitBtnText');
             const securityText = document.getElementById('securityText');
-            const environmentNote = document.getElementById('environmentNote');
             const adminControls = document.getElementById('adminControls');
             const toggleBtn = banner.querySelector('.toggle-btn');
 
             if (isDemoMode) {
                 banner.className = 'environment-toggle demo';
-                environmentText.innerHTML = '<i class="fas fa-flask"></i> Demo Mode Active - Test the complete payment flow with mock data';
-                submitBtnText.textContent = 'Get TIA (Demo)';
-                securityText.textContent = 'Secure demo payment processing';
-                environmentNote.textContent = 'Demo mode active';
+                environmentText.innerHTML = '<i class="fas fa-flask"></i> Demo Mode Active - Test the complete trial flow with mock data';
+                securityText.textContent = 'Secure demo trial signup';
                 adminControls.classList.add('show');
                 toggleBtn.textContent = 'Switch to Live Mode';
             } else {
                 banner.className = 'environment-toggle';
-                environmentText.innerHTML = '<i class="fas fa-credit-card"></i> Live Payment Processing - Real Stripe Integration';
-                submitBtnText.textContent = 'Subscribe with Stripe';
-                securityText.textContent = 'Secure payment processing with Stripe';
-                environmentNote.textContent = 'Powered by Stripe';
+                environmentText.innerHTML = '<i class="fas fa-credit-card"></i> Live Trial Processing - Real Stripe Integration';
+                securityText.textContent = 'Secure trial signup • No payment required for trial';
                 adminControls.classList.remove('show');
                 toggleBtn.textContent = 'Switch to Demo Mode';
+            }
+            
+            updateButtonText();
+        }
+
+        function selectPlan(plan) {
+            currentPlan = plan;
+            
+            // Update toggle buttons
+            document.getElementById('trialOption').classList.toggle('active', plan === 'trial');
+            document.getElementById('monthlyOption').classList.toggle('active', plan === 'monthly');
+            
+            updatePrice();
+            updateButtonText();
+        }
+
+        function updateButtonText() {
+            const submitBtn = document.getElementById('submitBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            
+            if (currentPlan === 'trial') {
+                submitBtn.className = 'submit-btn trial';
+                if (isDemoMode) {
+                    submitBtnText.textContent = 'Start Free Trial (Demo)';
+                } else {
+                    submitBtnText.textContent = 'Start Free Trial';
+                }
+            } else {
+                submitBtn.className = 'submit-btn';
+                if (isDemoMode) {
+                    submitBtnText.textContent = 'Subscribe with Stripe (Demo)';
+                } else {
+                    submitBtnText.textContent = 'Subscribe with Stripe';
+                }
             }
         }
 
@@ -798,12 +945,31 @@
             const vat = subtotal * vatRate;
             const total = subtotal + vat;
 
-            document.getElementById('totalPrice').textContent = `£${subtotal}`;
+            // Update license count displays
             document.getElementById('summaryLicenses').textContent = licenseCount;
             document.getElementById('summaryPlural').textContent = licenseCount > 1 ? 's' : '';
-            document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
-            document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
-            document.getElementById('totalAfterTrial').textContent = `£${total.toFixed(2)}`;
+
+            // Update pricing based on plan type
+            if (currentPlan === 'trial') {
+                document.getElementById('totalPrice').textContent = '£0';
+                document.getElementById('priceDetails').textContent = '3-day free trial • No credit card required';
+                document.getElementById('summaryPrice').textContent = 'Free Trial';
+                document.getElementById('vatRow').style.display = 'none';
+                document.getElementById('totalAfterTrial').textContent = 'Free for 3 days';
+                document.getElementById('trialInfo').classList.add('show');
+                document.getElementById('environmentNote').textContent = '3-day free trial • No payment required';
+                document.getElementById('orderSummary').className = 'order-summary trial-summary';
+            } else {
+                document.getElementById('totalPrice').textContent = `£${subtotal}`;
+                document.getElementById('priceDetails').textContent = 'per month • No setup fees';
+                document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
+                document.getElementById('summaryVAT').textContent = `£${vat.toFixed(2)}`;
+                document.getElementById('vatRow').style.display = 'flex';
+                document.getElementById('totalAfterTrial').textContent = `£${total.toFixed(2)}`;
+                document.getElementById('trialInfo').classList.remove('show');
+                document.getElementById('environmentNote').textContent = isDemoMode ? 'Demo mode active' : 'Powered by Stripe';
+                document.getElementById('orderSummary').className = 'order-summary';
+            }
         }
 
         function showAlert(message, type = 'success') {
@@ -835,37 +1001,67 @@
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 licenseCount: currentLicenses,
-                pricePerLicense: pricePerLicense
+                pricePerLicense: pricePerLicense,
+                planType: currentPlan // Add plan type to form data
             };
 
             try {
                 if (isDemoMode) {
-                    // Demo mode - use mock payment flow
+                    // Demo mode - use mock flow
                     localStorage.setItem('signup_data', JSON.stringify(formData));
-                    window.location.href = '/mock-payment.html?demo=1';
+                    if (currentPlan === 'trial') {
+                        // Simulate trial creation
+                        setTimeout(() => {
+                            window.location.href = '/app?trial=started&demo=1';
+                        }, 1500);
+                    } else {
+                        window.location.href = '/mock-payment.html?demo=1';
+                    }
                 } else {
-                    // Live mode - create Stripe checkout session
-                    const response = await fetch('/api/create-checkout-session', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(formData)
-                    });
-
-                    const result = await response.json();
-                    
-                    if (response.ok && result.sessionId) {
-                        // Redirect to Stripe Checkout
-                        const { error } = await stripe.redirectToCheckout({
-                            sessionId: result.sessionId
+                    // Live mode
+                    if (currentPlan === 'trial') {
+                        // Create trial subscription
+                        const response = await fetch('/api/create-trial-subscription', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
                         });
 
-                        if (error) {
-                            throw new Error(error.message);
+                        const result = await response.json();
+                        
+                        if (response.ok) {
+                            // Trial created successfully
+                            localStorage.setItem('signup_data', JSON.stringify(formData));
+                            window.location.href = '/app?trial=started';
+                        } else {
+                            throw new Error(result.message || 'Failed to create trial');
                         }
                     } else {
-                        throw new Error(result.message || 'Failed to create checkout session');
+                        // Create paid subscription checkout session
+                        const response = await fetch('/api/create-checkout-session', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
+                        });
+
+                        const result = await response.json();
+                        
+                        if (response.ok && result.sessionId) {
+                            // Redirect to Stripe Checkout
+                            const { error } = await stripe.redirectToCheckout({
+                                sessionId: result.sessionId
+                            });
+
+                            if (error) {
+                                throw new Error(error.message);
+                            }
+                        } else {
+                            throw new Error(result.message || 'Failed to create checkout session');
+                        }
                     }
                 }
 
@@ -930,9 +1126,16 @@
             showAlert(reason, 'error');
         } else if (urlParams.get('payment') === 'cancelled') {
             showAlert('Payment was cancelled. You can try again when ready.', 'error');
+        } else if (urlParams.get('trial') === 'started') {
+            showAlert('Your free trial has started! Welcome to TIA Professional.', 'success');
         }
 
-        // Initialize price display
+        // Initialize price display on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePrice();
+        });
+
+        // Initialize price display (fallback)
         updatePrice();
     </script>
 </body>

@@ -901,6 +901,53 @@ body.dark-mode .account-status-modal .contact-info {
       visibility: visible;
       transition: opacity 0.3s ease;
     }
+    .trial-banner {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+    color: white;
+    padding: 12px 20px;
+    text-align: center;
+    font-weight: 500;
+    position: relative;
+    z-index: 1001;
+    display: none;
+}
+
+.trial-banner.show {
+    display: block;
+}
+
+.trial-banner .days-left {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.trial-banner .upgrade-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    margin-left: 15px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.trial-banner .upgrade-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.trial-ending-banner {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+}
+
+.trial-converted-banner {
+    background: linear-gradient(45deg, #27ae60, #20c997);
+}
+
 
     .error-modal {
       background: var(--content-bg-color);
@@ -1356,10 +1403,11 @@ function hideSubscriptionOverlay() {
 async function checkUserStatus(account) {
     if (!account) {
         console.warn("checkUserStatus called without an account.");
-return { userExists: false, accessGranted: false, error: "Not logged in." };    }
+        return { userExists: false, accessGranted: false, error: "Not logged in." };
+    }
 
     try {
-        const response = await fetch('/api/check-subscription', {  // <-- Changed this line
+        const response = await fetch('/api/check-subscription', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1376,10 +1424,15 @@ return { userExists: false, accessGranted: false, error: "Not logged in." };    
         const data = await response.json();
         console.log('User status check result:', data);
         
-        // Map the API response to the expected format
+        // Store trial data if present
+        if (data.trial) {
+            trialData = data.trial;
+        }
+        
         return {
-            userExists: true,
+            userExists: data.userExists || true,
             accessGranted: data.active,
+            isTrialing: data.isTrialing || false,
             ...data
         };
 
@@ -1399,12 +1452,14 @@ async function verifyUserAndInitialize(account) {
     if (loadingOverlay) loadingOverlay.classList.add('visible');
 
     const result = await checkUserStatus(account);
-    userData = result; // Store user details globally
+    userData = result;
     
     // Set subscriptionData for compatibility with existing code
     subscriptionData = {
         active: result.accessGranted,
         userExists: result.userExists,
+        isTrialing: result.isTrialing,
+        trial: result.trial,
         ...result
     };
 
@@ -1417,11 +1472,20 @@ async function verifyUserAndInitialize(account) {
             hideSubscriptionOverlay();
             updateAuthUI();
             initializeChat();
+            
+            // Show trial welcome message if this is a new trial
+            if (result.isTrialing && window.location.search.includes('trial=started')) {
+                showTrialWelcomeMessage();
+            }
         } else {
             console.log("User exists but access denied:", result.message);
             
             let message = result.message;
-            if (result.user?.status === 'deactivated') {
+            if (result.organization?.status === 'trial_expired') {
+                message = `Your free trial has expired. Please subscribe to continue using TIA Professional.`;
+                showTrialExpiredOverlay();
+                return;
+            } else if (result.user?.status === 'deactivated') {
                 message = `Your account has been deactivated. Please contact your administrator at hello@fdintelligence.co.uk to reactivate your account.`;
             } else if (result.organization?.status !== 'active' && result.organization?.status !== 'trialing') {
                 message = `Your organization's subscription is not active. Please contact your administrator at hello@fdintelligence.co.uk to resolve this issue.`;
@@ -1436,7 +1500,80 @@ async function verifyUserAndInitialize(account) {
         updateAuthUI();
     }
 }
-
+function showTrialWelcomeMessage() {
+    setTimeout(() => {
+        if (window.directLine && window.directLine.connectionStatus$.value === 2) {
+            window.directLine.postActivity({
+                type: "message",
+                from: { id: "system", name: "TIA System", role: "bot" },
+                text: `🎉 Welcome to your TIA Professional trial! You have full access to all features for the next 3 days. Ask me anything about tax - I'm here to help make your work easier!`,
+                timestamp: new Date().toISOString()
+            }).subscribe(
+                id => console.log("Trial welcome message sent"),
+                error => console.error("Error sending trial welcome message:", error)
+            );
+        }
+    }, 2000);
+}
+function showTrialExpiredOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'subscription-overlay visible';
+    overlay.innerHTML = `
+        <div class="subscription-modal">
+            <h2>Your Trial Has Expired</h2>
+            <div style="font-size: 1.2rem; margin: 20px 0; color: #666;">
+                Your 3-day free trial of TIA Professional has ended.
+            </div>
+            <p style="margin-bottom: 30px; color: #666;">
+                Continue enjoying TIA's powerful tax assistance by subscribing today.
+            </p>
+            <a href="/pricing" class="modal-button primary" style="text-decoration: none;">
+                <i class="fas fa-credit-card"></i> Subscribe Now
+            </a>
+            <button class="modal-button secondary" onclick="signOut()">
+                <i class="fas fa-sign-out-alt"></i> Sign Out
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Disable chat container
+    const container = document.getElementById('chat-container');
+    if (container) container.classList.add('disabled');
+}
+function handleTrialUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('trial') === 'started') {
+        // Clean up URL
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+        // Show success message
+        setTimeout(() => {
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #27ae60;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 9999;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                font-weight: 500;
+            `;
+            message.innerHTML = '<i class="fas fa-check-circle"></i> Your 3-day free trial has started!';
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 5000);
+        }, 1000);
+    }
+}
     function goToDashboard() {
     window.open('/dashboard', '_blank');
 }
@@ -1462,6 +1599,63 @@ let subscriptionData = null;
 const msalConfig = { auth: { clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2", authority: "https://login.microsoftonline.com/common", redirectUri: window.location.origin + window.location.pathname, }, cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false, } };
 let msalInstance; try { msalInstance = new msal.PublicClientApplication(msalConfig); } catch (e) { alert("Critical error initializing authentication library. Please refresh the page or contact support."); throw new Error("MSAL Initialization Failed"); }
 function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
+function updateTrialBanner() {
+    let existingBanner = document.getElementById('trial-banner');
+    
+    // Remove existing banner
+    if (existingBanner) {
+        existingBanner.remove();
+    }
+    
+    // Don't show banner if not trialing or no trial data
+    if (!subscriptionData?.isTrialing || !subscriptionData?.trial) {
+        return;
+    }
+    
+    const trial = subscriptionData.trial;
+    
+    // Create new banner
+    const banner = document.createElement('div');
+    banner.id = 'trial-banner';
+    banner.className = 'trial-banner show';
+    
+    let bannerClass = 'trial-banner';
+    let message = '';
+    let upgradeButton = '';
+    
+    if (trial.daysLeft > 1) {
+        message = `<span class="days-left">${trial.daysLeft} days left</span> in your free trial`;
+        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Now</a>';
+    } else if (trial.daysLeft === 1) {
+        bannerClass += ' trial-ending-banner';
+        message = `<span class="days-left">Final day</span> of your free trial`;
+        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Today</a>';
+    } else if (trial.hoursLeft > 0) {
+        bannerClass += ' trial-ending-banner';
+        message = `<span class="days-left">${trial.hoursLeft} hours left</span> in your trial`;
+        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Now</a>';
+    } else {
+        bannerClass += ' trial-ending-banner';
+        message = `Your trial ends very soon`;
+        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Now</a>';
+    }
+    
+    banner.className = bannerClass + ' show';
+    banner.innerHTML = `
+        <i class="fas fa-clock"></i> ${message} - Enjoy full access to TIA Professional
+        ${upgradeButton}
+    `;
+    
+    // Insert banner at the top of the page
+    document.body.insertBefore(banner, document.body.firstChild);
+    
+    // Adjust main content padding to account for banner
+    const chatContainer = document.getElementById('chat-container');
+    if (chatContainer) {
+        chatContainer.style.paddingTop = '60px'; // Adjust based on banner height
+    }
+}
+
 function updateAuthUI() {
     const authBtn = document.getElementById("authBtn");
     const userStatus = document.getElementById("user-status");
@@ -1481,8 +1675,26 @@ function updateAuthUI() {
         
         if (subscriptionData && subscriptionData.active) {
             const companyInfo = subscriptionData.companyName || (account.name ? account.name.split(" ")[0] : "User");
-            const licenseInfo = subscriptionData.usedLicenses && subscriptionData.totalLicenses ? ` (${subscriptionData.usedLicenses}/${subscriptionData.totalLicenses} users)` : '';
-            userStatus.innerHTML = `${companyInfo}${licenseInfo}<br><small>${account.username}</small>`;
+            let licenseInfo = '';
+            let statusInfo = '';
+            
+            if (subscriptionData.usedLicenses && subscriptionData.totalLicenses) {
+                licenseInfo = ` (${subscriptionData.usedLicenses}/${subscriptionData.totalLicenses} users)`;
+            }
+            
+            // Add trial status if applicable
+            if (subscriptionData.isTrialing && subscriptionData.trial) {
+                const trial = subscriptionData.trial;
+                if (trial.daysLeft > 0) {
+                    statusInfo = `<br><small style="color: #ff6b6b;">Trial: ${trial.daysLeft} day${trial.daysLeft !== 1 ? 's' : ''} left</small>`;
+                } else if (trial.hoursLeft > 0) {
+                    statusInfo = `<br><small style="color: #e74c3c;">Trial: ${trial.hoursLeft} hour${trial.hoursLeft !== 1 ? 's' : ''} left</small>`;
+                } else {
+                    statusInfo = `<br><small style="color: #e74c3c;">Trial ending soon</small>`;
+                }
+            }
+            
+            userStatus.innerHTML = `${companyInfo}${licenseInfo}${statusInfo}<br><small>${account.username}</small>`;
         } else {
              userStatus.innerHTML = `${account.name || account.username}<br><small>No active subscription</small>`;
         }
@@ -1491,6 +1703,9 @@ function updateAuthUI() {
         userStatus.textContent = "User not signed in";
         dashboardBtn.style.display = "none";
     }
+    
+    // Update trial banner
+    updateTrialBanner();
 }
 function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
 async function signIn() { const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; try { await msalInstance.loginRedirect(loginRequest); } catch (error) { alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); } }
@@ -1729,7 +1944,7 @@ window.confirmDelete = confirmDelete;
 
 window.onload = async () => {
     console.log("Window onload started.");
-    
+    handleTrialUrlParams();
     // Setup theme
     const preferredTheme = localStorage.getItem('theme');
     setDarkMode(preferredTheme === 'dark');

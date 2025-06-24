@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful - Welcome to TIA | FD Intelligence</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>TIA - Complete Your Subscription | FD Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -13,11 +14,10 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
+            font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 20px;
         }
 
         /* Header */
@@ -28,6 +28,7 @@
             position: fixed;
             width: 100%;
             top: 0;
+            left: 0;
             z-index: 1000;
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
             height: 100px;
@@ -72,181 +73,263 @@
             text-decoration: none;
         }
 
+        .back-btn {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .back-btn:hover {
+            color: #764ba2;
+        }
+
         /* Main Content */
         .main-content {
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 120px 20px 20px 20px;
+            padding-top: 120px;
+            padding-bottom: 100px;
         }
 
-        .success-container {
+        .payment-container {
             background: white;
-            border-radius: 20px;
-            padding: 3rem;
-            max-width: 600px;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 700px; /* Increased from 500px */
             width: 100%;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
-        .success-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(45deg, #28a745, #20c997);
-            border-radius: 50%;
+        .mock-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff6b6b;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transform: rotate(15deg);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-logos {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin: 0 auto 2rem auto;
-            animation: bounce 1s ease-in-out;
+            gap: 20px;
+            margin-bottom: 10px;
         }
 
-        .success-icon i {
-            font-size: 2.5rem;
-            color: white;
+        .logo-section .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateY(0);
-            }
-            40% {
-                transform: translateY(-10px);
-            }
-            60% {
-                transform: translateY(-5px);
-            }
+        .logo-section .logo-container img {
+            height: 40px;
+            filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.3));
         }
 
-        .success-title {
-            font-size: 2.5rem;
-            color: #333;
-            margin-bottom: 1rem;
+        .logo-section .logo-container span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
         }
 
-        .success-subtitle {
-            font-size: 1.2rem;
+        .logo-section h1 {
+            color: #005a9e;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .logo-section p {
             color: #666;
-            margin-bottom: 2rem;
+            font-size: 0.9rem;
         }
 
-        .subscription-details {
+        .order-summary {
             background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            text-align: left;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
         }
 
-        .detail-row {
+        .order-summary h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .summary-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
-            padding: 0.5rem 0;
+            margin-bottom: 10px;
+            padding: 5px 0;
         }
 
-        .detail-row:last-child {
-            margin-bottom: 0;
-            border-top: 1px solid #e0e0e0;
-            padding-top: 1rem;
-            margin-top: 1rem;
-            font-weight: bold;
-        }
-
-        .next-steps {
-            background: linear-gradient(145deg, #e8f4f8, #d4f4f8);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            text-align: left;
-        }
-
-        .next-steps h3 {
-            color: #0066cc;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .next-steps ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .next-steps li {
-            padding: 0.5rem 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .next-steps li i {
-            color: #28a745;
-            width: 20px;
-        }
-
-        .action-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-
-        .btn {
-            padding: 15px 25px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
+        .summary-total {
+            border-top: 2px solid #e0e0e0;
+            padding-top: 10px;
+            margin-top: 10px;
             font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: transform 0.3s, box-shadow 0.3s;
+            font-size: 1.1rem;
         }
 
-        .btn-primary {
+        .payment-form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"], input[type="email"] {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            font-family: 'Poppins', sans-serif;
+            width: 100%;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #005a9e;
+            box-shadow: 0 0 0 3px rgba(0, 90, 158, 0.1);
+        }
+
+        .card-input {
+            position: relative;
+        }
+
+        .card-icons {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 5px;
+        }
+
+        .card-icons i {
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        .test-cards {
+            background: #e8f4f8;
+            border: 1px solid #b3e0f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .test-cards h4 {
+            color: #0066cc;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .test-cards p {
+            font-size: 0.8rem;
+            color: #0066cc;
+            margin-bottom: 8px;
+        }
+
+        .test-cards .card-option {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            padding: 4px 0;
+            border-bottom: 1px solid #b3e0f0;
+            margin-bottom: 4px;
+        }
+
+        .test-cards .card-option:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .security-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #f0f8f0;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-size: 0.85rem;
+            color: #2d5016;
+        }
+
+        .security-info i {
+            color: #4CAF50;
+            font-size: 1.2rem;
+        }
+
+        .submit-btn {
             background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
         }
 
-        .btn-secondary {
-            background: #f8f9fa;
-            color: #333;
-            border: 2px solid #e0e0e0;
-        }
-
-        .btn:hover {
+        .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
 
-        .support-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-top: 2rem;
-        }
-
-        .support-info h4 {
-            color: #856404;
-            margin-bottom: 0.5rem;
-        }
-
-        .support-info p {
-            color: #856404;
-            margin: 0;
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .loading {
             display: none;
-            margin: 1rem 0;
+            text-align: center;
+            margin: 20px 0;
         }
 
         .spinner {
@@ -264,12 +347,18 @@
             100% { transform: rotate(360deg); }
         }
 
+        .powered-by {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
         /* Enhanced Footer */
         footer {
             background: #050547;
             color: white;
             padding: 3rem 0 2rem 0;
-            margin-top: 2rem;
         }
 
         .footer-content {
@@ -368,14 +457,24 @@
             text-decoration: underline;
         }
 
-        @media (max-width: 768px) {
-            .success-container {
-                padding: 2rem 1.5rem;
+        @media (max-width: 600px) {
+            .payment-container {
+                padding: 30px 20px;
                 margin: 10px;
+                max-width: 95%;
             }
 
-            .action-buttons {
+            .form-row {
                 grid-template-columns: 1fr;
+            }
+
+            .test-cards {
+                font-size: 0.8rem;
+            }
+
+            .header-logos {
+                flex-direction: column;
+                gap: 10px;
             }
 
             .footer-main {
@@ -409,69 +508,118 @@
                     </a>
                 </div>
             </div>
+            <a href="/pricing" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Back to pricing
+            </a>
         </nav>
     </header>
 
     <div class="main-content">
-        <div class="success-container">
-            <div class="success-icon">
-                <i class="fas fa-check"></i>
+        <div class="payment-container">
+            <div class="mock-badge">DEMO</div>
+            
+            <div class="logo-section">
+                <div class="header-logos">
+                    
+
+                </div>
+                <h1></i> TIA - Professional Edition</h1>
+                <p>Complete your subscription</p>
             </div>
 
-            <h1 class="success-title">Welcome to TIA!</h1>
-            <p class="success-subtitle">Your subscription is now active and ready to use</p>
-
-            <div class="loading" id="loadingDetails">
-                <div class="spinner"></div>
-                <p>Loading subscription details...</p>
-            </div>
-
-            <div class="subscription-details" id="subscriptionDetails" style="display: none;">
-                <h3>Subscription Details</h3>
-                <div class="detail-row">
-                    <span>Plan:</span>
-                    <span id="planName">TIA Professional</span>
+            <div class="order-summary">
+                <h3>Order Summary</h3>
+                <div class="summary-row">
+                    <span>TIA Professional (5 users)</span>
+                    <span>£250.00</span>
                 </div>
-                <div class="detail-row">
-                    <span>Users:</span>
-                    <span id="userCount">Loading...</span>
+                <div class="summary-row">
+                    <span>VAT (20%)</span>
+                    <span>£50.00</span>
                 </div>
-                <div class="detail-row">
-                    <span>Billing:</span>
-                    <span>Monthly</span>
+                <div class="summary-row summary-total">
+                    <span>Total Monthly</span>
+                    <span>£300.00</span>
                 </div>
-                <div class="detail-row">
-                    <span>Status:</span>
-                    <span style="color: #28a745; font-weight: bold;">✓ Active</span>
-                </div>
-                <div class="detail-row">
-                    <span>Total:</span>
-                    <span id="totalAmount">Loading...</span>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 10px;">
+                    Demo mode - No actual charges will be made.
                 </div>
             </div>
 
-            <div class="next-steps">
-                <h3><i class="fas fa-rocket"></i> Getting Started</h3>
-                <ul>
-                    <li><i class="fas fa-check"></i> Your account has been created and is ready to use</li>
-                    <li><i class="fas fa-check"></i> You can start asking tax questions immediately</li>
-                    <li><i class="fas fa-check"></i> Invite team members from your organization</li>
-                    <li><i class="fas fa-check"></i> Access your billing portal anytime to manage your subscription</li>
-                </ul>
-            </div>
+            <form class="payment-form" id="paymentForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="your@company.com">
+                </div>
 
-            <div class="action-buttons">
-                <a href="/app" class="btn btn-primary" id="appBtn">
-                    <i class="fas fa-play"></i> Start Using TIA
-                </a>
-                <a href="mailto:hello@fdintelligence.co.uk" class="btn btn-secondary">
-                    <i class="fas fa-envelope"></i> Contact Support
-                </a>
-            </div>
+                <div class="form-group">
+                    <label for="cardNumber">Card Number</label>
+                    <div class="card-input">
+                        <input type="text" id="cardNumber" name="cardNumber" required placeholder="1234 5678 9012 3456" maxlength="19">
+                        <div class="card-icons">
+                            <i class="fab fa-cc-visa"></i>
+                            <i class="fab fa-cc-mastercard"></i>
+                            <i class="fab fa-cc-amex"></i>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="support-info">
-                <h4><i class="fas fa-headset"></i> Need Help?</h4>
-                <p>Our team is here to help you get the most out of TIA. Reach out at <strong>hello@fdintelligence.co.uk</strong> or through the chat support in the app.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="expiry">Expiry Date</label>
+                        <input type="text" id="expiry" name="expiry" required placeholder="MM/YY" maxlength="5">
+                    </div>
+                    <div class="form-group">
+                        <label for="cvc">CVC</label>
+                        <input type="text" id="cvc" name="cvc" required placeholder="123" maxlength="4">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cardName">Cardholder Name</label>
+                    <input type="text" id="cardName" name="cardName" required placeholder="John Smith">
+                </div>
+
+                <div class="test-cards">
+                    <h4><i class="fas fa-flask"></i> Test Card Numbers (Demo Mode)</h4>
+                    <p>Use these test cards to simulate different payment scenarios:</p>
+                    <div class="card-option">
+                        <span><strong>4242 4242 4242 4242</strong></span>
+                        <span style="color: #4CAF50;">✓ Success</span>
+                    </div>
+                    <div class="card-option">
+                        <span><strong>4000 0000 0000 0002</strong></span>
+                        <span style="color: #f44336;">✗ Declined</span>
+                    </div>
+                    <div class="card-option">
+                        <span><strong>4000 0000 0000 9995</strong></span>
+                        <span style="color: #ff9800;">⚠ Insufficient Funds</span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 0.7rem; color: #0066cc;">
+                        Any future expiry date and any 3-digit CVC will work with test cards.
+                    </div>
+                </div>
+
+                <div class="security-info">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <strong>Secure payment processing</strong><br>
+                        Your payment information is encrypted and secure. This is a demo environment.
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <i class="fas fa-credit-card"></i> Complete TIA Subscription
+                </button>
+
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <p>Processing your payment...</p>
+                </div>
+            </form>
+
+            <div class="powered-by">
+                <i class="fas fa-lock"></i> Secured by Stripe (Demo)
             </div>
         </div>
     </div>
@@ -506,55 +654,165 @@
         </div>
     </footer>
 
-    <script src="https://js.stripe.com/v3/"></script>
     <script>
-        // Initialize Stripe
-        const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
-
-        async function loadSubscriptionDetails() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionId = urlParams.get('session_id');
-
-            if (!sessionId) {
-                // No session ID, show default success message
-                showDefaultSuccess();
-                return;
+        // Format card number input
+        document.getElementById('cardNumber').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            if (formattedValue !== e.target.value) {
+                e.target.value = formattedValue;
             }
+        });
 
+        // Format expiry date input
+        document.getElementById('expiry').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0,2) + '/' + value.substring(2,4);
+            }
+            e.target.value = value;
+        });
+
+        // Only allow numbers in CVC
+        document.getElementById('cvc').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+
+        // Handle form submission
+        document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const email = document.getElementById('email').value;
+    
+    // Get stored signup data
+    const signupData = localStorage.getItem('signup_data');
+    let formData = {};
+    
+    if (signupData) {
+        try {
+            formData = JSON.parse(signupData);
+        } catch (error) {
+            console.error('Error parsing signup data:', error);
+        }
+    }
+    
+    // Disable form
+    submitBtn.disabled = true;
+    submitBtn.style.display = 'none';
+    loadingIndicator.style.display = 'block';
+    
+    // Simulate payment processing delay
+    setTimeout(async () => {
+        // Determine outcome based on card number
+        let outcome = 'success';
+        let message = 'Payment successful!';
+        
+        if (cardNumber === '4000000000000002') {
+            outcome = 'declined';
+            message = 'Your card was declined. Please try a different payment method.';
+        } else if (cardNumber === '4000000000009995') {
+            outcome = 'insufficient_funds';
+            message = 'Insufficient funds. Please check your account balance.';
+        } else if (cardNumber.startsWith('4242')) {
+            outcome = 'success';
+            message = 'Payment successful! Welcome to TIA Professional.';
+        }
+        
+        // Store result
+        localStorage.setItem('mock_payment_result', JSON.stringify({
+            outcome: outcome,
+            message: message,
+            email: email,
+            timestamp: new Date().toISOString()
+        }));
+        
+        if (outcome === 'success') {
             try {
-                // In a real implementation, you would fetch session details from your backend
-                // For now, we'll show a generic success message
-                setTimeout(() => {
-                    document.getElementById('loadingDetails').style.display = 'none';
-                    document.getElementById('subscriptionDetails').style.display = 'block';
-                    document.getElementById('userCount').textContent = '1+ users';
-                    document.getElementById('totalAmount').textContent = '£60.00/month (inc. VAT)';
-                }, 1500);
+                // Call webhook with complete form data
+                console.log('Creating subscription records for:', email);
+                
+                const webhookPayload = {
+                    event_type: 'checkout.session.completed',
+                    email: email,
+                    timestamp: new Date().toISOString(),
+                    // Include form data from signup
+                    user_data: {
+                        firstName: formData.firstName || email.split('@')[0],
+                        lastName: formData.lastName || 'User',
+                        companyName: formData.companyName,
+                        phone: formData.phone,
+                        licenseCount: formData.licenseCount || 1
+                    }
+                };
+                
+                const webhookResponse = await fetch('/api/mock-stripe-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(webhookPayload)
+                });
 
+                const webhookResult = await webhookResponse.json();
+                
+                if (webhookResponse.ok) {
+                    console.log('Subscription created successfully:', webhookResult);
+                    // Success - redirect to app
+                    window.location.href = '/app?payment=success';
+                } else {
+                    console.error('Webhook failed:', webhookResult);
+                    // Webhook failed, but show success to user (they can try again)
+                    window.location.href = '/app?payment=success&webhook_error=1';
+                }
+                
             } catch (error) {
-                console.error('Error loading subscription details:', error);
-                showDefaultSuccess();
+                console.error('Error calling webhook:', error);
+                // Network error, but show success to user
+                window.location.href = '/app?payment=success&webhook_error=1';
             }
+        } else {
+            // Payment failed - redirect to pricing with error
+            window.location.href = '/pricing?payment=failed&reason=' + encodeURIComponent(message);
         }
+    }, 2000);
+});
 
-        function showDefaultSuccess() {
-            document.getElementById('loadingDetails').style.display = 'none';
-            document.getElementById('subscriptionDetails').style.display = 'block';
-            document.getElementById('userCount').textContent = '1+ users';
-            document.getElementById('totalAmount').textContent = '£60.00/month (inc. VAT)';
-        }
-
-        // Auto-redirect to app after a delay
-        setTimeout(() => {
-            const appBtn = document.getElementById('appBtn');
-            if (appBtn) {
-                appBtn.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-                appBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch TIA Now';
+        // Auto-populate email and demo data on page load
+        window.addEventListener('load', function() {
+            // First, try to get signup data from localStorage
+            const signupData = localStorage.getItem('signup_data');
+            let emailFromSignup = null;
+            
+            if (signupData) {
+                try {
+                    const data = JSON.parse(signupData);
+                    if (data.email) {
+                        emailFromSignup = data.email;
+                        document.getElementById('email').value = data.email;
+                        console.log('Email populated from signup:', data.email);
+                    }
+                } catch (error) {
+                    console.error('Error parsing signup data:', error);
+                }
             }
-        }, 3000);
 
-        // Load subscription details on page load
-        window.addEventListener('load', loadSubscriptionDetails);
-    </script>
+            // Auto-fill demo data if demo=1 in URL
+            setTimeout(() => {
+                if (window.location.search.includes('demo=1')) {
+                    // Only override email if we didn't get one from signup
+                    if (!emailFromSignup) {
+                        document.getElementById('email').value = 'demo@company.com';
+                    }
+                    document.getElementById('cardNumber').value = '4242 4242 4242 4242';
+                    document.getElementById('expiry').value = '12/28';
+                    document.getElementById('cvc').value = '123';
+                    document.getElementById('cardName').value = 'Demo User';
+                }
+            }, 500);
+        });
+</script>
 </body>
 </html>

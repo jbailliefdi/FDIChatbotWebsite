@@ -1,83 +1,49 @@
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
+// organizations/index.js - Simple function to list organizations
 
-const client = jwksClient({
-    jwksUri: 'https://login.microsoftonline.com/common/discovery/v2.0/keys',
-    cache: true,
-    rateLimit: true
-});
+const { CosmosClient } = require('@azure/cosmos');
 
-function getKey(header, callback) {
-    client.getSigningKey(header.kid, (err, key) => {
-        if (err) {
-            callback(err);
-            return;
+// Initialize Cosmos DB client
+const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+const database = cosmosClient.database('fdi-chatbot');
+const organizationsContainer = database.container('organizations');
+
+module.exports = async function (context, req) {
+    context.log('Organizations API request received');
+
+    // Enable CORS
+    context.res = {
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
         }
-        const signingKey = key.publicKey || key.rsaPublicKey;
-        callback(null, signingKey);
-    });
-}
+    };
 
-async function validateToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('No valid authorization header');
+    if (req.method === 'OPTIONS') {
+        context.res.status = 200;
+        return;
     }
-    
-    const token = authHeader.substring(7);
-    
-    return new Promise((resolve, reject) => {
-        jwt.verify(token, getKey, {
-            audience: process.env.MSAL_CLIENT_ID || '2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2',
-            issuer: [
-                'https://login.microsoftonline.com/common/v2.0',
-                'https://sts.windows.net/common/',
-                'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0'
-            ],
-            algorithms: ['RS256']
-        }, (err, decoded) => {
-            if (err) {
-                console.error('Token validation error:', err);
-                reject(new Error('Invalid token'));
-            } else {
-                resolve(decoded);
-            }
-        });
-    });
-}
 
-async function validateAdminAccess(authHeader, organizationId, usersContainer) {
+    if (req.method !== 'GET') {
+        context.res.status = 405;
+        context.res.body = { error: 'Method not allowed' };
+        return;
+    }
+
     try {
-        // Validate token and get user email
-        const decoded = await validateToken(authHeader);
-        const userEmail = decoded.preferred_username || decoded.email || decoded.unique_name;
-        
-        if (!userEmail) {
-            throw new Error('No email found in token');
-        }
-        
-        // Verify user is admin for this organization
-        const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
-            parameters: [
-                { name: "@email", value: userEmail.toLowerCase() },
-                { name: "@orgId", value: organizationId }
-            ]
+        const orgQuery = {
+            query: "SELECT c.id, c.name, c.adminEmail, c.licenseCount, c.status, c.createdAt FROM c ORDER BY c.createdAt DESC"
         };
         
-        const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
         
-        if (users.length === 0) {
-            throw new Error('Access denied. Admin privileges required for this organization.');
-        }
+        context.res.status = 200;
+        context.res.body = { organizations };
         
-        return {
-            user: users[0],
-            email: userEmail
-        };
-        
+        context.log('Organizations listed:', organizations.length);
     } catch (error) {
-        throw error;
+        context.log.error('Error listing organizations:', error);
+        context.res.status = 500;
+        context.res.body = { error: error.message || 'Internal server error' };
     }
-}
-
-module.exports = { validateToken, validateAdminAccess };
+};

@@ -1,4 +1,4 @@
-// Enhanced api/check-subscription/index.js with grace period support
+// Enhanced api/check-subscription/index.js with trial support
 const { CosmosClient } = require('@azure/cosmos');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
@@ -34,30 +34,30 @@ module.exports = async function (context, req) {
 
         if (users.length === 0) {
             // Fallback for development - allow test email
-            // Fallback for development - allow test email
-const testEmails = ['j.baillie@fdintelligence.co.uk'];
-if (testEmails.includes(email.toLowerCase())) {
-    context.res = {
-        status: 200,
-        body: {
-            active: true,
-            companyName: "FD Intelligence (Test)",
-            usedLicenses: 1,
-            totalLicenses: 5,
-            userRole: "admin",
-            organizationId: "6afe153b-6d75-417b-9602-d747c613a73d", // ADD THIS LINE
-            message: "Test account",
-            subscriptionStatus: "active"
-        }
-    };
-    return;
-}
+            const testEmails = ['j.baillie@fdintelligence.co.uk'];
+            if (testEmails.includes(email.toLowerCase())) {
+                context.res = {
+                    status: 200,
+                    body: {
+                        active: true,
+                        companyName: "FD Intelligence (Test)",
+                        usedLicenses: 1,
+                        totalLicenses: 5,
+                        userRole: "admin",
+                        organizationId: "6afe153b-6d75-417b-9602-d747c613a73d",
+                        message: "Test account",
+                        subscriptionStatus: "active"
+                    }
+                };
+                return;
+            }
 
             context.log('User not found in database');
             context.res = {
                 status: 200,
                 body: {
                     active: false,
+                    userExists: false,
                     message: "No active subscription found"
                 }
             };
@@ -80,6 +80,7 @@ if (testEmails.includes(email.toLowerCase())) {
                 status: 200,
                 body: {
                     active: false,
+                    userExists: true,
                     message: "Organization not found"
                 }
             };
@@ -89,11 +90,34 @@ if (testEmails.includes(email.toLowerCase())) {
         const organization = organizations[0];
         const now = new Date();
 
-        // Determine subscription status with grace period logic
+        // Calculate trial information if applicable
+        let trialInfo = null;
+        if (organization.isTrial && organization.trialEnd) {
+            const trialEndDate = new Date(organization.trialEnd);
+            const trialStartDate = organization.trialStart ? new Date(organization.trialStart) : new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+            
+            const timeRemaining = trialEndDate - now;
+            const daysLeft = Math.max(0, Math.ceil(timeRemaining / (1000 * 60 * 60 * 24)));
+            const hoursLeft = Math.max(0, Math.ceil(timeRemaining / (1000 * 60 * 60)));
+            
+            trialInfo = {
+                isActive: timeRemaining > 0,
+                isExpired: timeRemaining <= 0,
+                isEndingSoon: daysLeft <= 1 && timeRemaining > 0,
+                daysLeft,
+                hoursLeft,
+                trialEndDate: trialEndDate.toISOString(),
+                trialStarted: trialStartDate.toISOString(),
+                timeRemaining: Math.max(0, timeRemaining)
+            };
+        }
+
+        // Determine subscription status with enhanced trial logic
         let hasAccess = false;
         let accessReason = "";
         let warningMessage = "";
         let isGracePeriod = false;
+        let isTrialing = false;
 
         // Check different subscription states
         if (organization.status === 'active') {
@@ -101,16 +125,35 @@ if (testEmails.includes(email.toLowerCase())) {
             accessReason = "Active subscription";
         } 
         else if (organization.status === 'trialing') {
-            // Check if trial has expired
-            if (organization.trialEnd && new Date(organization.trialEnd) > now) {
+            isTrialing = true;
+            if (trialInfo && trialInfo.isActive) {
                 hasAccess = true;
                 accessReason = "Trial period";
-                const daysLeft = Math.ceil((new Date(organization.trialEnd) - now) / (1000 * 60 * 60 * 24));
-                warningMessage = `Trial expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
+                if (trialInfo.isEndingSoon) {
+                    warningMessage = `Trial expires in ${trialInfo.hoursLeft} hour${trialInfo.hoursLeft !== 1 ? 's' : ''}`;
+                } else {
+                    warningMessage = `Trial expires in ${trialInfo.daysLeft} day${trialInfo.daysLeft !== 1 ? 's' : ''}`;
+                }
             } else {
                 hasAccess = false;
                 accessReason = "Trial expired";
             }
+        }
+        else if (organization.status === 'trial_ending') {
+            isTrialing = true;
+            if (trialInfo && trialInfo.isActive) {
+                hasAccess = true;
+                accessReason = "Trial ending soon";
+                warningMessage = `Trial expires in ${trialInfo.hoursLeft} hour${trialInfo.hoursLeft !== 1 ? 's' : ''}`;
+            } else {
+                hasAccess = false;
+                accessReason = "Trial expired";
+            }
+        }
+        else if (organization.status === 'trial_expired') {
+            hasAccess = false;
+            accessReason = "Trial expired";
+            isTrialing = false;
         }
         else if (organization.status === 'past_due') {
             // Check grace period
@@ -153,33 +196,78 @@ if (testEmails.includes(email.toLowerCase())) {
         }
 
         if (hasAccess) {
-    context.log('User has valid access:', accessReason);
-    context.res = {
-        status: 200,
-        body: {
-            active: true,
-            companyName: organization.name,
-            usedLicenses: currentUserCount,
-            totalLicenses: organization.licenseCount,
-            userRole: user.role,
-            organizationId: user.organizationId,  // ADD THIS LINE
-            subscriptionStatus: organization.status,
-            accessReason: accessReason,
-            warningMessage: warningMessage,
-            isGracePeriod: isGracePeriod,
-            trialEnd: organization.trialEnd,
-            gracePeriodEnd: organization.gracePeriodEnd
-        }
-    };
-} else {
+            context.log('User has valid access:', accessReason);
+            
+            const response = {
+                active: true,
+                userExists: true,
+                companyName: organization.name,
+                usedLicenses: currentUserCount,
+                totalLicenses: organization.licenseCount,
+                userRole: user.role,
+                organizationId: user.organizationId,
+                subscriptionStatus: organization.status,
+                accessReason: accessReason,
+                warningMessage: warningMessage,
+                isGracePeriod: isGracePeriod,
+                isTrialing: isTrialing,
+                trialEnd: organization.trialEnd,
+                gracePeriodEnd: organization.gracePeriodEnd,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    role: user.role,
+                    status: user.status,
+                    createdAt: user.createdAt
+                },
+                organization: {
+                    id: organization.id,
+                    name: organization.name,
+                    status: organization.status,
+                    totalLicenses: organization.licenseCount,
+                    usedLicenses: currentUserCount,
+                    createdAt: organization.createdAt,
+                    isTrial: organization.isTrial || false
+                }
+            };
+
+            // Add trial information if available
+            if (trialInfo) {
+                response.organization.trialEndDate = trialInfo.trialEndDate;
+                response.organization.trialStarted = trialInfo.trialStarted;
+                response.organization.daysLeft = trialInfo.daysLeft;
+                response.organization.hoursLeft = trialInfo.hoursLeft;
+                response.trial = trialInfo;
+            }
+
+            context.res = {
+                status: 200,
+                body: response
+            };
+        } else {
             context.log('User access denied:', accessReason);
             context.res = {
                 status: 200,
                 body: {
                     active: false,
+                    userExists: true,
                     message: accessReason,
                     subscriptionStatus: organization.status,
-                    companyName: organization.name
+                    companyName: organization.name,
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        role: user.role,
+                        status: user.status
+                    },
+                    organization: {
+                        id: organization.id,
+                        name: organization.name,
+                        status: organization.status,
+                        isTrial: organization.isTrial || false
+                    }
                 }
             };
         }
@@ -188,23 +276,23 @@ if (testEmails.includes(email.toLowerCase())) {
         context.log.error('Error checking subscription:', error);
         
         // Fallback for development
-        // Fallback for development
-if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
-    context.res = {
-        status: 200,
-        body: {
-            active: true,
-            companyName: "FD Intelligence (Dev)",
-            usedLicenses: 1,
-            totalLicenses: 5,
-            userRole: "admin",
-            organizationId: "6afe153b-6d75-417b-9602-d747c613a73d", // ADD THIS LINE
-            subscriptionStatus: "active",
-            message: "Development fallback"
+        if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
+            context.res = {
+                status: 200,
+                body: {
+                    active: true,
+                    userExists: true,
+                    companyName: "FD Intelligence (Dev)",
+                    usedLicenses: 1,
+                    totalLicenses: 5,
+                    userRole: "admin",
+                    organizationId: "6afe153b-6d75-417b-9602-d747c613a73d",
+                    subscriptionStatus: "active",
+                    message: "Development fallback"
+                }
+            };
+            return;
         }
-    };
-    return;
-}
 
         context.res = {
             status: 500,
