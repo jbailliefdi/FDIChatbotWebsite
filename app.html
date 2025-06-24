@@ -1599,62 +1599,6 @@ let subscriptionData = null;
 const msalConfig = { auth: { clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2", authority: "https://login.microsoftonline.com/common", redirectUri: window.location.origin + window.location.pathname, }, cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false, } };
 let msalInstance; try { msalInstance = new msal.PublicClientApplication(msalConfig); } catch (e) { alert("Critical error initializing authentication library. Please refresh the page or contact support."); throw new Error("MSAL Initialization Failed"); }
 function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
-function updateTrialBanner() {
-    let existingBanner = document.getElementById('trial-banner');
-    
-    // Remove existing banner
-    if (existingBanner) {
-        existingBanner.remove();
-    }
-    
-    // Don't show banner if not trialing or no trial data
-    if (!subscriptionData?.isTrialing || !subscriptionData?.trial) {
-        return;
-    }
-    
-    const trial = subscriptionData.trial;
-    
-    // Create new banner
-    const banner = document.createElement('div');
-    banner.id = 'trial-banner';
-    banner.className = 'trial-banner show';
-    
-    let bannerClass = 'trial-banner';
-    let message = '';
-    let upgradeButton = '';
-    
-    if (trial.daysLeft > 1) {
-        message = `<span class="days-left">${trial.daysLeft} days left</span> in your free trial`;
-        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Now</a>';
-    } else if (trial.daysLeft === 1) {
-        bannerClass += ' trial-ending-banner';
-        message = `<span class="days-left">Final day</span> of your free trial`;
-        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Today</a>';
-    } else if (trial.hoursLeft > 0) {
-        bannerClass += ' trial-ending-banner';
-        message = `<span class="days-left">${trial.hoursLeft} hours left</span> in your trial`;
-        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Now</a>';
-    } else {
-        bannerClass += ' trial-ending-banner';
-        message = `Your trial ends very soon`;
-        upgradeButton = '<a href="/pricing" class="upgrade-btn">Upgrade Now</a>';
-    }
-    
-    banner.className = bannerClass + ' show';
-    banner.innerHTML = `
-        <i class="fas fa-clock"></i> ${message} - Enjoy full access to TIA Professional
-        ${upgradeButton}
-    `;
-    
-    // Insert banner at the top of the page
-    document.body.insertBefore(banner, document.body.firstChild);
-    
-    // Adjust main content padding to account for banner
-    const chatContainer = document.getElementById('chat-container');
-    if (chatContainer) {
-        chatContainer.style.paddingTop = '60px'; // Adjust based on banner height
-    }
-}
 
 function updateAuthUI() {
     const authBtn = document.getElementById("authBtn");
@@ -1704,8 +1648,6 @@ function updateAuthUI() {
         dashboardBtn.style.display = "none";
     }
     
-    // Update trial banner
-    updateTrialBanner();
 }
 function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
 async function signIn() { const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; try { await msalInstance.loginRedirect(loginRequest); } catch (error) { alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); } }

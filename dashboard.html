@@ -1270,6 +1270,112 @@
             }
         }
 
+        // Billing functions
+async function loadBillingData() {
+    if (!currentUser || !currentUserOrganization) {
+        showError("Authentication required");
+        return;
+    }
+
+    try {
+        // For trial users, show trial-specific billing info
+        if (currentOrganization && currentOrganization.status === 'trialing') {
+            updateTrialBillingInfo();
+        } else {
+            // Load real billing data for paid users
+            const response = await fetch(`/api/organization/${currentUserOrganization.id}/billing`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                updateBillingInfo(data);
+            } else {
+                showError('Failed to load billing information');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading billing data:', error);
+        showError('Failed to load billing data');
+    }
+}
+
+function updateTrialBillingInfo() {
+    // Payment method section
+    document.getElementById('paymentMethodContent').innerHTML = `
+        <div style="text-align: center; color: #666; padding: 20px;">
+            <i class="fas fa-gift" style="font-size: 2rem; color: #27ae60; margin-bottom: 10px;"></i>
+            <p><strong>Free Trial</strong></p>
+            <p>No payment method required during trial</p>
+        </div>
+    `;
+
+    // Next billing section
+    if (currentOrganization && currentOrganization.trialEndDate) {
+        const endDate = new Date(currentOrganization.trialEndDate);
+        const formatDate = endDate.toLocaleDateString('en-GB', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        document.getElementById('nextBillingContent').innerHTML = `
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #27ae60; margin-bottom: 10px;">Trial Ends</div>
+                <div style="font-size: 1.1rem; margin-bottom: 5px;">${formatDate}</div>
+                <div style="color: #666; font-size: 0.9rem;">Then £${(currentOrganization.licenseCount || 1) * 50}/month</div>
+            </div>
+        `;
+    }
+
+    // Billing history
+    const billingTable = document.querySelector('.invoice-table tbody');
+    if (billingTable) {
+        billingTable.innerHTML = `
+            <tr>
+                <td>${new Date().toLocaleDateString('en-GB')}</td>
+                <td>Free Trial Started</td>
+                <td>£0.00</td>
+                <td><span class="status-badge status-active">Active</span></td>
+                <td>-</td>
+            </tr>
+        `;
+    }
+}
+
+function updateBillingInfo(data) {
+    // Update with real billing data for paid users
+    // This would be implemented when you have paying customers
+    document.getElementById('paymentMethodContent').innerHTML = `
+        <div>Payment method details would go here</div>
+    `;
+    
+    document.getElementById('nextBillingContent').innerHTML = `
+        <div>Next billing info would go here</div>
+    `;
+}
+
+// Billing action functions (placeholders for now)
+function updatePaymentMethod() {
+    openBillingPortal();
+}
+
+function openBillingPortal() {
+    alert('Billing portal integration coming soon. Please contact support for billing changes.');
+}
+
+function pauseSubscription() {
+    alert('Subscription management coming soon. Please contact support.');
+}
+
+function changeSubscription() {
+    window.location.href = '/pricing';
+}
+
+function cancelSubscription() {
+    if (confirm('Are you sure you want to cancel your subscription? This will end your access to TIA.')) {
+        alert('Cancellation process coming soon. Please contact support to cancel.');
+    }
+}
+
         // Modal functions
         function showInviteModal() {
             document.getElementById('inviteModal').classList.add('show');
