@@ -92,25 +92,25 @@ module.exports = async function (context, req) {
 
         // Calculate trial information if applicable
         let trialInfo = null;
-        if (organization.isTrial && organization.trialEnd) {
-            const trialEndDate = new Date(organization.trialEnd);
-            const trialStartDate = organization.trialStart ? new Date(organization.trialStart) : new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-            
-            const timeRemaining = trialEndDate - now;
-            const daysLeft = Math.max(0, Math.ceil(timeRemaining / (1000 * 60 * 60 * 24)));
-            const hoursLeft = Math.max(0, Math.ceil(timeRemaining / (1000 * 60 * 60)));
-            
-            trialInfo = {
-                isActive: timeRemaining > 0,
-                isExpired: timeRemaining <= 0,
-                isEndingSoon: daysLeft <= 1 && timeRemaining > 0,
-                daysLeft,
-                hoursLeft,
-                trialEndDate: trialEndDate.toISOString(),
-                trialStarted: trialStartDate.toISOString(),
-                timeRemaining: Math.max(0, timeRemaining)
-            };
-        }
+if ((organization.status === 'trialing' || organization.isTrial) && (organization.trialEndDate || organization.trialEnd)) {
+    const trialEndDate = new Date(organization.trialEndDate || organization.trialEnd);
+    const trialStartDate = organization.trialStarted ? new Date(organization.trialStarted) : new Date(organization.createdAt);
+    
+    const timeRemaining = trialEndDate - now;
+    const daysLeft = Math.max(0, Math.ceil(timeRemaining / (1000 * 60 * 60 * 24)));
+    const hoursLeft = Math.max(0, Math.ceil(timeRemaining / (1000 * 60 * 60)));
+    
+    trialInfo = {
+        isActive: timeRemaining > 0,
+        isExpired: timeRemaining <= 0,
+        isEndingSoon: daysLeft <= 1 && timeRemaining > 0,
+        daysLeft,
+        hoursLeft,
+        trialEndDate: trialEndDate.toISOString(),
+        trialStarted: trialStartDate.toISOString(),
+        timeRemaining: Math.max(0, timeRemaining)
+    };
+}
 
         // Determine subscription status with enhanced trial logic
         let hasAccess = false;
@@ -125,20 +125,21 @@ module.exports = async function (context, req) {
             accessReason = "Active subscription";
         } 
         else if (organization.status === 'trialing') {
-            isTrialing = true;
-            if (trialInfo && trialInfo.isActive) {
-                hasAccess = true;
-                accessReason = "Trial period";
-                if (trialInfo.isEndingSoon) {
-                    warningMessage = `Trial expires in ${trialInfo.hoursLeft} hour${trialInfo.hoursLeft !== 1 ? 's' : ''}`;
-                } else {
-                    warningMessage = `Trial expires in ${trialInfo.daysLeft} day${trialInfo.daysLeft !== 1 ? 's' : ''}`;
-                }
-            } else {
-                hasAccess = false;
-                accessReason = "Trial expired";
-            }
+    isTrialing = true;
+    // For trialing status, check if we have trial info or assume it's active
+    if (!trialInfo || trialInfo.isActive) {
+        hasAccess = true;
+        accessReason = "Trial period";
+        if (trialInfo && trialInfo.isEndingSoon) {
+            warningMessage = `Trial expires in ${trialInfo.hoursLeft} hour${trialInfo.hoursLeft !== 1 ? 's' : ''}`;
+        } else if (trialInfo) {
+            warningMessage = `Trial expires in ${trialInfo.daysLeft} day${trialInfo.daysLeft !== 1 ? 's' : ''}`;
         }
+    } else {
+        hasAccess = false;
+        accessReason = "Trial expired";
+    }
+}
         else if (organization.status === 'trial_ending') {
             isTrialing = true;
             if (trialInfo && trialInfo.isActive) {
