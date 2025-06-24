@@ -92,38 +92,38 @@ module.exports = async function (context, req) {
         };
 
         if (planType === 'trial') {
-            // Trial setup - create subscription with trial period
-            sessionConfig.mode = 'subscription';
-            sessionConfig.subscription_data = {
-                trial_period_days: 3,
-                metadata: {
-                    planType: 'trial',
-                    trialUsers: '5'
-                }
-            };
-            sessionConfig.line_items = [
-                {
-                    price_data: {
-                        currency: 'gbp',
-                        product_data: {
-                            name: 'TIA Professional - Trial',
-                            description: `AI Tax Assistant - 3-day trial for 5 users, then £250/month`,
-                            metadata: {
-                                licenseCount: '5',
-                                companyName: companyName,
-                                planType: 'trial'
-                            }
-                        },
-                        recurring: {
-                            interval: 'month'
-                        },
-                        unit_amount: 5000, // £50 per license, 5 licenses = £250
-                        tax_behavior: 'exclusive'
-                    },
-                    quantity: 1,
-                }
-            ];
-        } else {
+    // Trial setup - create subscription with trial period
+    sessionConfig.mode = 'subscription';
+    sessionConfig.subscription_data = {
+        trial_period_days: 3,
+        metadata: {
+            planType: 'trial',
+            trialUsers: licenseCount.toString()
+        }
+    };
+    sessionConfig.line_items = [
+        {
+            price_data: {
+                currency: 'gbp',
+                product_data: {
+                    name: 'TIA Professional - Trial',
+                    description: `AI Tax Assistant - 3-day trial for ${licenseCount} user${licenseCount > 1 ? 's' : ''}, then £${licenseCount * pricePerLicense}/month`,
+                    metadata: {
+                        licenseCount: licenseCount.toString(),
+                        companyName: companyName,
+                        planType: 'trial'
+                    }
+                },
+                recurring: {
+                    interval: 'month'
+                },
+                unit_amount: pricePerLicense * 100, // £50 per license
+                tax_behavior: 'exclusive'
+            },
+            quantity: licenseCount, // Use actual license count, not fixed 1
+        }
+    ];
+} else {
             // Regular subscription
             sessionConfig.mode = 'subscription';
             sessionConfig.line_items = [

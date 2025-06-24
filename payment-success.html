@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-RTL8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful - Welcome to TIA | FD Intelligence</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -468,8 +468,7 @@
                 <a href="/dashboard.html" class="btn btn-secondary">
                     <i class="fas fa-cog"></i> Admin Dashboard
                 </a>
-                <a href="https://billing.stripe.com/p/login/test_7sI5mPg6M76t9A46oo" target="_blank" class="btn btn-secondary">
-                     <i class="fas fa-file-invoice"></i> Manage Billing
+<a href="#" onclick="openBillingPortal()" class="btn btn-secondary">                     <i class="fas fa-file-invoice"></i> Manage Billing
                 </a>
             </div>
         </div>
@@ -507,7 +506,33 @@
 
     <script>
         window.addEventListener('load', loadSubscriptionDetails);
-
+async function openBillingPortal() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    if (!sessionId) {
+        alert('Unable to access billing portal. Please contact support.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/create-billing-portal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: sessionId })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            window.open(result.url, '_blank');
+        } else {
+            throw new Error('Failed to create billing portal session');
+        }
+    } catch (error) {
+        console.error('Error opening billing portal:', error);
+        alert('Unable to access billing portal. Please contact support.');
+    }
+}
         async function loadSubscriptionDetails() {
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('session_id');
@@ -555,19 +580,18 @@
                 document.querySelector('.success-title').textContent = 'Your Trial Has Started!';
                 document.querySelector('.success-subtitle').textContent = 'Enjoy full access to TIA for the next 3 days, on us!';
                 document.getElementById('planName').textContent = 'TIA Professional (Trial)';
-                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Trialing</span>';
-                
+                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Trialing</span>';                
                 const endDate = new Date(data.trialEndDate);
-                const formattedDate = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                document.getElementById('totalAmount').textContent = `£0.00 until ${formattedDate}`;
+const formattedDate = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const postTrialAmount = (data.licenseCount * 50 * 1.2).toFixed(2); // Calculate with VAT
+document.getElementById('totalAmount').textContent = `£0.00 today, then £${postTrialAmount}/month from ${formattedDate}`;
 
             } else {
                 // UI for Paid Plan Success or Fallback
                 document.querySelector('.success-title').textContent = 'Welcome to TIA!';
                 document.querySelector('.success-subtitle').textContent = 'Your subscription is now active and ready to use';
                 document.getElementById('planName').textContent = 'TIA Professional';
-                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Active</span>';
-
+document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Active</span>';
                 const totalAmount = data ? data.totalAmount : `£${(licenseCount * 50 * 1.2).toFixed(2)} / month`;
                 document.getElementById('totalAmount').textContent = totalAmount;
             }
@@ -589,6 +613,7 @@
                 }
             }, 4000);
         }
+        
     </script>
 </body>
 </html>

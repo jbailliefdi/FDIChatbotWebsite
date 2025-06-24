@@ -1,5 +1,10 @@
 // api/get-checkout-session/index.js
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { CosmosClient } = require('@azure/cosmos');
+
+const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+const database = cosmosClient.database('fdi-chatbot');
+const usersContainer = database.container('users');
 
 module.exports = async function (context, req) {
     context.log('Getting Stripe checkout session details');
@@ -61,13 +66,46 @@ module.exports = async function (context, req) {
                 licenseCount: licenseCount,
                 totalAmount: totalAmount,
                 customerEmail: customerEmail,
+                customerId: session.customer.id || session.customer,
                 paymentStatus: session.payment_status,
                 subscriptionId: session.subscription,
                 companyName: metadata.companyName,
                 firstName: metadata.firstName,
-                lastName: metadata.lastName
+                lastName: metadata.lastName,
+                planType: metadata.planType,
+                trialEndDate: null
             }
         };
+
+        // Get organizationId from user record
+        let organizationId = null;
+        if (customerEmail) {
+            try {
+                const userQuery = {
+                    query: "SELECT c.organizationId FROM c WHERE LOWER(c.email) = LOWER(@email)",
+                    parameters: [{ name: "@email", value: customerEmail }]
+                };
+                const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+                if (users.length > 0) {
+                    organizationId = users[0].organizationId;
+                    context.res.body.organizationId = organizationId;
+                }
+            } catch (dbError) {
+                context.log.warn('Could not retrieve organizationId:', dbError);
+            }
+        }
+
+        // If this is a trial, get the trial end date from the subscription
+        if (session.subscription && metadata.planType === 'trial') {
+            try {
+                const subscription = await stripe.subscriptions.retrieve(session.subscription);
+                if (subscription.trial_end) {
+                    context.res.body.trialEndDate = new Date(subscription.trial_end * 1000).toISOString();
+                }
+            } catch (subError) {
+                context.log.warn('Could not retrieve subscription trial info:', subError);
+            }
+        }
 
     } catch (error) {
         context.log.error('Error retrieving checkout session:', error);

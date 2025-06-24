@@ -661,19 +661,19 @@
             const vatRow = document.getElementById('vatRow');
             const securityText = document.getElementById('securityText');
             if (currentPlan === 'trial') {
-                licenseSelector.style.display = 'none';
-                trialInfo.classList.add('show');
-                orderSummary.className = 'order-summary trial-summary';
-                document.getElementById('totalPrice').textContent = '£0';
-                document.getElementById('priceDetails').textContent = 'for 3 days, then £250/month + VAT';
-                document.getElementById('summaryPrice').textContent = 'Free Trial';
-                vatRow.style.display = 'none';
-                document.getElementById('totalDue').textContent = '£0.00';
-                document.getElementById('billingNote').textContent = 'After your 3-day trial, your plan will renew automatically. Cancel anytime.';
-                securityText.textContent = 'Secure checkout powered by Stripe';
-                summaryLicenses.textContent = 5;
-                summaryPlural.textContent = 's';
-            } else {
+    licenseSelector.style.display = 'flex'; // Change from 'none' to 'flex'
+    trialInfo.classList.add('show');
+    orderSummary.className = 'order-summary trial-summary';
+    document.getElementById('totalPrice').textContent = '£0';
+    document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal}/month + VAT`;
+    document.getElementById('summaryPrice').textContent = 'Free Trial';
+    vatRow.style.display = 'none';
+    document.getElementById('totalDue').textContent = '£0.00';
+    document.getElementById('billingNote').textContent = `After your 3-day trial, your plan will renew at £${total.toFixed(2)}/month. Cancel anytime.`;
+    securityText.textContent = 'Secure checkout powered by Stripe';
+    summaryLicenses.textContent = licenseCount;
+    summaryPlural.textContent = licenseCount > 1 ? 's' : '';
+} else {
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.remove('show');
                 orderSummary.className = 'order-summary';
