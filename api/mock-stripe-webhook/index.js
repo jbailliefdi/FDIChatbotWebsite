@@ -290,6 +290,8 @@ async function handleSubscriptionUpdated(context, subscription) {
             newStatus = 'cancelled';
         } else if (subscription.status === 'active') {
             newStatus = 'active';
+        } else if (subscription.status === 'trialing') {
+            newStatus = 'trialing';
         }
 
         const updatedOrg = {

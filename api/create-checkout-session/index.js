@@ -16,7 +16,8 @@ module.exports = async function (context, req) {
             lastName, 
             phone, 
             licenseCount = 1,
-            pricePerLicense = 50 
+            pricePerLicense = 50,
+            planType = 'monthly'
         } = req.body;
 
         if (!email || !companyName || !firstName || !lastName) {
@@ -26,10 +27,6 @@ module.exports = async function (context, req) {
             };
             return;
         }
-
-        const subtotal = licenseCount * pricePerLicense * 100; // Convert to pence for Stripe
-        const vatAmount = Math.round(subtotal * 0.20); // 20% VAT
-        const totalAmount = subtotal + vatAmount;
 
         // Create or retrieve customer
         let customer;
@@ -65,16 +62,71 @@ module.exports = async function (context, req) {
         const origin = req.headers.origin || req.headers.referer || 'https://your-domain.com';
         
         // Create checkout session
-        const session = await stripe.checkout.sessions.create({
+        let sessionConfig = {
             customer: customer.id,
             payment_method_types: ['card'],
-            mode: 'subscription',
             allow_promotion_codes: true,
             billing_address_collection: 'required',
             tax_id_collection: {
                 enabled: true
             },
-            line_items: [
+            customer_update: {
+                address: 'auto',
+                name: 'auto'
+            },
+            metadata: {
+                email: email,
+                companyName: companyName,
+                firstName: firstName,
+                lastName: lastName,
+                phone: phone || '',
+                licenseCount: licenseCount.toString(),
+                pricePerLicense: pricePerLicense.toString(),
+                planType: planType
+            },
+            success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/pricing?payment=cancelled`,
+            consent_collection: {
+                terms_of_service: 'required'
+            }
+        };
+
+        if (planType === 'trial') {
+            // Trial setup - create subscription with trial period
+            sessionConfig.mode = 'subscription';
+            sessionConfig.subscription_data = {
+                trial_period_days: 3,
+                metadata: {
+                    planType: 'trial',
+                    trialUsers: '5'
+                }
+            };
+            sessionConfig.line_items = [
+                {
+                    price_data: {
+                        currency: 'gbp',
+                        product_data: {
+                            name: 'TIA Professional - Trial',
+                            description: `AI Tax Assistant - 3-day trial for 5 users, then £250/month`,
+                            metadata: {
+                                licenseCount: '5',
+                                companyName: companyName,
+                                planType: 'trial'
+                            }
+                        },
+                        recurring: {
+                            interval: 'month'
+                        },
+                        unit_amount: 5000, // £50 per license, 5 licenses = £250
+                        tax_behavior: 'exclusive'
+                    },
+                    quantity: 1,
+                }
+            ];
+        } else {
+            // Regular subscription
+            sessionConfig.mode = 'subscription';
+            sessionConfig.line_items = [
                 {
                     price_data: {
                         currency: 'gbp',
@@ -89,34 +141,19 @@ module.exports = async function (context, req) {
                         recurring: {
                             interval: 'month'
                         },
-                        unit_amount: pricePerLicense * 100, // £50 per license in pence
+                        unit_amount: pricePerLicense * 100,
                         tax_behavior: 'exclusive'
                     },
                     quantity: licenseCount,
                 }
-            ],
-            automatic_tax: {
-                enabled: true,
-            },
-            customer_update: {
-                address: 'auto',
-                name: 'auto'
-            },
-            metadata: {
-                email: email,
-                companyName: companyName,
-                firstName: firstName,
-                lastName: lastName,
-                phone: phone || '',
-                licenseCount: licenseCount.toString(),
-                pricePerLicense: pricePerLicense.toString()
-            },
-            success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${origin}/pricing?payment=cancelled`,
-            consent_collection: {
-                terms_of_service: 'required'
-            }
-        });
+            ];
+        }
+
+        sessionConfig.automatic_tax = {
+            enabled: true,
+        };
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
 
         context.log('Checkout session created:', session.id);
 
