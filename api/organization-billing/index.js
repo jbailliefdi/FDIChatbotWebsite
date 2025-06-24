@@ -6,18 +6,33 @@ const database = cosmosClient.database('fdi-chatbot');
 const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
-    context.log('Billing API request received for org:', context.bindingData.orgId);
+    context.log('Billing API request received');
 
     // Enable CORS
     context.res = {
         headers: {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type'
         }
     };
 
-    const orgId = context.bindingData.orgId;
+    // Handle OPTIONS request
+    if (req.method === 'OPTIONS') {
+        context.res.status = 200;
+        return;
+    }
+
+    // Get orgId from query parameter
+    const orgId = req.query.orgId;
+    
+    if (!orgId) {
+        context.res.status = 400;
+        context.res.body = { error: 'Organization ID required' };
+        return;
+    }
+
+    context.log('Fetching billing for org:', orgId);
 
     try {
         // Get organization details

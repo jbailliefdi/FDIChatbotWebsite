@@ -5,8 +5,8 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": ["get"],
-      "route": "organization/{orgId}/billing"
+      "methods": ["get", "options"],
+      "route": "organization-billing"
     },
     {
       "type": "http",

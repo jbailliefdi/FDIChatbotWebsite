@@ -1283,7 +1283,7 @@ async function loadBillingData() {
             updateTrialBillingInfo();
         } else {
             // Load real billing data for paid users
-            const response = await fetch(`/api/organization/${currentUserOrganization.id}/billing`);
+            const response = await fetch(`/api/organization-billing?orgId=${currentUserOrganization.id}`);
             const data = await response.json();
             
             if (response.ok) {
