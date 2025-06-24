@@ -46,14 +46,15 @@ module.exports = async function (context, req) {
             lastName,
             email,
             phone,
-            licenseCount,
             planType
         } = req.body;
+
+        const licenses = 5; // Hardcode license count for trial
 
         context.log('Received trial subscription request:', {
             email,
             companyName,
-            licenseCount,
+            licenseCount: licenses,
             planType
         });
 
@@ -72,16 +73,6 @@ module.exports = async function (context, req) {
             context.res.body = JSON.stringify({
                 error: 'Invalid plan type',
                 message: 'This endpoint only handles trial subscriptions'
-            });
-            return;
-        }
-
-        const licenses = parseInt(licenseCount) || 1;
-        if (licenses < 1 || licenses > 100) {
-            context.res.status = 400;
-            context.res.body = JSON.stringify({
-                error: 'Invalid license count',
-                message: 'License count must be between 1 and 100'
             });
             return;
         }
@@ -124,13 +115,12 @@ module.exports = async function (context, req) {
                     context.res.status = 400;
                     context.res.body = JSON.stringify({
                         error: 'Subscription already exists',
-                        message: 'You already have an active subscription or trial'
+                        message: 'You already have an active subscription or trial with this email'
                     });
                     return;
                 }
             } catch (stripeError) {
                 context.log.error('Error checking existing subscriptions:', stripeError);
-                // Continue anyway - we'll let Stripe handle duplicates
             }
         } else {
             // Create new customer
@@ -142,7 +132,8 @@ module.exports = async function (context, req) {
                         companyName: companyName,
                         phone: phone || '',
                         licenseCount: licenses.toString(),
-                        signupSource: 'trial'
+                        signupSource: 'trial',
+                        role: 'admin' // Assign admin role to the user who signs up
                     }
                 });
                 context.log('Created new customer:', customer.id);
@@ -167,7 +158,7 @@ module.exports = async function (context, req) {
                 customer: customer.id,
                 items: [{
                     price: process.env.STRIPE_PRICE_ID,
-                    quantity: licenses
+                    quantity: licenses // Use the hardcoded license count
                 }],
                 trial_end: Math.floor(trialEndDate.getTime() / 1000),
                 payment_behavior: 'default_incomplete',

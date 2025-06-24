@@ -170,6 +170,17 @@
             cursor: pointer;
             font-weight: 500;
         }
+        
+        #trialStatusBanner {
+            display: none; 
+            margin-top: 1rem; 
+            padding: 1rem; 
+            border-radius: 6px; 
+            background: #e3f2fd; 
+            color: #1565c0; 
+            font-weight: 500;
+            border: 1px solid #bbdefb;
+        }
 
         /* Users Table */
         .users-section {
@@ -228,6 +239,11 @@
         .status-active {
             background: #d4edda;
             color: #155724;
+        }
+        
+        .status-trialing {
+            background: #e3f2fd;
+            color: #1565c0;
         }
 
         .status-deactivated {
@@ -588,6 +604,8 @@
                         </div>
                         <div style="color: #27ae60; font-weight: 500;" id="availableLicenses">0 available</div>
                     </div>
+                    <!-- Trial Status Banner -->
+                    <div id="trialStatusBanner"></div>
                     <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;" id="planDetails">
                         Loading plan details...
                     </div>
@@ -706,7 +724,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Invite New User</h2>
-                <button class="close-btn" onclick="hideInviteModal()">&times;</button>
+                <button class="close-btn" onclick="hideInviteModal()">×</button>
             </div>
             
             <form id="inviteForm">
@@ -822,7 +840,7 @@
                 currentUserOrganization = userStatus.organization;
                 
                 // Clean up URL parameters after successful auth
-                if (emailHint) {
+                if (emailHint || urlParams.has('trial')) {
                     const cleanUrl = window.location.pathname;
                     window.history.replaceState({}, document.title, cleanUrl);
                 }
@@ -986,6 +1004,8 @@
             try {
                 const orgId = currentUserOrganization.id;
                 
+                // NOTE: This API endpoint is assumed. You will need to build it.
+                // It should return an object like: { organization: { id, name, status, trialEndDate }, users: [...], usage: { used, total, available, percentage } }
                 const response = await fetch(`/api/organization/${orgId}/overview`);
                 const data = await response.json();
                 
@@ -1005,320 +1025,6 @@
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 showError('Failed to load dashboard data');
-            }
-        }
-
-        // Load billing data
-        async function loadBillingData() {
-            if (!currentOrganization || !currentUser) {
-                showError("Authentication required");
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/get-billing-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        organizationId: currentOrganization.id,
-                        userEmail: currentUser.email
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentBillingData = data;
-                    updateBillingUI(data);
-                } else {
-                    showError('Error loading billing data: ' + data.error);
-                    showBillingError();
-                }
-            } catch (error) {
-                console.error('Error loading billing data:', error);
-                showError('Failed to load billing data');
-                showBillingError();
-            }
-        }
-
-        // Update billing UI
-        function updateBillingUI(billingData) {
-            updatePaymentMethodUI(billingData.paymentMethod);
-            updateNextBillingUI(billingData.subscription);
-            updateBillingHistoryUI(billingData.invoices);
-        }
-
-        function updatePaymentMethodUI(paymentMethod) {
-            const container = document.getElementById('paymentMethodContent');
-            
-            if (!paymentMethod || !paymentMethod.card) {
-                container.innerHTML = `
-                    <div style="margin: 1rem 0; padding: 1rem; background: #f8d7da; border-radius: 6px; color: #721c24;">
-                        <i class="fas fa-exclamation-triangle"></i> No payment method on file
-                    </div>
-                `;
-                return;
-            }
-
-            const card = paymentMethod.card;
-            const cardBrand = card.brand.charAt(0).toUpperCase() + card.brand.slice(1);
-            
-            const brandIconMap = {
-                'visa': 'fa-cc-visa',
-                'mastercard': 'fa-cc-mastercard',
-                'amex': 'fa-cc-amex', 
-                'discover': 'fa-cc-discover',
-                'diners': 'fa-cc-diners-club',
-                'jcb': 'fa-cc-jcb',
-                'unionpay': 'fa-credit-card'
-            };
-            
-            const iconClass = brandIconMap[card.brand.toLowerCase()] || 'fa-credit-card';
-            
-            container.innerHTML = `
-                <div style="margin: 1rem 0;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <i class="fab ${iconClass}" style="color: #f39c12; font-size: 1.2rem;"></i>
-                        <span>${cardBrand} •••• •••• •••• ${card.last4}</span>
-                    </div>
-                    <div style="color: #666; font-size: 0.9rem;">
-                        Expires ${String(card.exp_month).padStart(2, '0')}/${card.exp_year}
-                    </div>
-                    ${paymentMethod.billing_details?.name ? 
-                        `<div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
-                            ${paymentMethod.billing_details.name}
-                        </div>` : ''
-                    }
-                </div>
-            `;
-        }
-
-        function updateNextBillingUI(subscription) {
-            const container = document.getElementById('nextBillingContent');
-            
-            if (!subscription) {
-                container.innerHTML = `
-                    <div style="margin: 1rem 0; padding: 1rem; background: #f8d7da; border-radius: 6px; color: #721c24;">
-                        <i class="fas fa-exclamation-triangle"></i> No active subscription
-                    </div>
-                `;
-                return;
-            }
-
-            const nextBillingDate = new Date(subscription.current_period_end * 1000);
-            const amount = subscription.items.data.reduce((total, item) => {
-                return total + (item.price.unit_amount * item.quantity);
-            }, 0) / 100;
-
-            const status = subscription.status;
-            const statusMap = {
-                'active': { color: '#27ae60', icon: 'fa-check-circle' },
-                'past_due': { color: '#e74c3c', icon: 'fa-exclamation-circle' },
-                'canceled': { color: '#95a5a6', icon: 'fa-times-circle' },
-                'incomplete': { color: '#f39c12', icon: 'fa-clock' },
-                'trialing': { color: '#3498db', icon: 'fa-gift' }
-            };
-            
-            const statusInfo = statusMap[status] || { color: '#666', icon: 'fa-question-circle' };
-
-            container.innerHTML = `
-                <div style="margin: 1rem 0;">
-                    <div style="margin-bottom: 1rem;">
-                        <div style="font-weight: 600; color: ${statusInfo.color};">
-                            <i class="fas ${statusInfo.icon}" style="margin-right: 0.5rem;"></i>
-                            ${status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
-                        </div>
-                    </div>
-                    <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-weight: 600;">Next billing date:</div>
-                        <div style="color: #666;">${nextBillingDate.toLocaleDateString('en-GB', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}</div>
-                        <div style="font-weight: 600; margin-top: 0.5rem;">
-                            Amount: £${amount.toFixed(2)}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function updateBillingHistoryUI(invoices) {
-            const tableBody = document.querySelector('.invoice-table tbody');
-            
-            if (!invoices || invoices.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
-                            No billing history available
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tableBody.innerHTML = invoices.map(invoice => {
-                const invoiceDate = new Date(invoice.created * 1000).toLocaleDateString('en-GB', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-                
-                const amount = (invoice.amount_paid / 100).toFixed(2);
-                const status = invoice.paid ? 'Paid' : (invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1));
-                const statusClass = invoice.paid ? 'status-active' : 'status-deactivated';
-                
-                let description = 'Subscription';
-                if (invoice.lines && invoice.lines.data.length > 0) {
-                    const lineItem = invoice.lines.data[0];
-                    if (lineItem.description) {
-                        description = lineItem.description;
-                    } else if (lineItem.price && lineItem.quantity) {
-                        const itemName = lineItem.price.nickname || 'License';
-                        description = `${lineItem.quantity} x ${itemName}`;
-                    }
-                }
-
-                return `
-                    <tr>
-                        <td>${invoiceDate}</td>
-                        <td>${description}</td>
-                        <td>£${amount}</td>
-                        <td><span class="status-badge ${statusClass}">${status}</span></td>
-                        <td>
-                            <button class="action-btn" onclick="downloadInvoice('${invoice.id}')">
-                                <i class="fas fa-download"></i> Download
-                            </button>
-                            ${invoice.hosted_invoice_url ? 
-                                `<button class="action-btn" onclick="viewInvoice('${invoice.hosted_invoice_url}')" style="margin-left: 0.5rem;">
-                                    <i class="fas fa-eye"></i> View
-                                </button>` : ''
-                            }
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function showBillingError() {
-            const paymentContainer = document.getElementById('paymentMethodContent');
-            const billingContainer = document.getElementById('nextBillingContent');
-            
-            const errorHTML = `
-                <div style="margin: 1rem 0; padding: 1rem; background: #f8d7da; border-radius: 6px; color: #721c24;">
-                    <i class="fas fa-exclamation-triangle"></i> Unable to load billing information
-                </div>
-            `;
-            
-            if (paymentContainer) paymentContainer.innerHTML = errorHTML;
-            if (billingContainer) billingContainer.innerHTML = errorHTML;
-        }
-
-        // Billing functions
-        async function updatePaymentMethod() {
-            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
-                showError('Unable to access billing portal');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/create-billing-portal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        customerId: currentBillingData.customer.id,
-                        returnUrl: window.location.href,
-                        userEmail: currentUser.email,
-                        organizationId: currentOrganization.id
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (response.ok && data.url) {
-                    window.location.href = data.url;
-                } else {
-                    showError('Unable to access billing portal: ' + (data.error || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error creating billing portal session:', error);
-                showError('Unable to access billing portal');
-            }
-        }
-
-        async function openBillingPortal() {
-            await updatePaymentMethod();
-        }
-
-        async function downloadInvoice(invoiceId) {
-            if (!currentOrganization || !currentUser) {
-                showError("Authentication required");
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/download-invoice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        invoiceId: invoiceId,
-                        userEmail: currentUser.email,
-                        organizationId: currentOrganization.id
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.downloadUrl) {
-                    const link = document.createElement('a');
-                    link.href = data.downloadUrl;
-                    link.download = data.filename || `invoice-${invoiceId}.pdf`;
-                    link.target = '_blank';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                } else {
-                    showError('Unable to download invoice: ' + (data.error || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error downloading invoice:', error);
-                showError('Unable to download invoice');
-            }
-        }
-
-        function viewInvoice(invoiceUrl) {
-            window.open(invoiceUrl, '_blank');
-        }
-
-        function pauseSubscription() {
-            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
-                showError('Unable to access billing portal');
-                return;
-            }
-            
-            if (confirm('Are you sure you want to pause your subscription? Your team will lose access to TIA.')) {
-                updatePaymentMethod();
-            }
-        }
-
-        function changeSubscription() {
-            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
-                showError('Unable to access billing portal');
-                return;
-            }
-            
-            updatePaymentMethod();
-        }
-
-        function cancelSubscription() {
-            if (!currentBillingData?.customer?.id || !currentUser || !currentOrganization) {
-                showError('Unable to access billing portal');
-                return;
-            }
-            
-            if (confirm('Are you sure you want to cancel your subscription? This action cannot be undone and your team will immediately lose access to TIA.')) {
-                updatePaymentMethod();
             }
         }
 
@@ -1342,7 +1048,6 @@
             updateLicenseUsage(usage, organization);
             updateUsersTable(users);
             updateInviteModalInfo(usage);
-            updateBillingData(usage, organization);
         }
 
         function updateLicenseUsage(usage, organization) {
@@ -1350,8 +1055,25 @@
             document.getElementById('usageBar').style.width = `${usage.percentage}%`;
             document.getElementById('availableLicenses').textContent = `${usage.available} available`;
             
-            const monthlyPrice = usage.total * 50;
-            document.getElementById('planDetails').innerHTML = `Professional Plan - £${monthlyPrice}/month - Status: ${organization.status}`;
+            const planDetailsEl = document.getElementById('planDetails');
+            const trialBannerEl = document.getElementById('trialStatusBanner');
+
+            // Handle trial status display
+            if (organization.status === 'trialing' && organization.trialEndDate) {
+                const endDate = new Date(organization.trialEndDate);
+                const now = new Date();
+                const daysRemaining = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
+
+                trialBannerEl.innerHTML = `<i class="fas fa-gift"></i> You are on a free trial with ${usage.total} licenses. Your trial ends in ${daysRemaining} day(s).`;
+                trialBannerEl.style.display = 'block';
+                planDetailsEl.textContent = 'After the trial, your plan will become TIA Professional.';
+                document.querySelector('.license-card').style.borderLeftColor = '#3498db';
+            } else {
+                trialBannerEl.style.display = 'none';
+                const monthlyPrice = usage.total * 50;
+                planDetailsEl.innerHTML = `Professional Plan - £${monthlyPrice}/month - Status: <span class="status-badge status-${organization.status}">${organization.status}</span>`;
+                document.querySelector('.license-card').style.borderLeftColor = '#27ae60';
+            }
         }
 
         function updateBillingData(usage, organization) {
