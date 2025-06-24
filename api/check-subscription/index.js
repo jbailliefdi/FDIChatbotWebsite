@@ -34,24 +34,6 @@ module.exports = async function (context, req) {
 
         if (users.length === 0) {
             // Fallback for development - allow test email
-            const testEmails = ['j.baillie@fdintelligence.co.uk'];
-            if (testEmails.includes(email.toLowerCase())) {
-                context.res = {
-                    status: 200,
-                    body: {
-                        active: true,
-                        companyName: "FD Intelligence (Test)",
-                        usedLicenses: 1,
-                        totalLicenses: 5,
-                        userRole: "admin",
-                        organizationId: "6afe153b-6d75-417b-9602-d747c613a73d",
-                        message: "Test account",
-                        subscriptionStatus: "active"
-                    }
-                };
-                return;
-            }
-
             context.log('User not found in database');
             context.res = {
                 status: 200,
@@ -276,25 +258,7 @@ if ((organization.status === 'trialing' || organization.isTrial) && (organizatio
     } catch (error) {
         context.log.error('Error checking subscription:', error);
         
-        // Fallback for development
-        if (req.body?.email === 'j.baillie@fdintelligence.co.uk') {
-            context.res = {
-                status: 200,
-                body: {
-                    active: true,
-                    userExists: true,
-                    companyName: "FD Intelligence (Dev)",
-                    usedLicenses: 1,
-                    totalLicenses: 5,
-                    userRole: "admin",
-                    organizationId: "6afe153b-6d75-417b-9602-d747c613a73d",
-                    subscriptionStatus: "active",
-                    message: "Development fallback"
-                }
-            };
-            return;
-        }
-
+      
         context.res = {
             status: 500,
             body: { message: 'Internal server error' }
