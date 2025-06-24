@@ -66,15 +66,25 @@ module.exports = async function (context, req) {
                 await handleUsers(context, req, orgId);
                 break;
             default:
-                context.res.status = 404;
-                context.res.body = { 
-                    error: 'Endpoint not found',
-                    debug: {
-                        method: req.method,
-                        orgId: orgId,
-                        action: action
-                    }
-                };
+    // Extract action from segments if action is undefined
+    const segments = req.url.split('/').filter(s => s.length > 0);
+    const orgIndex = segments.findIndex(s => s === orgId);
+    const extractedAction = orgIndex !== -1 ? segments[orgIndex + 1] : null;
+    
+    if (extractedAction === 'billing') {
+        await handleBilling(context, req, orgId);
+        return;
+    }
+    
+    context.res.status = 404;
+    context.res.body = { 
+        error: 'Endpoint not found',
+        debug: {
+            method: req.method,
+            orgId: orgId,
+            segments: segments
+        }
+    };
         }
     } catch (error) {
         context.log.error('Error in organization API:', error);
