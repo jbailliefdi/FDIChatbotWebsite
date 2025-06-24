@@ -167,6 +167,13 @@ async function handleCheckoutCompleted(context, session) {
     try {
         context.log('Processing checkout completion for session:', session.id);
 
+        // Retrieve the full subscription object to check for trial status
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        const isTrial = subscription.status === 'trialing';
+        const orgStatus = isTrial ? 'trialing' : 'active';
+        context.log(`Subscription ${subscription.id} status is ${subscription.status}. Org status will be set to ${orgStatus}.`);
+
+
         const customer = await stripe.customers.retrieve(session.customer);
         const email = customer.email;
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
@@ -228,13 +235,18 @@ async function handleCheckoutCompleted(context, session) {
                 stripeCustomerId: customer.id,
                 stripeSubscriptionId: session.subscription,
                 licenseCount: licenseCount,
-                status: 'active',
+                status: orgStatus, // MODIFIED: Use determined status
                 adminEmail: email,
                 createdAt: new Date().toISOString(),
                 stripeCheckoutSessionId: session.id
             };
+            // ADDED: Add trial end date if applicable
+            if (isTrial && subscription.trial_end) {
+                organization.trialEndDate = new Date(subscription.trial_end * 1000).toISOString();
+                context.log(`Setting trial end date: ${organization.trialEndDate}`);
+            }
             await organizationsContainer.items.create(organization);
-            context.log('Created new organization:', organizationId, 'with', licenseCount, 'licenses');
+            context.log('Created new organization:', organizationId, 'with status:', orgStatus, 'and', licenseCount, 'licenses');
         }
 
         const userQuery = {

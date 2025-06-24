@@ -504,7 +504,7 @@
 
                     <div class="pricing-summary">
                         <div class="price-display" id="totalPrice">£0</div>
-                        <div class="price-details" id="priceDetails">3-day free trial • No credit card required</div>
+                        <div class="price-details" id="priceDetails">3-day free trial • Card required</div>
                         
                         <div class="trial-info show" id="trialInfo">
                             <i class="fas fa-gift"></i>
@@ -562,11 +562,11 @@
                             <span id="summaryVAT">£0.00</span>
                         </div>
                         <div class="summary-row summary-total" id="summaryTotal">
-                            <span>Total</span>
-                            <span id="totalDue">Free for 3 days</span>
+                            <span>Total Due Today</span>
+                            <span id="totalDue">£0.00</span>
                         </div>
                         <div style="font-size: 0.85rem; color: #666; margin-top: 10px;" id="billingNote">
-                            <span>3-day free trial • No payment required</span>
+                            <span>After your 3-day trial, your card will be charged. Cancel anytime.</span>
                         </div>
                     </div>
 
@@ -581,7 +581,7 @@
                     </div>
 
                     <div class="security-notice">
-                        <i class="fas fa-shield-alt"></i> <span id="securityText">Secure signup powered by Stripe</span>
+                        <i class="fas fa-shield-alt"></i> <span id="securityText">Secure checkout powered by Stripe</span>
                     </div>
                 </form>
 
@@ -617,7 +617,7 @@
         </div>
     </footer>
 
-        <script>
+    <script>
         // Initialize Stripe
         const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
         
@@ -625,7 +625,6 @@
         const pricePerLicense = 50;
         const vatRate = 0.20;
 
-        // All the UI functions (selectPlan, updateButtonText, updateLicenses, updatePrice) are the same...
         function selectPlan(plan) {
             currentPlan = plan;
             document.getElementById('trialOption').classList.toggle('active', plan === 'trial');
@@ -666,12 +665,12 @@
                 trialInfo.classList.add('show');
                 orderSummary.className = 'order-summary trial-summary';
                 document.getElementById('totalPrice').textContent = '£0';
-                document.getElementById('priceDetails').textContent = '3-day free trial • No credit card required';
+                document.getElementById('priceDetails').textContent = 'for 3 days, then £250/month + VAT';
                 document.getElementById('summaryPrice').textContent = 'Free Trial';
                 vatRow.style.display = 'none';
-                document.getElementById('totalDue').textContent = 'Free for 3 days';
-                document.getElementById('billingNote').textContent = '3-day free trial • No payment required';
-                securityText.textContent = 'Secure signup • No payment required for trial';
+                document.getElementById('totalDue').textContent = '£0.00';
+                document.getElementById('billingNote').textContent = 'After your 3-day trial, your plan will renew automatically. Cancel anytime.';
+                securityText.textContent = 'Secure checkout powered by Stripe';
                 summaryLicenses.textContent = 5;
                 summaryPlural.textContent = 's';
             } else {
@@ -695,11 +694,12 @@
             alertBox.textContent = message;
             alertBox.className = `alert ${type}`;
             alertBox.style.display = 'block';
+            window.scrollTo(0, 0);
             setTimeout(() => { alertBox.style.display = 'none'; }, 6000);
         }
 
         // ===================================================================
-        // THIS IS THE UPDATED FORM SUBMISSION LOGIC
+        // UNIFIED FORM SUBMISSION LOGIC
         // ===================================================================
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -720,58 +720,39 @@
                 licenseCount: currentPlan === 'trial' ? 5 : parseInt(document.getElementById('licenseCount').value)
             };
 
-            let response;
-            let result;
-
             try {
-                if (currentPlan === 'trial') {
-                    response = await fetch('/api/create-trial-subscription', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(formData)
-                    });
-                } else {
-                    response = await fetch('/api/create-checkout-session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(formData)
-                    });
-                }
+                // Both trial and paid plans now go through this single flow
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
                 
-                result = await response.json();
+                const result = await response.json();
 
                 if (!response.ok) {
-                    // This is where we handle the 500 error from the server
-                    const err = new Error(result.message || 'Server returned an error.');
-                    err.details = result; // Attach the full JSON body to the error object
-                    throw err; // This will be caught by the catch block below
+                    const err = new Error(result.message || 'An error occurred on the server.');
+                    err.details = result;
+                    throw err;
                 }
 
-                // --- Handle Success ---
-                if (currentPlan === 'trial') {
-                    window.location.href = `/dashboard.html?trial=started&email=${formData.email}`;
-                } else {
-                    const { error } = await stripe.redirectToCheckout({ sessionId: result.sessionId });
-                    if (error) throw new Error(error.message);
+                // Redirect to Stripe for both trial and paid plans
+                const { error } = await stripe.redirectToCheckout({ sessionId: result.sessionId });
+                if (error) {
+                    throw new Error(error.message);
                 }
 
             } catch (error) {
-                // THIS IS THE IMPORTANT PART: It logs the detailed error to the console
-                console.error("❌ An error occurred during submission:");
-
-                if (error.details && error.details.debugInfo) {
-                    // This is our detailed server error
-                    console.error("🕵️‍♂️ DETAILED DEBUG INFO FROM SERVER:", error.details.debugInfo);
-                    showAlert(`Server Error: ${error.details.debugInfo.message || error.message}`, 'error');
-                } else if (error.details) {
-                    // This is a server error without our specific debugInfo object
-                    console.error("📄 Full server response object:", error.details);
-                    showAlert(`Server Error: ${error.message}`, 'error');
-                } else {
-                    // This is a generic network error or a different kind of JavaScript error
-                    console.error("Generic/Network error:", error);
-                    showAlert(`Error: ${error.message}. Please check your network and try again.`, 'error');
+                console.error("❌ An error occurred during submission:", error);
+                
+                let errorMessage = 'An unexpected error occurred. Please try again.';
+                if (error.details && error.details.message) {
+                    errorMessage = `Server Error: ${error.details.message}`;
+                } else if (error.message) {
+                    errorMessage = `Error: ${error.message}`;
                 }
+                
+                showAlert(errorMessage, 'error');
                 
                 // Reset the button so the user can try again
                 submitBtn.disabled = false;

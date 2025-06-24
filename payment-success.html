@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-RTL8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful - Welcome to TIA | FD Intelligence</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -146,6 +146,10 @@
             margin-bottom: 0.5rem;
             padding: 0.5rem 0;
         }
+        
+        .detail-row span:last-child {
+            font-weight: 600;
+        }
 
         .detail-row:last-child {
             margin-bottom: 0;
@@ -190,7 +194,7 @@
 
         .action-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 1rem;
             margin: 2rem 0;
         }
@@ -213,6 +217,7 @@
         .btn-primary {
             background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
+            grid-column: 1 / -1; /* Make this button span full width */
         }
 
         .btn-secondary {
@@ -245,7 +250,7 @@
         }
 
         .loading {
-            display: none;
+            display: block;
             margin: 1rem 0;
         }
 
@@ -423,11 +428,11 @@
 
             <div class="loading" id="loadingDetails">
                 <div class="spinner"></div>
-                <p>Loading subscription details...</p>
+                <p>Loading your subscription details...</p>
             </div>
 
             <div class="subscription-details" id="subscriptionDetails" style="display: none;">
-                <h3>Subscription Details</h3>
+                <h3>Your Subscription</h3>
                 <div class="detail-row">
                     <span>Plan:</span>
                     <span id="planName">TIA Professional</span>
@@ -437,15 +442,11 @@
                     <span id="userCount">Loading...</span>
                 </div>
                 <div class="detail-row">
-                    <span>Billing:</span>
-                    <span>Monthly</span>
-                </div>
-                <div class="detail-row">
                     <span>Status:</span>
-                    <span style="color: #28a745; font-weight: bold;">✓ Active</span>
+                    <span id="planStatus" style="color: #28a745; font-weight: bold;">✓ Active</span>
                 </div>
                 <div class="detail-row">
-                    <span>Total:</span>
+                    <span>Billing:</span>
                     <span id="totalAmount">Loading...</span>
                 </div>
             </div>
@@ -455,26 +456,21 @@
                 <ul>
                     <li><i class="fas fa-check"></i> Your account has been created and is ready to use</li>
                     <li><i class="fas fa-check"></i> You can start asking tax questions immediately</li>
-                    <li><i class="fas fa-check"></i> Invite team members from your organization</li>
+                    <li><i class="fas fa-check"></i> Invite team members from your organization dashboard</li>
                     <li><i class="fas fa-check"></i> Access your billing portal anytime to manage your subscription</li>
                 </ul>
             </div>
 
             <div class="action-buttons">
-                <a href="/app" class="btn btn-primary" id="appBtn">
+                 <a href="/app" class="btn btn-primary" id="appBtn">
                     <i class="fas fa-play"></i> Start Using TIA
                 </a>
                 <a href="/dashboard.html" class="btn btn-secondary">
-                    <i class="fas fa-cog"></i> Access Admin Dashboard
+                    <i class="fas fa-cog"></i> Admin Dashboard
                 </a>
-                <a href="mailto:hello@fdintelligence.co.uk" class="btn btn-secondary">
-                    <i class="fas fa-envelope"></i> Contact Support
+                <a href="https://billing.stripe.com/p/login/test_7sI5mPg6M76t9A46oo" target="_blank" class="btn btn-secondary">
+                     <i class="fas fa-file-invoice"></i> Manage Billing
                 </a>
-            </div>
-
-            <div class="support-info">
-                <h4><i class="fas fa-headset"></i> Need Help?</h4>
-                <p>Our team is here to help you get the most out of TIA. Reach out at <strong>hello@fdintelligence.co.uk</strong> or through the chat support in the app.</p>
             </div>
         </div>
     </div>
@@ -509,120 +505,90 @@
         </div>
     </footer>
 
-    <script src="https://js.stripe.com/v3/"></script>
     <script>
-        // Initialize Stripe
-        const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
+        window.addEventListener('load', loadSubscriptionDetails);
 
         async function loadSubscriptionDetails() {
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('session_id');
 
             if (!sessionId) {
-                // No session ID, show default success message
-                showDefaultSuccess();
+                console.warn('No session_id found. Showing default success page.');
+                renderPage(null);
                 return;
             }
 
             try {
-                // Fetch session details from Stripe
                 const response = await fetch('/api/get-checkout-session', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId: sessionId })
                 });
 
                 if (response.ok) {
                     const sessionData = await response.json();
-                    displaySessionDetails(sessionData);
+                    renderPage(sessionData);
                 } else {
-                    console.warn('Could not fetch session details, showing defaults');
-                    showDefaultSuccess();
+                    console.error('Failed to fetch session details. Showing default success page.');
+                    renderPage(null);
                 }
-
             } catch (error) {
                 console.error('Error loading subscription details:', error);
-                showDefaultSuccess();
+                renderPage(null);
             }
         }
 
-        function displaySessionDetails(sessionData) {
-    document.getElementById('loadingDetails').style.display = 'none';
-    document.getElementById('subscriptionDetails').style.display = 'block';
-    
-    // Display actual session data
-    if (sessionData.licenseCount) {
-        const userText = sessionData.licenseCount === 1 ? '1 user' : `${sessionData.licenseCount} users`;
-        document.getElementById('userCount').textContent = userText;
-    }
-    
-    if (sessionData.totalAmount) {
-        document.getElementById('totalAmount').textContent = sessionData.totalAmount;
-    }
-    
-    // Update dashboard button to include email hint
-    if (sessionData.customerEmail) {
-        console.log('Payment completed for:', sessionData.customerEmail);
-        const dashboardBtn = document.querySelector('a[href="/dashboard.html"]');
-        if (dashboardBtn) {
-            dashboardBtn.href = `/dashboard.html?email=${encodeURIComponent(sessionData.customerEmail)}`;
-        }
-    }
-}
+        function renderPage(data) {
+            document.getElementById('loadingDetails').style.display = 'none';
+            document.getElementById('subscriptionDetails').style.display = 'block';
 
+            // Determine state from data or fallbacks
+            const isTrial = data && data.trialEndDate;
+            const licenseCount = data ? data.licenseCount : 1;
+            const customerEmail = data ? data.customerEmail : null;
+            
+            const userText = licenseCount === 1 ? '1 user' : `${licenseCount} users`;
+            document.getElementById('userCount').textContent = userText;
 
-        function showDefaultSuccess() {
-    document.getElementById('loadingDetails').style.display = 'none';
-    document.getElementById('subscriptionDetails').style.display = 'block';
-    
-    // Try to get details from localStorage or URL
-    const signupData = localStorage.getItem('signup_data');
-    let customerEmail = null;
-    let licenseCount = 1;
-    let totalAmount = '£60.00/month (inc. VAT)';
-    
-    if (signupData) {
-        try {
-            const data = JSON.parse(signupData);
-            customerEmail = data.email;
-            if (data.licenseCount) {
-                licenseCount = data.licenseCount;
-                const subtotal = licenseCount * (data.pricePerLicense || 50);
-                const vat = subtotal * 0.20;
-                const total = subtotal + vat;
-                totalAmount = `£${total.toFixed(2)}/month (inc. VAT)`;
+            if (isTrial) {
+                // UI for Trial Success
+                document.querySelector('.success-title').textContent = 'Your Trial Has Started!';
+                document.querySelector('.success-subtitle').textContent = 'Enjoy full access to TIA for the next 3 days, on us!';
+                document.getElementById('planName').textContent = 'TIA Professional (Trial)';
+                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Trialing</span>';
+                
+                const endDate = new Date(data.trialEndDate);
+                const formattedDate = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                document.getElementById('totalAmount').textContent = `£0.00 until ${formattedDate}`;
+
+            } else {
+                // UI for Paid Plan Success or Fallback
+                document.querySelector('.success-title').textContent = 'Welcome to TIA!';
+                document.querySelector('.success-subtitle').textContent = 'Your subscription is now active and ready to use';
+                document.getElementById('planName').textContent = 'TIA Professional';
+                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Active</span>';
+
+                const totalAmount = data ? data.totalAmount : `£${(licenseCount * 50 * 1.2).toFixed(2)} / month`;
+                document.getElementById('totalAmount').textContent = totalAmount;
             }
-        } catch (error) {
-            console.error('Error parsing signup data:', error);
-        }
-    }
-    
-    const userText = licenseCount === 1 ? '1 user' : `${licenseCount} users`;
-    document.getElementById('userCount').textContent = userText;
-    document.getElementById('totalAmount').textContent = totalAmount;
-    
-    // Update dashboard button with email if available
-    if (customerEmail) {
-        const dashboardBtn = document.querySelector('a[href="/dashboard.html"]');
-        if (dashboardBtn) {
-            dashboardBtn.href = `/dashboard.html?email=${encodeURIComponent(customerEmail)}`;
-        }
-    }
-}
 
-        // Auto-redirect to app after a delay
-        setTimeout(() => {
-            const appBtn = document.getElementById('appBtn');
-            if (appBtn) {
-                appBtn.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-                appBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch TIA Now';
+            if (customerEmail) {
+                console.log('Payment completed for:', customerEmail);
+                const dashboardBtn = document.querySelector('a[href="/dashboard.html"]');
+                if (dashboardBtn) {
+                    dashboardBtn.href = `/dashboard.html?email=${encodeURIComponent(customerEmail)}`;
+                }
             }
-        }, 3000);
 
-        // Load subscription details on page load
-        window.addEventListener('load', loadSubscriptionDetails);
+            // Animate button after a delay
+            setTimeout(() => {
+                const appBtn = document.getElementById('appBtn');
+                if (appBtn) {
+                    appBtn.style.background = 'linear-gradient(45deg, #27ae60, #20c997)';
+                    appBtn.innerHTML = '<i class="fas fa-rocket"></i> Launch TIA Now';
+                }
+            }, 4000);
+        }
     </script>
 </body>
 </html>
