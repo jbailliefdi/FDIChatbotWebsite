@@ -593,9 +593,10 @@
                 <div class="license-card">
                     <div class="license-header">
                         <h3><i class="fas fa-id-card"></i> License Usage</h3>
-                        <button class="upgrade-btn" onclick="showPage('billing')">
-                            <i class="fas fa-arrow-up"></i> Manage Plan
-                        </button>
+                        // Update the upgrade button in the license card
+<button class="upgrade-btn" onclick="showManagePlanModal()">
+    <i class="fas fa-arrow-up"></i> Manage Plan
+</button>
                     </div>
                     <div class="license-usage">
                         <div style="font-weight: 600;" id="licenseUsageText">Loading...</div>
@@ -763,6 +764,64 @@
             </form>
         </div>
     </div>
+    <!-- Manage Plan Modal -->
+<div id="managePlanModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Manage Your Plan</h2>
+            <button class="close-btn" onclick="hideManagePlanModal()">×</button>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Current Plan:</strong> TIA Professional
+                    <div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
+                        £<span id="currentMonthlyPrice">0</span>/month
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <strong>Active Licenses:</strong> <span id="currentLicenseCount">0</span>
+                    <div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
+                        £50 per license/month
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="managePlanForm">
+            <div class="form-group">
+                <label for="newLicenseCount">Number of Licenses</label>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button type="button" onclick="decrementLicenses()" style="width: 40px; height: 40px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <input type="number" id="newLicenseCount" min="1" value="1" style="text-align: center; width: 80px;">
+                    <button type="button" onclick="incrementLicenses()" style="width: 40px; height: 40px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div style="margin-top: 1rem; padding: 1rem; background: #e3f2fd; border-radius: 6px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>New monthly cost:</span>
+                        <strong>£<span id="newMonthlyPrice">0</span></strong>
+                    </div>
+                    <div id="priceDifference" style="font-size: 0.9rem; color: #666;"></div>
+                </div>
+            </div>
+
+            <div id="licenseChangeWarning" style="display: none; background: #fff3cd; padding: 1rem; border-radius: 6px; margin: 1rem 0; border: 1px solid #ffeaa7;">
+                <i class="fas fa-exclamation-triangle" style="color: #f39c12;"></i>
+                <span id="warningText"></span>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideManagePlanModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="updatePlanBtn">Update Plan</button>
+            </div>
+        </form>
+    </div>
+</div>
 
     <script>
         // MSAL Configuration
@@ -960,6 +1019,139 @@
                 });
             });
         }
+        // Manage Plan Modal Functions
+function showManagePlanModal() {
+    if (!currentOrganization) {
+        showError('Unable to load plan details');
+        return;
+    }
+
+    const currentLicenses = currentOrganization.licenseCount || 1;
+    const currentPrice = currentLicenses * 50;
+    
+    document.getElementById('currentLicenseCount').textContent = currentLicenses;
+    document.getElementById('currentMonthlyPrice').textContent = currentPrice;
+    document.getElementById('newLicenseCount').value = currentLicenses;
+    updatePlanPreview();
+    
+    document.getElementById('managePlanModal').classList.add('show');
+}
+
+function hideManagePlanModal() {
+    document.getElementById('managePlanModal').classList.remove('show');
+    document.getElementById('managePlanForm').reset();
+    document.getElementById('licenseChangeWarning').style.display = 'none';
+}
+
+function incrementLicenses() {
+    const input = document.getElementById('newLicenseCount');
+    input.value = parseInt(input.value) + 1;
+    updatePlanPreview();
+}
+
+function decrementLicenses() {
+    const input = document.getElementById('newLicenseCount');
+    const currentValue = parseInt(input.value);
+    if (currentValue > 1) {
+        input.value = currentValue - 1;
+        updatePlanPreview();
+    }
+}
+
+function updatePlanPreview() {
+    const currentLicenses = currentOrganization.licenseCount || 1;
+    const newLicenses = parseInt(document.getElementById('newLicenseCount').value) || 1;
+    const currentPrice = currentLicenses * 50;
+    const newPrice = newLicenses * 50;
+    const difference = newPrice - currentPrice;
+    
+    document.getElementById('newMonthlyPrice').textContent = newPrice;
+    
+    const diffElement = document.getElementById('priceDifference');
+    if (difference > 0) {
+        diffElement.innerHTML = `<span style="color: #e74c3c;">+£${difference}/month</span>`;
+    } else if (difference < 0) {
+        diffElement.innerHTML = `<span style="color: #27ae60;">£${Math.abs(difference)}/month savings</span>`;
+    } else {
+        diffElement.innerHTML = 'No change';
+    }
+    
+    // Show warning if reducing licenses below active users
+    const warningDiv = document.getElementById('licenseChangeWarning');
+    const activeUsers = organizationUsers.filter(u => u.status === 'active').length;
+    
+    if (newLicenses < activeUsers) {
+        warningDiv.style.display = 'block';
+        document.getElementById('warningText').textContent = 
+            ` You have ${activeUsers} active users. Reducing to ${newLicenses} license${newLicenses > 1 ? 's' : ''} will require deactivating ${activeUsers - newLicenses} user${activeUsers - newLicenses > 1 ? 's' : ''}.`;
+        document.getElementById('updatePlanBtn').textContent = 'Update Plan';
+    } else {
+        warningDiv.style.display = 'none';
+        document.getElementById('updatePlanBtn').textContent = 'Update Plan';
+    }
+}
+
+// Handle plan update form submission
+document.getElementById('managePlanForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const newLicenseCount = parseInt(document.getElementById('newLicenseCount').value);
+    const currentLicenses = currentOrganization.licenseCount || 1;
+    
+    if (newLicenseCount === currentLicenses) {
+        hideManagePlanModal();
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to ${newLicenseCount > currentLicenses ? 'increase' : 'decrease'} your licenses from ${currentLicenses} to ${newLicenseCount}? Your new monthly cost will be £${newLicenseCount * 50}.`)) {
+        return;
+    }
+    
+    try {
+        // This would call your API to update the subscription
+        const response = await fetch('/api/update-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                organizationId: currentOrganization.id,
+                stripeCustomerId: currentOrganization.stripeCustomerId,
+                stripeSubscriptionId: currentOrganization.stripeSubscriptionId,
+                newLicenseCount: newLicenseCount,
+                userEmail: currentUser.email
+            })
+        });
+        
+        if (response.ok) {
+            showSuccess('Plan updated successfully! Changes will be reflected in your next billing cycle.');
+            hideManagePlanModal();
+            loadDashboardData(); // Reload to show new license count
+        } else {
+            const error = await response.json();
+            showError(error.message || 'Failed to update plan');
+        }
+    } catch (error) {
+        console.error('Plan update error:', error);
+        showError('Failed to update plan. Please try again.');
+    }
+});
+
+document.getElementById('newLicenseCount').addEventListener('input', updatePlanPreview);
+
+document.getElementById('managePlanModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideManagePlanModal();
+    }
+});
+
+// Handle input changes
+document.getElementById('newLicenseCount').addEventListener('input', updatePlanPreview);
+
+// Close modal when clicking outside
+document.getElementById('managePlanModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideManagePlanModal();
+    }
+});
 
         function showPage(pageId) {
             // Hide all pages
