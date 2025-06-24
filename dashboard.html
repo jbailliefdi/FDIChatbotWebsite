@@ -1278,40 +1278,19 @@ async function loadBillingData() {
     }
 
     try {
-        // Temporary: Use overview endpoint which works
-        const response = await fetch(`/api/organization/${currentUserOrganization.id}/overview`);
-        const data = await response.json();
-        
-        if (response.ok) {
-            const org = data.organization;
-            const monthlyAmount = (org.licenseCount || 1) * 50;
-            
-            // Create billing data from org info
-            const billingData = {
-                subscription: {
-                    status: org.status,
-                    stripeCustomerId: org.stripeCustomerId,
-                    stripeSubscriptionId: org.stripeSubscriptionId,
-                    licenseCount: org.licenseCount,
-                    monthlyAmount: monthlyAmount
-                },
-                paymentMethod: { type: 'card', last4: '****', brand: 'visa' },
-                nextBilling: {
-                    date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    amount: monthlyAmount
-                },
-                invoices: [{
-                    id: 'inv_sample',
-                    date: new Date().toISOString(),
-                    description: `TIA Professional - ${org.licenseCount} licenses`,
-                    amount: monthlyAmount,
-                    status: 'paid'
-                }]
-            };
-            
-            updateBillingInfo(billingData);
+        // For trial users, show trial-specific billing info
+        if (currentOrganization && currentOrganization.status === 'trialing') {
+            updateTrialBillingInfo();
         } else {
-            showError('Failed to load billing information');
+            // Load real billing data for paid users
+            const response = await fetch(`/api/organization/${currentUserOrganization.id}/billing`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                updateBillingInfo(data);
+            } else {
+                showError('Failed to load billing information');
+            }
         }
     } catch (error) {
         console.error('Error loading billing data:', error);
