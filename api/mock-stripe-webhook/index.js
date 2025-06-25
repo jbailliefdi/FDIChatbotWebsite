@@ -133,26 +133,10 @@ async function processLicenseUpgrade(context, metadata, session) {
     try {
         context.log(`Processing license upgrade for org ${organizationId}: ${currentLicenseCount} -> ${newLicenseCount} (${billingInterval || 'monthly'} billing)`);
 
-        // Update the subscription quantity immediately (since payment was successful)
-        if (stripeSubscriptionId) {
-            const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-            const subscriptionItem = subscription.items.data[0];
-            
-            // For annual billing, we need to be more careful about proration
-            const prorationBehavior = billingInterval === 'year' ? 'create_prorations' : 'create_prorations';
-            
-            await stripe.subscriptions.update(stripeSubscriptionId, {
-                items: [{
-                    id: subscriptionItem.id,
-                    quantity: parseInt(newLicenseCount)
-                }],
-                proration_behavior: prorationBehavior
-            });
-
-            context.log('Stripe subscription quantity updated to:', newLicenseCount);
-        }
-
-        // Update organization record
+        // DO NOT UPDATE SUBSCRIPTION QUANTITY - This was causing the proration issue
+        // Since we charged separately via checkout, just update our database
+        
+        // Update organization record only
         const { resource: organization } = await organizationsContainer.item(organizationId, organizationId).read();
         
         if (organization) {
@@ -170,14 +154,19 @@ async function processLicenseUpgrade(context, metadata, session) {
             };
 
             await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
-            context.log(`License count updated to ${newLicenseCount} for organization ${organizationId}`);
+            context.log(`License count updated to ${newLicenseCount} for organization ${organizationId} (database only, no Stripe subscription modification)`);
         }
+
+        // IMPORTANT: We do NOT update the Stripe subscription here anymore
+        // The subscription will be updated at the next billing cycle to match the new license count
+        // This prevents proration and keeps upgrades as separate charges
 
     } catch (error) {
         context.log.error('Error processing license upgrade:', error);
         throw error;
     }
 }
+
 async function handleInvoicePaymentSucceeded(context, invoice) {
     try {
         context.log('Processing invoice payment success:', invoice.id);
@@ -202,29 +191,45 @@ async function handleInvoicePaymentSucceeded(context, invoice) {
 
         const organization = organizations[0];
         
-        // Check if there's a pending downgrade to apply
-        if (organization.pendingDowngrade && organization.pendingLicenseCount) {
-            // Get current subscription to check if this is the billing cycle where downgrade should apply
-            const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
-            const newQuantity = subscription.items.data[0]?.quantity;
-            
-            if (newQuantity && newQuantity !== organization.licenseCount) {
-                // Apply the downgrade
-                const updatedOrg = {
-                    ...organization,
-                    licenseCount: newQuantity,
-                    status: 'active',
-                    pendingDowngrade: false,
-                    pendingLicenseCount: null,
-                    downgradeScheduledAt: null,
-                    downgradeScheduledBy: null,
-                    lastDowngradeDate: new Date().toISOString(),
-                    lastUpdated: new Date().toISOString()
-                };
+        // Get current subscription from Stripe
+        const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+        const currentStripeQuantity = subscription.items.data[0]?.quantity;
+        const organizationLicenseCount = organization.licenseCount;
 
-                await organizationsContainer.item(organization.id, organization.id).replace(updatedOrg);
-                context.log(`Applied pending downgrade: ${organization.licenseCount} -> ${newQuantity} licenses`);
-            }
+        // Check if we need to sync the subscription quantity with our database
+        if (currentStripeQuantity !== organizationLicenseCount) {
+            context.log(`Syncing subscription quantity: Stripe has ${currentStripeQuantity}, database has ${organizationLicenseCount}`);
+            
+            // Update Stripe subscription to match our database (this happens at billing cycle, so no proration)
+            const subscriptionItem = subscription.items.data[0];
+            
+            await stripe.subscriptions.update(invoice.subscription, {
+                items: [{
+                    id: subscriptionItem.id,
+                    quantity: organizationLicenseCount
+                }],
+                proration_behavior: 'none' // No proration since this is at billing cycle
+            });
+            
+            context.log(`Updated Stripe subscription quantity to ${organizationLicenseCount}`);
+        }
+        
+        // Apply any pending downgrade
+        if (organization.pendingDowngrade && organization.pendingLicenseCount) {
+            const updatedOrg = {
+                ...organization,
+                licenseCount: organization.pendingLicenseCount,
+                status: 'active',
+                pendingDowngrade: false,
+                pendingLicenseCount: null,
+                downgradeScheduledAt: null,
+                downgradeScheduledBy: null,
+                lastDowngradeDate: new Date().toISOString(),
+                lastUpdated: new Date().toISOString()
+            };
+
+            await organizationsContainer.item(organization.id, organization.id).replace(updatedOrg);
+            context.log(`Applied pending downgrade: ${organization.licenseCount} -> ${organization.pendingLicenseCount} licenses`);
         } else {
             // Regular payment success - just update status
             const updatedOrg = {
