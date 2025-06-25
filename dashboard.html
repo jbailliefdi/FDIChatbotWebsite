@@ -1691,16 +1691,16 @@ function updateBillingInfo(data) {
         });
         
         nextBillingContent.innerHTML = `
-            <div>
-                <div style="font-size: 2rem; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">
-                    £${data.subscription.totalMonthly}.00
-                </div>
-                <div style="color: #666;">
-                    <div style="margin-bottom: 5px;">Next billing date: ${formatDate}</div>
-                    <div style="font-size: 0.9rem;">
-                        ${data.organization.licenseCount} licenses × £${data.subscription.pricePerLicense}/month
-                    </div>
-                </div>
+    <div>
+        <div style="font-size: 2rem; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">
+            £${data.subscription.totalAmount}.00
+        </div>
+        <div style="color: #666;">
+            <div style="margin-bottom: 5px;">Next billing date: ${formatDate}</div>
+            <div style="font-size: 0.9rem;">
+                ${data.organization.licenseCount} licenses × £${data.subscription.pricePerLicense}/${data.subscription.billingInterval}
+            </div>
+        </div>
                 <div style="margin-top: 10px;">
                     <span class="status-badge status-${data.subscription.status}">
                         ${data.subscription.status.charAt(0).toUpperCase() + data.subscription.status.slice(1)}

@@ -67,14 +67,22 @@ module.exports = async function (context, req) {
                     try {
                         const subscription = await stripe.subscriptions.retrieve(organization.stripeSubscriptionId);
                         
-                        billingData.subscription = {
-                            id: subscription.id,
-                            status: subscription.status,
-                            currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
-                            pricePerLicense: 50,
-                            totalMonthly: organization.licenseCount * 50,
-                            cancelAtPeriodEnd: subscription.cancel_at_period_end
-                        };
+                        // Detect billing interval and calculate correct pricing
+const priceData = subscription.items.data[0].price;
+const isAnnual = priceData.recurring.interval === 'year';
+const pricePerLicense = isAnnual ? 550 : 50;
+const totalAmount = organization.licenseCount * pricePerLicense;
+const billingPeriod = isAnnual ? 'year' : 'month';
+
+billingData.subscription = {
+    id: subscription.id,
+    status: subscription.status,
+    currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+    pricePerLicense: pricePerLicense,
+    totalAmount: totalAmount,
+    billingInterval: billingPeriod,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end
+};
                     } catch (err) {
                         context.log.warn('Could not fetch subscription:', err);
                     }
