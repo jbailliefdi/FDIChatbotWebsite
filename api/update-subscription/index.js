@@ -1,4 +1,4 @@
-// Fixed version of your update-subscription API
+// SECURE Fixed version of your update-subscription API
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 
@@ -90,7 +90,7 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // 🔧 FIXED: Handle upgrades by directly updating subscription quantity
+        // 🔒 SECURE: Handle upgrades with immediate payment + subscription update
         if (isUpgrade) {
             if (!stripeSubscriptionId) {
                 context.res.status = 400;
@@ -99,20 +99,66 @@ module.exports = async function (context, req) {
             }
 
             try {
-                // Get the current subscription
+                // Get the current subscription to understand billing cycle
                 const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
                 
                 if (!subscription || subscription.items.data.length === 0) {
                     throw new Error('Invalid subscription structure');
                 }
 
-                // Get the subscription item (should be the license item)
                 const subscriptionItem = subscription.items.data[0];
+                const additionalLicenses = newLicenseCount - currentLicenseCount;
                 
-                // Update the subscription item quantity directly
+                // Calculate prorated charge for immediate payment
+                const currentPeriodStart = subscription.current_period_start;
+                const currentPeriodEnd = subscription.current_period_end;
+                const now = Math.floor(Date.now() / 1000);
+                const totalPeriodDuration = currentPeriodEnd - currentPeriodStart;
+                const remainingPeriodDuration = currentPeriodEnd - now;
+                const proratedFraction = remainingPeriodDuration / totalPeriodDuration;
+                
+                // Get price per license based on subscription interval
+                const priceData = subscription.items.data[0].price;
+                const isAnnual = priceData.recurring.interval === 'year';
+                const pricePerLicense = isAnnual ? 550 : 50; // £550 annual, £50 monthly
+                
+                // Calculate immediate charge (prorated for current period)
+                const immediateChargeAmount = Math.round(additionalLicenses * pricePerLicense * proratedFraction);
+                
+                // 🔒 CRITICAL: Create immediate invoice for the upgrade
+                const invoiceItem = await stripe.invoiceItems.create({
+                    customer: stripeCustomerId,
+                    amount: immediateChargeAmount * 100, // Convert to pence
+                    currency: 'gbp',
+                    description: `TIA License Upgrade - ${additionalLicenses} additional license${additionalLicenses > 1 ? 's' : ''} (prorated)`,
+                    metadata: {
+                        type: 'license_upgrade',
+                        organizationId: organizationId,
+                        additionalLicenses: additionalLicenses.toString(),
+                        previousLicenseCount: currentLicenseCount.toString(),
+                        newLicenseCount: newLicenseCount.toString(),
+                        billingInterval: isAnnual ? 'annual' : 'monthly'
+                    }
+                });
+
+                // Create and finalize invoice for immediate payment
+                const invoice = await stripe.invoices.create({
+                    customer: stripeCustomerId,
+                    description: `TIA License Upgrade`,
+                    metadata: {
+                        type: 'license_upgrade',
+                        organizationId: organizationId
+                    }
+                });
+
+                // Attempt to pay the invoice immediately
+                const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+                const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
+
+                // ✅ Only if payment succeeds, update the subscription quantity
                 await stripe.subscriptionItems.update(subscriptionItem.id, {
                     quantity: newLicenseCount,
-                    proration_behavior: 'create_prorations' // This handles prorated billing automatically
+                    proration_behavior: 'none' // We already handled proration with the immediate charge
                 });
 
                 // Update organization record in database
@@ -129,29 +175,37 @@ module.exports = async function (context, req) {
 
                 await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
 
-                const newMonthlyAmount = newLicenseCount * 50;
-                const additionalLicenses = newLicenseCount - currentLicenseCount;
+                const newMonthlyAmount = newLicenseCount * pricePerLicense;
                 
                 context.res.status = 200;
                 context.res.body = { 
                     success: true,
-                    requiresPayment: false, // No checkout needed - handled by Stripe automatically
-                    message: `Subscription upgraded successfully! You now have ${newLicenseCount} licenses. Your next bill will be £${newMonthlyAmount}/month. You'll see a prorated charge for the ${additionalLicenses} additional license${additionalLicenses > 1 ? 's' : ''} on your next invoice.`,
+                    requiresPayment: false, // Payment already processed
+                    message: `Upgrade successful! You now have ${newLicenseCount} licenses. Charged £${immediateChargeAmount} for the remaining ${Math.round(proratedFraction * 100)}% of this billing period. Your next bill will be £${newMonthlyAmount}/${isAnnual ? 'year' : 'month'}.`,
                     newLicenseCount: newLicenseCount,
                     newMonthlyAmount: newMonthlyAmount,
-                    isUpgrade: true
+                    immediateCharge: immediateChargeAmount,
+                    isUpgrade: true,
+                    invoiceId: paidInvoice.id
                 };
                 return;
 
             } catch (stripeError) {
                 context.log.error('Stripe subscription update error:', stripeError);
-                context.res.status = 500;
-                context.res.body = { error: 'Failed to update subscription: ' + stripeError.message };
+                
+                // If payment fails, don't update anything
+                if (stripeError.code === 'card_declined' || stripeError.type === 'card_error') {
+                    context.res.status = 402;
+                    context.res.body = { error: 'Payment failed: ' + stripeError.message };
+                } else {
+                    context.res.status = 500;
+                    context.res.body = { error: 'Failed to process upgrade: ' + stripeError.message };
+                }
                 return;
             }
         }
         else if (isDowngrade) {
-            // For downgrades, schedule the change for next billing cycle
+            // For downgrades, schedule the change for next billing cycle (no immediate payment)
             if (stripeSubscriptionId) {
                 try {
                     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
