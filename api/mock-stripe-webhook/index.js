@@ -69,7 +69,7 @@ module.exports = async function (context, req) {
                 break;
                 
             case 'invoice.payment_succeeded':
-                await handlePaymentSucceeded(context, event.data.object);
+                await handleInvoicePaymentSucceeded(context, event.data.object);
                 break;
 
             // Mock admin actions for testing (backwards compatibility)
@@ -128,22 +128,25 @@ async function handleCheckoutCompleted(context, session) {
 }
 
 async function processLicenseUpgrade(context, metadata, session) {
-    const { organizationId, newLicenseCount, stripeSubscriptionId, currentLicenseCount } = metadata;
+    const { organizationId, newLicenseCount, stripeSubscriptionId, currentLicenseCount, billingInterval } = metadata;
     
     try {
-        context.log(`Processing license upgrade for org ${organizationId}: ${currentLicenseCount} -> ${newLicenseCount}`);
+        context.log(`Processing license upgrade for org ${organizationId}: ${currentLicenseCount} -> ${newLicenseCount} (${billingInterval || 'monthly'} billing)`);
 
         // Update the subscription quantity immediately (since payment was successful)
         if (stripeSubscriptionId) {
             const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
             const subscriptionItem = subscription.items.data[0];
             
+            // For annual billing, we need to be more careful about proration
+            const prorationBehavior = billingInterval === 'year' ? 'create_prorations' : 'create_prorations';
+            
             await stripe.subscriptions.update(stripeSubscriptionId, {
                 items: [{
                     id: subscriptionItem.id,
                     quantity: parseInt(newLicenseCount)
                 }],
-                proration_behavior: 'create_prorations' // Create prorations for immediate effect
+                proration_behavior: prorationBehavior
             });
 
             context.log('Stripe subscription quantity updated to:', newLicenseCount);
@@ -172,6 +175,70 @@ async function processLicenseUpgrade(context, metadata, session) {
 
     } catch (error) {
         context.log.error('Error processing license upgrade:', error);
+        throw error;
+    }
+}
+async function handleInvoicePaymentSucceeded(context, invoice) {
+    try {
+        context.log('Processing invoice payment success:', invoice.id);
+
+        if (!invoice.subscription) {
+            context.log('No subscription associated with invoice');
+            return;
+        }
+
+        // Find organization by subscription ID
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.stripeSubscriptionId = @subId",
+            parameters: [{ name: "@subId", value: invoice.subscription }]
+        };
+
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+        
+        if (organizations.length === 0) {
+            context.log('Organization not found for subscription:', invoice.subscription);
+            return;
+        }
+
+        const organization = organizations[0];
+        
+        // Check if there's a pending downgrade to apply
+        if (organization.pendingDowngrade && organization.pendingLicenseCount) {
+            // Get current subscription to check if this is the billing cycle where downgrade should apply
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+            const newQuantity = subscription.items.data[0]?.quantity;
+            
+            if (newQuantity && newQuantity !== organization.licenseCount) {
+                // Apply the downgrade
+                const updatedOrg = {
+                    ...organization,
+                    licenseCount: newQuantity,
+                    status: 'active',
+                    pendingDowngrade: false,
+                    pendingLicenseCount: null,
+                    downgradeScheduledAt: null,
+                    downgradeScheduledBy: null,
+                    lastDowngradeDate: new Date().toISOString(),
+                    lastUpdated: new Date().toISOString()
+                };
+
+                await organizationsContainer.item(organization.id, organization.id).replace(updatedOrg);
+                context.log(`Applied pending downgrade: ${organization.licenseCount} -> ${newQuantity} licenses`);
+            }
+        } else {
+            // Regular payment success - just update status
+            const updatedOrg = {
+                ...organization,
+                status: 'active',
+                lastPaymentDate: new Date(invoice.created * 1000).toISOString(),
+                lastUpdated: new Date().toISOString()
+            };
+
+            await organizationsContainer.item(organization.id, organization.id).replace(updatedOrg);
+        }
+
+    } catch (error) {
+        context.log.error('Error in handleInvoicePaymentSucceeded:', error);
         throw error;
     }
 }

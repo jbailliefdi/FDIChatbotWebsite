@@ -91,116 +91,152 @@ module.exports = async function (context, req) {
         }
 
         // SECURITY FIX: Handle upgrades and downgrades differently
-        if (isUpgrade) {
-            // For upgrades, create a Stripe checkout session instead of immediate update
-            const additionalLicenses = newLicenseCount - currentLicenseCount;
-            const immediateCharge = additionalLicenses * 50; // £50 per license
+        // Replace the upgrade section in your update-subscription API:
+
+if (isUpgrade) {
+    // For upgrades, create a Stripe checkout session instead of immediate update
+    const additionalLicenses = newLicenseCount - currentLicenses;
+    
+    try {
+        // Get current subscription to determine billing interval and pricing
+        let billingInterval = 'month';
+        let pricePerLicense = 5000; // £50 monthly default
+        let immediateCharge = additionalLicenses * 50; // Default monthly
+        
+        if (stripeSubscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            const currentPrice = subscription.items.data[0].price;
+            billingInterval = currentPrice.recurring.interval;
             
-            try {
-                const session = await stripe.checkout.sessions.create({
-                    customer: stripeCustomerId,
-                    payment_method_types: ['card'],
-                    mode: 'payment',
-                    line_items: [
-                        {
-                            price_data: {
-                                currency: 'gbp',
-                                product_data: {
-                                    name: `TIA License Upgrade`,
-                                    description: `Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} (pro-rated for current billing period)`
-                                },
-                                unit_amount: 5000 // £50 in pence
-                            },
-                            quantity: additionalLicenses
-                        }
-                    ],
-                    metadata: {
-                        type: 'license_upgrade',
-                        organizationId: organizationId,
-                        currentLicenseCount: currentLicenseCount.toString(),
-                        newLicenseCount: newLicenseCount.toString(),
-                        stripeSubscriptionId: stripeSubscriptionId || '',
-                        userEmail: userEmail
+            if (billingInterval === 'year') {
+                pricePerLicense = 55000; // £550 annually (matching your pricing)
+                immediateCharge = additionalLicenses * 550; // Annual pricing
+            }
+        }
+
+        // Get the base URL for redirects (matching your pattern)
+        const origin = req.headers.origin || req.headers.referer || 'https://your-domain.com';
+        
+        const session = await stripe.checkout.sessions.create({
+            customer: stripeCustomerId,
+            payment_method_types: ['card'],
+            mode: 'payment',
+            allow_promotion_codes: true,
+            billing_address_collection: 'required',
+            tax_id_collection: {
+                enabled: true
+            },
+            customer_update: {
+                address: 'auto',
+                name: 'auto'
+            },
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'gbp',
+                        product_data: {
+                            name: `TIA License Upgrade`,
+                            description: `Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} (${billingInterval === 'year' ? 'annual' : 'monthly'} billing)`,
+                            metadata: {
+                                organizationId: organizationId,
+                                upgradeType: 'license_upgrade',
+                                additionalLicenses: additionalLicenses.toString(),
+                                billingInterval: billingInterval
+                            }
+                        },
+                        unit_amount: pricePerLicense,
+                        tax_behavior: 'exclusive'
                     },
-                    success_url: `${req.headers.referer || 'https://kind-mud-048fffa03.6.azurestaticapps.net'}payment-success`,
-                    cancel_url: req.headers.referer || 'https://google.com'
-                });
-
-                context.res.status = 200;
-                context.res.body = { 
-                    requiresPayment: true,
-                    checkoutUrl: session.url,
-                    sessionId: session.id,
-                    message: `Upgrade requires payment of £${immediateCharge}. You will be redirected to Stripe.`
-                };
-                return;
-
-            } catch (stripeError) {
-                context.log.error('Stripe checkout creation error:', stripeError);
-                context.res.status = 500;
-                context.res.body = { error: 'Failed to create checkout session: ' + stripeError.message };
-                return;
-            }
-
-        } else if (isDowngrade) {
-            // For downgrades, schedule the change for next billing cycle
-            if (stripeSubscriptionId) {
-                try {
-                    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-                    const subscriptionItem = subscription.items.data[0];
-                    
-                    // Schedule the subscription modification for the next billing cycle
-                    const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-                        items: [{
-                            id: subscriptionItem.id,
-                            price: subscriptionItem.price.id,
-                            quantity: newLicenseCount
-                        }],
-                        proration_behavior: 'none', // Don't prorate, wait until next billing cycle
-                        metadata: {
-                            ...subscription.metadata,
-                            pendingDowngrade: 'true',
-                            pendingLicenseCount: newLicenseCount.toString(),
-                            downgradeScheduledBy: userEmail,
-                            downgradeScheduledAt: new Date().toISOString()
-                        }
-                    });
-
-                    // Update organization record with pending downgrade info
-                    const updatedOrg = {
-                        ...organization,
-                        pendingLicenseCount: newLicenseCount,
-                        pendingDowngrade: true,
-                        downgradeScheduledAt: new Date().toISOString(),
-                        downgradeScheduledBy: userEmail,
-                        lastModified: new Date().toISOString()
-                    };
-
-                    await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
-
-                    const nextBillingDate = new Date(subscription.current_period_end * 1000);
-
-                    context.res.status = 200;
-                    context.res.body = { 
-                        success: true,
-                        isDowngrade: true,
-                        message: `Downgrade scheduled! Your license count will change from ${currentLicenseCount} to ${newLicenseCount} on ${nextBillingDate.toLocaleDateString('en-GB')}.`,
-                        nextBillingDate: nextBillingDate.toISOString(),
-                        newLicenseCount: newLicenseCount,
-                        newMonthlyAmount: newLicenseCount * 50,
-                        pendingDowngrade: true
-                    };
-                    return;
-
-                } catch (stripeError) {
-                    context.log.error('Stripe downgrade scheduling error:', stripeError);
-                    context.res.status = 500;
-                    context.res.body = { error: 'Failed to schedule downgrade: ' + stripeError.message };
-                    return;
+                    quantity: additionalLicenses
                 }
+            ],
+            metadata: {
+                type: 'license_upgrade',
+                organizationId: organizationId,
+                currentLicenseCount: currentLicenses.toString(),
+                newLicenseCount: newLicenseCount.toString(),
+                stripeSubscriptionId: stripeSubscriptionId || '',
+                userEmail: userEmail,
+                billingInterval: billingInterval
+            },
+            automatic_tax: {
+                enabled: true,
+            },
+            success_url: `${origin}/dashboard.html?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/dashboard.html?upgrade=cancelled`,
+            consent_collection: {
+                terms_of_service: 'required'
             }
+        });
 
-        } else {
+        context.res.status = 200;
+        context.res.body = { 
+            requiresPayment: true,
+            checkoutUrl: session.url,
+            sessionId: session.id,
+            billingInterval: billingInterval,
+            message: `Upgrade requires payment of £${immediateCharge} for ${billingInterval === 'year' ? 'annual' : 'monthly'} billing. You will be redirected to Stripe.`
+        };
+        return;
+
+    } catch (stripeError) {
+        context.log.error('Stripe checkout creation error:', stripeError);
+        context.res.status = 500;
+        context.res.body = { error: 'Failed to create checkout session: ' + stripeError.message };
+        return;
+    }
+} else if (isDowngrade) {
+    // For downgrades, schedule the change for next billing cycle
+    if (stripeSubscriptionId) {
+        try {
+            const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            
+            // Instead of updating items, just update the subscription metadata
+            // The actual quantity change will happen at the next billing cycle
+            const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+                metadata: {
+                    ...subscription.metadata,
+                    pendingDowngrade: 'true',
+                    pendingLicenseCount: newLicenseCount.toString(),
+                    downgradeScheduledBy: userEmail,
+                    downgradeScheduledAt: new Date().toISOString()
+                }
+            });
+
+            // Update organization record with pending downgrade info
+            const updatedOrg = {
+                ...organization,
+                pendingLicenseCount: newLicenseCount,
+                pendingDowngrade: true,
+                downgradeScheduledAt: new Date().toISOString(),
+                downgradeScheduledBy: userEmail,
+                lastModified: new Date().toISOString()
+            };
+
+            await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
+
+            const nextBillingDate = new Date(subscription.current_period_end * 1000);
+
+            context.res.status = 200;
+            context.res.body = { 
+                success: true,
+                isDowngrade: true,
+                message: `Downgrade scheduled! Your license count will change from ${currentLicenseCount} to ${newLicenseCount} on ${nextBillingDate.toLocaleDateString('en-GB')}.`,
+                nextBillingDate: nextBillingDate.toISOString(),
+                newLicenseCount: newLicenseCount,
+                newMonthlyAmount: newLicenseCount * 50,
+                pendingDowngrade: true
+            };
+            return;
+
+        } catch (stripeError) {
+            context.log.error('Stripe downgrade scheduling error:', stripeError);
+            context.res.status = 500;
+            context.res.body = { error: 'Failed to schedule downgrade: ' + stripeError.message };
+            return;
+        }
+    }
+} else {
             // No change in license count
             context.res.status = 200;
             context.res.body = { 

@@ -999,13 +999,37 @@
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async function() {
-            const isAuthenticated = await checkAdminAuth();
+    const isAuthenticated = await checkAdminAuth();
+    
+    if (isAuthenticated) {
+        initializeNavigation();
+        await loadDashboardData();
+        
+        // Check for upgrade success/cancel after authentication
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.get('upgrade') === 'success') {
+            // Show success message and refresh data
+            setTimeout(() => {
+                showSuccess('Plan upgraded successfully! Your new license count is now active.');
+                loadDashboardData();
+            }, 1000);
             
-            if (isAuthenticated) {
-                initializeNavigation();
-                await loadDashboardData();
-            }
-        });
+            // Clean up URL
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        } else if (urlParams.get('upgrade') === 'cancelled') {
+            // Show cancelled message
+            setTimeout(() => {
+                showError('Upgrade cancelled. Your plan remains unchanged.');
+            }, 500);
+            
+            // Clean up URL
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+    }
+});
 
         // Navigation system
         function initializeNavigation() {
