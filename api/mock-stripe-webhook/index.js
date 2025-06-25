@@ -133,10 +133,27 @@ async function processLicenseUpgrade(context, metadata, session) {
     try {
         context.log(`Processing license upgrade for org ${organizationId}: ${currentLicenseCount} -> ${newLicenseCount} (${billingInterval || 'monthly'} billing)`);
 
-        // DO NOT UPDATE SUBSCRIPTION QUANTITY - This was causing the proration issue
-        // Since we charged separately via checkout, just update our database
+        // 🔧 FIXED: Now we DO update the subscription quantity
+        // Since payment was already collected via checkout, we update with no proration
+        if (stripeSubscriptionId) {
+            try {
+                const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+                const subscriptionItem = subscription.items.data[0];
+
+                // Update subscription quantity to match what was paid for
+                await stripe.subscriptionItems.update(subscriptionItem.id, {
+                    quantity: parseInt(newLicenseCount),
+                    proration_behavior: 'none' // No proration since payment already collected
+                });
+
+                context.log(`Updated Stripe subscription ${stripeSubscriptionId} quantity to ${newLicenseCount}`);
+            } catch (stripeError) {
+                context.log.error('Error updating Stripe subscription quantity:', stripeError);
+                // Continue with database update even if Stripe update fails
+            }
+        }
         
-        // Update organization record only
+        // Update organization record in database
         const { resource: organization } = await organizationsContainer.item(organizationId, organizationId).read();
         
         if (organization) {
@@ -154,12 +171,8 @@ async function processLicenseUpgrade(context, metadata, session) {
             };
 
             await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
-            context.log(`License count updated to ${newLicenseCount} for organization ${organizationId} (database only, no Stripe subscription modification)`);
+            context.log(`License count updated to ${newLicenseCount} for organization ${organizationId} - both database AND Stripe subscription updated`);
         }
-
-        // IMPORTANT: We do NOT update the Stripe subscription here anymore
-        // The subscription will be updated at the next billing cycle to match the new license count
-        // This prevents proration and keeps upgrades as separate charges
 
     } catch (error) {
         context.log.error('Error processing license upgrade:', error);
