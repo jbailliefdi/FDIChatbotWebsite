@@ -134,18 +134,46 @@
     }
     
     .sidebar-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 10px;
-    }
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
     
     .sidebar-header h3 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--primary-color);
-      margin: 0;
-    }
-    
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0;
+  flex: 1;
+}
+    .delete-all-btn {
+  background: transparent;
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: none; /* Hidden by default */
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.delete-all-btn:hover {
+  background: #e74c3c;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.delete-all-btn.show {
+  display: flex;
+}
     .sidebar-no-chats-message { 
       padding: 30px 20px; 
       text-align: center; 
@@ -669,6 +697,88 @@ footer.chat-footer.show {
       padding: 10px 12px; 
       font-size: 1.1rem; 
     }
+
+footer.chat-footer {
+  height: var(--footer-height);
+  background: var(--content-bg-color);
+  border-top: 1px solid var(--border-color);
+  display: none; /* Changed from 'flex' to 'none' */
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 30px;
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+/* Add this new class */
+footer.chat-footer.show {
+  display: flex;
+}
+
+
+/* Add these CSS rules for the delete all button */
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0;
+  flex: 1;
+}
+
+.delete-all-btn {
+  background: transparent;
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: none; /* Hidden by default */
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.delete-all-btn:hover {
+  background: #e74c3c;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.delete-all-btn.show {
+  display: flex;
+}
+
+
+
+/* Update for mobile responsiveness */
+@media (max-width: 768px) {
+  .sidebar-header {
+    padding: 15px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .delete-all-btn {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+  }
+}
 
     body.dark-mode .webchat__basic-transcript, 
     body.dark-mode main#webchat > div[id^='webchat_'] { 
@@ -1247,11 +1357,15 @@ footer.chat-footer.show {
   <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h3>Chat History</h3>
-    </div>
-  </aside>
+  <!-- Replace the existing sidebar HTML with this updated version -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h3>Chat History</h3>
+    <button class="delete-all-btn" onclick="showDeleteAllOverlay()" title="Delete all chats">
+      <i class="fas fa-trash-alt"></i> Delete All
+    </button>
+  </div>
+</aside>
   <div class="chat-container" id="chat-container">
     <header class="chat-header" id="chat-header">
       <button class="toggle-sidebar-btn" aria-label="Toggle chat history" onclick="toggleSidebar()">
@@ -1501,6 +1615,112 @@ async function verifyUserAndInitialize(account) {
         console.log("User not found in system. Showing subscription overlay.");
         showSubscriptionOverlay();
         updateAuthUI();
+    }
+}
+function showDeleteAllOverlay() {
+    const overlay = document.getElementById('delete-all-overlay');
+    if (overlay) {
+        overlay.classList.add('visible');
+    }
+}
+
+function hideDeleteAllOverlay() {
+    const overlay = document.getElementById('delete-all-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+}
+
+function confirmDeleteAll() {
+    deleteAllChats();
+    hideDeleteAllOverlay();
+}
+
+function deleteAllChats() {
+    try {
+        // Get all chat IDs
+        const allChatIds = Object.keys(chats);
+        
+        if (allChatIds.length === 0) {
+            console.log("No chats to delete");
+            return;
+        }
+        
+        // Remove all chat tabs from sidebar
+        allChatIds.forEach(chatId => {
+            const chatTabContainer = chats[chatId];
+            if (chatTabContainer) {
+                chatTabContainer.remove();
+            }
+            
+            // Remove chat containers
+            const container = document.getElementById("webchat_" + chatId);
+            if (container) {
+                container.remove();
+            }
+        });
+        
+        // Clear all chat data
+        Object.keys(chats).forEach(key => delete chats[key]);
+        Object.keys(prepopulatedChats).forEach(key => delete prepopulatedChats[key]);
+        
+        // End current DirectLine connection
+        endCurrentDirectLine();
+        currentchat = null;
+        
+        // Show "no chats" message
+        const sidebar = document.querySelector(".sidebar");
+        const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message');
+        if (!noChatsMsg) {
+            const headerElement = sidebar?.querySelector('.sidebar-header');
+            if (headerElement) {
+                const msg = document.createElement('p');
+                msg.className = 'sidebar-no-chats-message';
+                msg.textContent = 'No previous chats found.';
+                headerElement.insertAdjacentElement('afterend', msg);
+            }
+        }
+        
+        // Update delete all button visibility
+        updateDeleteAllButtonVisibility();
+        
+        // Send delete all event to bot if connected
+        if (window.directLine && window.directLine.connectionStatus$.value === 2) {
+            window.directLine.postActivity({
+                type: "event",
+                name: "deleteAllChats",
+                from: { id: "user-client", role: "user" },
+                value: { chatIds: allChatIds }
+            }).subscribe(
+                id => console.log("deleteAllChats event sent"),
+                error => console.error("Error sending deleteAllChats event:", error)
+            );
+        }
+        
+        // Start a new chat
+        setTimeout(() => {
+            newchat();
+        }, 500);
+        
+        console.log("All chats deleted successfully");
+        
+    } catch (error) {
+        alert("Error deleting all chats.");
+        console.error("Error in deleteAllChats:", error);
+    }
+}
+
+// Function to update delete all button visibility
+function updateDeleteAllButtonVisibility() {
+    const deleteAllBtn = document.querySelector('.delete-all-btn');
+    const chatCount = Object.keys(chats).length;
+    
+    if (deleteAllBtn) {
+        if (chatCount > 0) {
+            deleteAllBtn.classList.add('show');
+        } else {
+            deleteAllBtn.classList.remove('show');
+        }
     }
 }
 function showTrialWelcomeMessage() {
@@ -1764,7 +1984,7 @@ async function getDirectLineToken(email) {
 }; let isInjectingHistory = false; window.directLine = null; let currentDirectLineSubscription = null; const webChatStyleOptions = { bubbleBorderRadius: 18, bubbleFromUserBorderRadius: 18, botAvatarImage: "FDi_Logo_Device_Transparent_Outer.png", userAvatarImage: "Unknown.png", botAvatarInitials: "TIA", sendBoxTextWrap: true, hideUploadButton: true, sendBoxButtonAlignment: 'end', };
 function getScrollableTranscript(container) { return container?.querySelector('.webchat__basic-transcript__scrollable') || container?.querySelector('.webchat__basic-transcript'); } function scrollToBottom(container) { setTimeout(() => { const scrollable = getScrollableTranscript(container); if (scrollable) { scrollable.scrollTop = scrollable.scrollHeight; } else { console.warn("Could not find scrollable element in scrollToBottom for container:", container); } }, 250); } function parseMemory(memoryStr) { const activities = []; if (!memoryStr) return activities; const lines = memoryStr.split("\n"); let currentActivity = null; const regex = /^(User(?: Query)?|Bot(?: Answer)?)\s*\d*\s*:\s*(.*)$/i; lines.forEach(line => { const trimmed = line.trim(); if (!trimmed) return; const match = trimmed.match(regex); if (match) { if (currentActivity) activities.push(currentActivity); const marker = match[1].toLowerCase(); const text = match[2]; const isUser = marker.startsWith("user"); const from = isUser ? { id: "user", name: "User", role: "user" } : { id: "bot", name: "FDI Chatbot", role: "bot" }; currentActivity = { type: "message", from: from, text: text.trim(), timestamp: new Date(Date.now() - ((lines.length - activities.length) * 100)).toISOString() }; } else if (currentActivity) { currentActivity.text += "\n" + trimmed; } }); if (currentActivity) activities.push(currentActivity); activities.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); return activities; } function truncateTitle(title) { if (title.length > 25) { return title.slice(0, 22) + "..."; } return title; }
 function updateSidebar(memories) { const sidebar = document.querySelector(".sidebar"); if (!sidebar) { return; } let tempPrepopulatedChats = {}; let hasValidChatsInUpdate = false; const updatedChatIds = new Set(); if (memories && typeof memories === 'object' && Object.keys(memories).length > 0) { const conversationIds = Object.keys(memories); conversationIds.forEach(convId => { updatedChatIds.add(convId); try { if (!memories[convId]) { return; } const memoryDataStr = memories[convId]; const memoryData = (typeof memoryDataStr === 'string') ? JSON.parse(memoryDataStr) : memoryDataStr; const transcript = memoryData.memory || ""; const title = memoryData.title ? memoryData.title.trim() : ""; const activities = parseMemory(transcript); const hasTitle = title.length > 0; const hasUserMessages = activities.some(act => act.from.role === 'user'); if (hasTitle || hasUserMessages) { hasValidChatsInUpdate = true; tempPrepopulatedChats[convId] = transcript; let label = "Untitled Chat"; if (hasTitle && title !== "New Chat...") { label = truncateTitle(title); } else if (hasUserMessages) { const firstUserActivity = activities.find(a => a.from.role === "user"); label = firstUserActivity?.text ? truncateTitle(firstUserActivity.text.split('\n')[0]) : "Chat " + convId.substring(convId.length - 5); } else { label = "Chat " + convId.substring(convId.length - 5); } addchatTab(convId, label); } } catch (e) { console.error("Failed to process memory for sidebar update:", convId, e); } }); }
-Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebar.querySelectorAll('.chat-tab').length; if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } initialSidebarLoaded = true; }
+Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebar.querySelectorAll('.chat-tab').length; if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } initialSidebarLoaded = true; updateDeleteAllButtonVisibility();}
 function toggleSidebar() { const sidebar = document.querySelector(".sidebar"); sidebar?.classList.toggle('open'); }
 function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatch, getState }) => next => action => { if ((action.type === "WEB_CHAT/SEND_MESSAGE" || action.type === "DIRECT_LINE/POST_ACTIVITY") && action.payload?.activity?.type === "message") { const token = getAuthToken(); if (token) { if (!action.payload.activity.channelData) action.payload.activity.channelData = {}; action.payload.activity.channelData.token = token; action.payload.activity.channelData.subscription = subscriptionData; } if (!action.payload.activity.from) action.payload.activity.from = {}; if (!action.payload.activity.from.role) action.payload.activity.from.role = 'user'; } if ((action.type === 'DIRECT_LINE/INCOMING_ACTIVITY' && action.payload?.activity?.type === 'message') || action.type === 'WEB_CHAT/SEND_MESSAGE_FULFILLED') { const container = document.getElementById('webchat_' + currentchat); if(container) scrollToBottom(container); } if (action.type === 'DIRECT_LINE/CONNECT_FULFILLED') { if (!isInjectingHistory) { const welcomeActivity = { type: 'message', id: `welcome_${action.payload.directLine.conversationId}_${Date.now()}`, timestamp: new Date(1).toISOString(), channelId: 'webchat', from: { id: 'bot', name: 'FDI Chatbot', role: 'bot' }, text: 'Hi! I am Tia, the FDI Chatbot!' }; dispatch({ type: 'DIRECT_LINE/INCOMING_ACTIVITY', payload: { activity: welcomeActivity } }); }
 dispatch({ type: 'WEB_CHAT/SEND_EVENT', payload: { name: 'webchat/join', value: { language: window.navigator.language } } }); } return next(action); }); }
@@ -1944,8 +2164,9 @@ function addchatTab(chatId, newLabel) {
     let existingTabElement = chats[chatId]; let existingButton = existingTabElement?.querySelector('button');
     if (existingButton) { const currentButtonLabel = existingButton.textContent; if ((currentButtonLabel === "New Chat..." || currentButtonLabel === "Untitled Chat" || currentButtonLabel.startsWith("Chat ")) && newLabel && newLabel.trim() !== "" && newLabel !== "New Chat...") { existingButton.textContent = newLabel; existingButton.setAttribute("title", newLabel); } return existingTabElement;
     } else { const tabElement = createChatTabElement(chatId, newLabel); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); if (noChatsMsg) noChatsMsg.remove(); const headerElement = sidebar.querySelector('.sidebar-header'); if (headerElement) { headerElement.insertAdjacentElement('afterend', tabElement); } else { sidebar.insertBefore(tabElement, sidebar.firstChild); } chats[chatId] = tabElement; return tabElement; }
-}
-function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const currentTabCount = sidebar?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar?.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => console.log("deleteChat event sent for", chatId), error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); } }
+updateDeleteAllButtonVisibility();
+  }
+function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const currentTabCount = sidebar?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar?.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => console.log("deleteChat event sent for", chatId), error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); }updateDeleteAllButtonVisibility(); }
 
 // --- PDF Saving, Font Size, Dark Mode (Unchanged) ---
 const addPdfPage = (docInstance, topMargin) => { docInstance.addPage(); return topMargin; };
@@ -1959,7 +2180,9 @@ function setDarkMode(isDark) { const darkModeBtn = document.getElementById('dark
 window.signIn = signIn; window.signOut = signOut; window.handleAuth = handleAuth; window.toggleSidebar = toggleSidebar; window.newchat = newchat; window.changeFontSize = changeFontSize; window.saveChatTranscript = saveChatTranscript; window.showchat = showchat; window.toggleDarkMode = toggleDarkMode; window.showDeleteOverlay = showDeleteOverlay;
 window.hideDeleteOverlay = hideDeleteOverlay;
 window.confirmDelete = confirmDelete;
-
+window.showDeleteAllOverlay = showDeleteAllOverlay;
+window.hideDeleteAllOverlay = hideDeleteAllOverlay;
+window.confirmDeleteAll = confirmDeleteAll;
 window.onload = async () => {
     console.log("Window onload started.");
     handleTrialUrlParams();
@@ -2068,6 +2291,16 @@ window.onload = async () => {
     <div class="modal-buttons">
       <button class="cancel-btn" onclick="hideDeleteOverlay()">Cancel</button>
       <button class="confirm-btn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+<div id="delete-all-overlay" class="delete-overlay">
+  <div class="delete-modal">
+    <h3>Delete All Chats</h3>
+    <p>Are you sure you want to delete ALL your chats? This will permanently remove your entire chat history and cannot be undone.</p>
+    <div class="modal-buttons">
+      <button class="cancel-btn" onclick="hideDeleteAllOverlay()">Cancel</button>
+      <button class="confirm-btn" onclick="confirmDeleteAll()">Delete All</button>
     </div>
   </div>
 </div>
