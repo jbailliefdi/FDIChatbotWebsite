@@ -1646,45 +1646,9 @@ function deleteAllChats() {
             return;
         }
         
-        // Remove all chat tabs from sidebar
-        allChatIds.forEach(chatId => {
-            const chatTabContainer = chats[chatId];
-            if (chatTabContainer) {
-                chatTabContainer.remove();
-            }
-            
-            // Remove chat containers
-            const container = document.getElementById("webchat_" + chatId);
-            if (container) {
-                container.remove();
-            }
-        });
+        console.log("Deleting all chats:", allChatIds);
         
-        // Clear all chat data
-        Object.keys(chats).forEach(key => delete chats[key]);
-        Object.keys(prepopulatedChats).forEach(key => delete prepopulatedChats[key]);
-        
-        // End current DirectLine connection
-        endCurrentDirectLine();
-        currentchat = null;
-        
-        // Show "no chats" message
-        const sidebar = document.querySelector(".sidebar");
-        const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message');
-        if (!noChatsMsg) {
-            const headerElement = sidebar?.querySelector('.sidebar-header');
-            if (headerElement) {
-                const msg = document.createElement('p');
-                msg.className = 'sidebar-no-chats-message';
-                msg.textContent = 'No previous chats found.';
-                headerElement.insertAdjacentElement('afterend', msg);
-            }
-        }
-        
-        // Update delete all button visibility
-        updateDeleteAllButtonVisibility();
-        
-        // Send delete all event to bot if connected
+        // Send delete all event to bot FIRST (before local cleanup)
         if (window.directLine && window.directLine.connectionStatus$.value === 2) {
             window.directLine.postActivity({
                 type: "event",
@@ -1692,22 +1656,73 @@ function deleteAllChats() {
                 from: { id: "user-client", role: "user" },
                 value: { chatIds: allChatIds }
             }).subscribe(
-                id => console.log("deleteAllChats event sent"),
-                error => console.error("Error sending deleteAllChats event:", error)
+                id => {
+                    console.log("deleteAllChats event sent successfully");
+                    // Only do local cleanup after server confirms
+                    performLocalCleanup(allChatIds);
+                },
+                error => {
+                    console.error("Error sending deleteAllChats event:", error);
+                    // Still do local cleanup even if server call fails
+                    performLocalCleanup(allChatIds);
+                }
             );
+        } else {
+            console.warn("DirectLine not connected, doing local cleanup only");
+            performLocalCleanup(allChatIds);
         }
-        
-        // Start a new chat
-        setTimeout(() => {
-            newchat();
-        }, 500);
-        
-        console.log("All chats deleted successfully");
         
     } catch (error) {
         alert("Error deleting all chats.");
         console.error("Error in deleteAllChats:", error);
     }
+}
+
+function performLocalCleanup(allChatIds) {
+    // Remove all chat tabs from sidebar
+    allChatIds.forEach(chatId => {
+        const chatTabContainer = chats[chatId];
+        if (chatTabContainer) {
+            chatTabContainer.remove();
+        }
+        
+        // Remove chat containers
+        const container = document.getElementById("webchat_" + chatId);
+        if (container) {
+            container.remove();
+        }
+    });
+    
+    // Clear all chat data
+    Object.keys(chats).forEach(key => delete chats[key]);
+    Object.keys(prepopulatedChats).forEach(key => delete prepopulatedChats[key]);
+    
+    // End current DirectLine connection
+    endCurrentDirectLine();
+    currentchat = null;
+    
+    // Show "no chats" message
+    const sidebar = document.querySelector(".sidebar");
+    const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message');
+    if (!noChatsMsg) {
+        const headerElement = sidebar?.querySelector('.sidebar-header');
+        if (headerElement) {
+            const msg = document.createElement('p');
+            msg.className = 'sidebar-no-chats-message';
+            msg.textContent = 'No previous chats found.';
+            headerElement.insertAdjacentElement('afterend', msg);
+        }
+    }
+    
+    // Update delete all button visibility
+    updateDeleteAllButtonVisibility();
+    
+    // Start a new chat after a brief delay
+    setTimeout(() => {
+        newchat();
+    }, 500);
+    
+    console.log("Local cleanup completed for all chats");
 }
 
 // Function to update delete all button visibility
