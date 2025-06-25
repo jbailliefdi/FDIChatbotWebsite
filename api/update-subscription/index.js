@@ -95,7 +95,7 @@ module.exports = async function (context, req) {
 
 if (isUpgrade) {
     // For upgrades, create a Stripe checkout session instead of immediate update
-    const additionalLicenses = newLicenseCount - currentLicenses;
+    const additionalLicenses = newLicenseCount - currentLicenseCount; // FIXED: was currentLicenses
     
     try {
         // Get current subscription to determine billing interval and pricing
@@ -104,18 +104,23 @@ if (isUpgrade) {
         let immediateCharge = additionalLicenses * 50; // Default monthly
         
         if (stripeSubscriptionId) {
-            const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-            const currentPrice = subscription.items.data[0].price;
-            billingInterval = currentPrice.recurring.interval;
-            
-            if (billingInterval === 'year') {
-                pricePerLicense = 55000; // £550 annually (matching your pricing)
-                immediateCharge = additionalLicenses * 550; // Annual pricing
+            try {
+                const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+                const currentPrice = subscription.items.data[0].price;
+                billingInterval = currentPrice.recurring.interval;
+                
+                if (billingInterval === 'year') {
+                    pricePerLicense = 55000; // £550 annually (matching your pricing)
+                    immediateCharge = additionalLicenses * 550; // Annual pricing
+                }
+            } catch (subscriptionError) {
+                context.log.warn('Could not retrieve subscription for billing interval:', subscriptionError);
+                // Continue with monthly defaults
             }
         }
 
         // Get the base URL for redirects (matching your pattern)
-        const origin = req.headers.origin || req.headers.referer || 'https://your-domain.com';
+        const origin = req.headers.origin || req.headers.referer || 'https://kind-mud-048fffa03.6.azurestaticapps.net';
         
         const session = await stripe.checkout.sessions.create({
             customer: stripeCustomerId,
@@ -153,7 +158,7 @@ if (isUpgrade) {
             metadata: {
                 type: 'license_upgrade',
                 organizationId: organizationId,
-                currentLicenseCount: currentLicenses.toString(),
+                currentLicenseCount: currentLicenseCount.toString(), // FIXED: was currentLicenses
                 newLicenseCount: newLicenseCount.toString(),
                 stripeSubscriptionId: stripeSubscriptionId || '',
                 userEmail: userEmail,
@@ -185,7 +190,7 @@ if (isUpgrade) {
         context.res.body = { error: 'Failed to create checkout session: ' + stripeError.message };
         return;
     }
-} else if (isDowngrade) {
+}else if (isDowngrade) {
     // For downgrades, schedule the change for next billing cycle
     if (stripeSubscriptionId) {
         try {
