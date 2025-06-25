@@ -1409,19 +1409,13 @@ async function checkUserStatus(account) {
         return { userExists: false, accessGranted: false, error: "Not logged in." };
     }
 
-    const token = getAuthToken();
-    if (!token) {
-        return { userExists: false, accessGranted: false, error: "No auth token available." };
-    }
-
     try {
         const response = await fetch('/api/check-subscription', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-            // REMOVED: body with email - backend will extract from token
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email: account.username })
         });
 
         if (!response.ok) {
@@ -1433,6 +1427,7 @@ async function checkUserStatus(account) {
         const data = await response.json();
         console.log('User status check result:', data);
         
+        // Store trial data if present
         if (data.trial) {
             trialData = data.trial;
         }
@@ -1459,63 +1454,53 @@ async function verifyUserAndInitialize(account) {
     const loadingOverlay = document.getElementById('loading-overlay');
     if (loadingOverlay) loadingOverlay.classList.add('visible');
 
-    try {
-        const result = await checkUserStatus(account);
-        userData = result;
-        
-        subscriptionData = {
-            active: result.accessGranted,
-            userExists: result.userExists,
-            isTrialing: result.isTrialing,
-            trial: result.trial,
-            ...result
-        };
+    const result = await checkUserStatus(account);
+    userData = result;
+    
+    // Set subscriptionData for compatibility with existing code
+    subscriptionData = {
+        active: result.accessGranted,
+        userExists: result.userExists,
+        isTrialing: result.isTrialing,
+        trial: result.trial,
+        ...result
+    };
 
-        if (loadingOverlay) loadingOverlay.classList.remove('visible');
+    if (loadingOverlay) loadingOverlay.classList.remove('visible');
 
-        if (result.userExists) {
-            if (result.accessGranted) {
-                console.log("User verified and access granted. Initializing chat.");
-                hideAccountStatusOverlay();
-                hideSubscriptionOverlay();
-                updateAuthUI();
-                initializeChat();
-                
-                if (result.isTrialing && window.location.search.includes('trial=started')) {
-                    showTrialWelcomeMessage();
-                }
-            } else {
-                console.log("User exists but access denied:", result.message);
-                
-                let message = result.message;
-                if (result.organization?.status === 'trial_expired') {
-                    message = `Your free trial has expired. Please subscribe to continue using TIA Professional.`;
-                    showTrialExpiredOverlay();
-                    return;
-                } else if (result.user?.status === 'deactivated') {
-                    message = `Your account has been deactivated. Please contact your administrator to reactivate your account.`;
-                } else if (result.organization?.status !== 'active' && result.organization?.status !== 'trialing') {
-                    message = `Your organization's subscription is not active. Please contact your administrator to resolve this issue.`;
-                }
-                
-                showAccountStatusOverlay(message);
-                updateAuthUI();
+    if (result.userExists) {
+        if (result.accessGranted) {
+            console.log("User verified and access granted. Initializing chat.");
+            hideAccountStatusOverlay();
+            hideSubscriptionOverlay();
+            updateAuthUI();
+            initializeChat();
+            
+            // Show trial welcome message if this is a new trial
+            if (result.isTrialing && window.location.search.includes('trial=started')) {
+                showTrialWelcomeMessage();
             }
         } else {
-            console.log("User not found in system. Showing subscription overlay.");
-            showSubscriptionOverlay();
+            console.log("User exists but access denied:", result.message);
+            
+            let message = result.message;
+            if (result.organization?.status === 'trial_expired') {
+                message = `Your free trial has expired. Please subscribe to continue using TIA Professional.`;
+                showTrialExpiredOverlay();
+                return;
+            } else if (result.user?.status === 'deactivated') {
+                message = `Your account has been deactivated. Please contact your administrator to reactivate your account.`;
+            } else if (result.organization?.status !== 'active' && result.organization?.status !== 'trialing') {
+                message = `Your organization's subscription is not active. Please contact your administrator to resolve this issue.`;
+            }
+            
+            showAccountStatusOverlay(message);
             updateAuthUI();
         }
-    } catch (error) {
-        if (loadingOverlay) loadingOverlay.classList.remove('visible');
-        
-        // Handle authentication errors specifically
-        if (error.message && (error.message.includes('token') || error.message.includes('auth'))) {
-            handleAuthError(error);
-        } else {
-            console.error("Error verifying user:", error);
-            alert("Failed to verify user access. Please try refreshing the page.");
-        }
+    } else {
+        console.log("User not found in system. Showing subscription overlay.");
+        showSubscriptionOverlay();
+        updateAuthUI();
     }
 }
 function showTrialWelcomeMessage() {
@@ -1710,24 +1695,7 @@ function updateAuthUI() {
 function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
 async function signIn() { const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; try { await msalInstance.loginRedirect(loginRequest); } catch (error) { alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); } }
 async function signOut() { clearAuthToken(); try { const currentAccount = msalInstance.getActiveAccount(); const logoutRequest = { account: currentAccount, postLogoutRedirectUri: window.location.origin + window.location.pathname }; if (currentAccount) { await msalInstance.logoutRedirect(logoutRequest); } else { await msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.origin + window.location.pathname }); } } catch (error) { updateAuthUI(); alert("An error occurred initiating sign-out. You might need to clear site data manually."); } }
-function handleAuthError(error) {
-    console.error('Authentication error:', error);
-    
-    // Clear stored tokens
-    clearAuthToken();
-    
-    // Update UI to show signed out state
-    updateAuthUI();
-    
-    // Show appropriate message to user
-    if (error.message.includes('Invalid or expired token')) {
-        alert('Your session has expired. Please sign in again.');
-    } else if (error.message.includes('Authorization header required')) {
-        console.log('User needs to sign in');
-    } else {
-        alert('Authentication failed. Please try signing in again.');
-    }
-}
+
 function postSignInEvent() {
     const token = getAuthToken();
     const account = msalInstance.getActiveAccount();
@@ -1775,20 +1743,12 @@ function goToHomepage() {
  * Chatbot & Web Chat Setup
  **********************/
 let currentchat = null; const chats = {}; let fontSize = 16; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
-async function getDirectLineToken(account) {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token available');
-    }
-
+async function getDirectLineToken(email) {
     try {
         const response = await fetch('/api/get-bot-token', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-            // REMOVED: body with email - backend will extract from token
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
         });
         
         if (!response.ok) {
