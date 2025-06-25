@@ -1308,7 +1308,7 @@ body.dark-mode .account-status-modal .contact-info {
         <li><i class="fas fa-check-circle"></i> Priority email and chat support</li>
         <li><i class="fas fa-check-circle"></i> Continuous feature updates</li>
       </ul>
-      <button id="start-trial-btn" class="modal-button primary">Start 14-Day Free Trial</button>
+      <button id="start-trial-btn" class="modal-button primary">Start 3-Day Free Trial</button>
 <button id="recheck-sub-btn" class="modal-button secondary">I Already Have a Subscription</button>
 <button class="modal-button secondary" onclick="signOut()">Sign Out</button>
       <p id="subscription-status"></p>
@@ -1327,7 +1327,6 @@ body.dark-mode .account-status-modal .contact-info {
     <div class="contact-info">
       <h4><i class="fas fa-envelope"></i> Contact Information</h4>
       <p><strong>Email:</strong> <a href="mailto:hello@fdintelligence.co.uk" style="color: var(--primary-color);">hello@fdintelligence.co.uk</a></p>
-      <p><strong>Phone:</strong> +44 (0) 141 221 0222</p>
       <p>Please include your email address and organization name when contacting support.</p>
     </div>
     <div class="modal-actions">
@@ -1486,9 +1485,9 @@ async function verifyUserAndInitialize(account) {
                 showTrialExpiredOverlay();
                 return;
             } else if (result.user?.status === 'deactivated') {
-                message = `Your account has been deactivated. Please contact your administrator at hello@fdintelligence.co.uk to reactivate your account.`;
+                message = `Your account has been deactivated. Please contact your administrator to reactivate your account.`;
             } else if (result.organization?.status !== 'active' && result.organization?.status !== 'trialing') {
-                message = `Your organization's subscription is not active. Please contact your administrator at hello@fdintelligence.co.uk to resolve this issue.`;
+                message = `Your organization's subscription is not active. Please contact your administrator to resolve this issue.`;
             }
             
             showAccountStatusOverlay(message);
