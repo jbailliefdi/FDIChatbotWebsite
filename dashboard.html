@@ -18,90 +18,12 @@
             background: #f5f7fa;
             color: #333;
         }
-        .simple-header {
-    background: #2c3e50;
-    color: white;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.header-logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #3498db;
-}
-
-.header-org-name {
-    font-size: 0.9rem;
-    color: #bdc3c7;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.header-link {
-    color: #ecf0f1;
-    text-decoration: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    transition: background 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.header-link:hover {
-    background: #34495e;
-}
-
-.header-sign-out {
-    background: transparent;
-    color: #ecf0f1;
-    border: 1px solid #34495e;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.header-sign-out:hover {
-    background: #34495e;
-    border-color: #3498db;
-}
-
-@media (max-width: 768px) {
-    .simple-header {
-        padding: 1rem;
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .header-actions {
-        justify-content: center;
-    }
-}
         .dashboard-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
 
         /* Sidebar */
         .sidebar {
@@ -157,10 +79,9 @@
 
         /* Main Content */
         .main-content {
-    flex: 1;
-    padding: 2rem;
-    overflow-y: auto;
-}
+            padding: 2rem;
+            overflow-y: auto;
+        }
 
         .page-header {
             display: flex;
@@ -615,99 +536,187 @@
     </style>
 </head>
 <body>
-        <div class="dashboard-container">
-        <!-- Simple Header -->
-        <header class="simple-header">
-            <div class="header-left">
-                <div class="header-logo">TIA</div>
-                <div class="header-org-name" id="headerOrgName">Loading...</div>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo-section">
+                <h2>TIA</h2>
+                <div class="org-name" id="orgName">Loading...</div>
             </div>
-            <div class="header-actions">
-                <a href="/app" class="header-link">
-                    <i class="fas fa-arrow-left"></i>
-                    Back to TIA
-                </a>
-                <button class="header-sign-out" onclick="signOut()">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Sign Out
-                </button>
-            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a class="nav-link active" data-page="users">
+                        <i class="fas fa-users"></i>
+                        Users & Teams
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="billing">
+                        <i class="fas fa-credit-card"></i>
+                        Billing & Plans
+                    </a>
+                </li>
+                <li class="nav-item" style="margin-top: 2rem; border-top: 1px solid #34495e; padding-top: 1rem;">
+                    <a href="/app" class="nav-link">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to TIA
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link sign-out-btn" onclick="signOut()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sign Out
+                    </a>
+                </li>
+            </ul>
+        </nav>
 
         <!-- Main Content -->
-       <main class="main-content">
-    <!-- Single Page with Everything -->
-    <div id="usersPage" class="page-content active">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Organization Dashboard</h1>
-            </div>
-            <div class="user-info">
-                <div class="user-avatar" id="currentUserAvatar">?</div>
-                <div>
-                    <div id="currentUserName">Loading...</div>
-                    <div style="font-size: 0.8rem; color: #666;" id="currentUserRole">Loading...</div>
+        <main class="main-content">
+            <!-- Users & Teams Page -->
+            <div id="usersPage" class="page-content active">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Users & Teams</h1>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-avatar" id="currentUserAvatar">?</div>
+                        <div>
+                            <div id="currentUserName">Loading...</div>
+                            <div style="font-size: 0.8rem; color: #666;" id="currentUserRole">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- License Usage Card -->
+                <div class="license-card">
+                    <div class="license-header">
+                        <h3><i class="fas fa-id-card"></i> License Usage</h3>
+<button class="upgrade-btn" onclick="showManagePlanModal()">
+    <i class="fas fa-arrow-up"></i> Manage Plan
+</button>
+                    </div>
+                    <div class="license-usage">
+                        <div style="font-weight: 600;" id="licenseUsageText">Loading...</div>
+                        <div class="usage-bar">
+                            <div class="usage-fill" id="usageBar" style="width: 0%;"></div>
+                        </div>
+                        <div style="color: #27ae60; font-weight: 500;" id="availableLicenses">0 available</div>
+                    </div>
+                    <!-- Trial Status Banner -->
+                    <div id="trialStatusBanner"></div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;" id="planDetails">
+                        Loading plan details...
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div id="messageContainer"></div>
+
+                <!-- Users Section -->
+                <div class="users-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-users"></i> Team Members</h3>
+                        <button class="invite-btn" onclick="showInviteModal()">
+                            <i class="fas fa-plus"></i>
+                            Invite User
+                        </button>
+                    </div>
+
+                    <div id="usersTableContainer">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading users...
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- License Usage Card -->
-        <div class="license-card">
-            <div class="license-header">
-                <h3><i class="fas fa-id-card"></i> License Usage</h3>
-                <button class="upgrade-btn" onclick="showManagePlanModal()">
-                    <i class="fas fa-arrow-up"></i> Manage Plan
-                </button>
-            </div>
-            <div class="license-usage">
-                <div style="font-weight: 600;" id="licenseUsageText">Loading...</div>
-                <div class="usage-bar">
-                    <div class="usage-fill" id="usageBar" style="width: 0%;"></div>
+            <!-- Billing & Plans Page -->
+            <div id="billingPage" class="page-content">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Billing & Plans</h1>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-avatar" id="currentUserAvatar2">?</div>
+                        <div>
+                            <div id="currentUserName2">Loading...</div>
+                            <div style="font-size: 0.8rem; color: #666;" id="currentUserRole2">Loading...</div>
+                        </div>
+                    </div>
                 </div>
-                <div style="color: #27ae60; font-weight: 500;" id="availableLicenses">0 available</div>
-            </div>
-            <!-- Trial Status Banner -->
-            <div id="trialStatusBanner"></div>
-            <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;" id="planDetails">
-                Loading plan details...
-            </div>
-        </div>
 
-        <!-- Messages -->
-        <div id="messageContainer"></div>
+                <!-- Billing Overview -->
+                <div class="billing-overview">
+                    <div class="billing-card payment-card">
+                        <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
+                        <div id="paymentMethodContent">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading payment method...
+                            </div>
+                        </div>
+                        <button class="btn btn-warning" style="width: 100%; margin-top: 1rem;" onclick="updatePaymentMethod()">
+                            <i class="fas fa-edit"></i> Update Payment Method
+                        </button>
+                    </div>
 
-        <!-- Billing Management Section -->
-        <div class="billing-section" style="margin-bottom: 2rem;">
-            <div class="section-header">
-                <h3><i class="fas fa-credit-card"></i> Billing & Payments</h3>
-                <button class="btn btn-primary" onclick="openBillingPortal()">
-                    <i class="fas fa-external-link-alt"></i>
-                    Manage Billing
-                </button>
-            </div>
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; color: #666; font-size: 0.9rem;">
-                <i class="fas fa-info-circle" style="color: #3498db; margin-right: 0.5rem;"></i>
-                Manage your payment methods, view invoices, download receipts, and update billing information.
-            </div>
-        </div>
+                    <div class="billing-card plan-card">
+                        <h3><i class="fas fa-calendar-alt"></i> Next Billing</h3>
+                        <div id="nextBillingContent">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading billing info...
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="openBillingPortal()">
+                            <i class="fas fa-external-link-alt"></i> Manage Billing
+                        </button>
+                    </div>
+                </div>
 
-        <!-- Users Section -->
-        <div class="users-section">
-            <div class="section-header">
-                <h3><i class="fas fa-users"></i> Team Members</h3>
-                <button class="invite-btn" onclick="showInviteModal()">
-                    <i class="fas fa-plus"></i>
-                    Invite User
-                </button>
-            </div>
+                <!-- Billing History -->
+                <div class="billing-section">
+                    <h3><i class="fas fa-history"></i> Billing History</h3>
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading billing history...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-            <div id="usersTableContainer">
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i> Loading users...
+                <!-- Manage Subscription -->
+                <div class="billing-section">
+                    <h3><i class="fas fa-cogs"></i> Manage Subscription</h3>
+                    <p style="color: #666; margin-bottom: 1.5rem;">
+                        Manage your subscription settings, cancel or modify your plan.
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="pauseSubscription()">
+                            <i class="fas fa-pause"></i> Pause Subscription
+                        </button>
+                        <button class="btn btn-warning" onclick="changeSubscription()">
+                            <i class="fas fa-exchange-alt"></i> Change Plan
+                        </button>
+                        <button class="btn" style="background: #dc3545; color: white;" onclick="cancelSubscription()">
+                            <i class="fas fa-times"></i> Cancel Subscription
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</main>
+        </main>
     </div>
 
     <!-- Invite User Modal -->
@@ -1206,7 +1215,38 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
     }
 });
 
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
 
+            // Show selected page
+            document.getElementById(pageId + 'Page').classList.add('active');
+
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+
+            currentPage = pageId;
+
+            // Load billing data when showing billing page
+            if (pageId === 'billing') {
+                if (currentUser) {
+                    updateBillingPageUserInfo();
+                }
+                loadBillingData();
+            }
+        }
+
+        function updateBillingPageUserInfo() {
+            const initials = `${currentUser.firstName?.charAt(0) || ''}${currentUser.lastName?.charAt(0) || ''}`.toUpperCase();
+            document.getElementById('currentUserAvatar2').textContent = initials;
+            document.getElementById('currentUserName2').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+            document.getElementById('currentUserRole2').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        }
 
         // Load dashboard data
         async function loadDashboardData() {
@@ -1218,6 +1258,7 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
     try {
         const orgId = currentUserOrganization.id;
         
+        // FIXED: Azure Static Web Apps API call with query parameter
         const response = await fetch(`/api/organization-overview?orgId=${orgId}`);
         const data = await response.json();
         
@@ -1241,23 +1282,26 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
 }
 
         // Update dashboard UI with real data
-       function updateDashboardUI(data) {
-    const { organization, users, usage } = data;
-    
-    // Update header org name
-    document.getElementById('headerOrgName').textContent = organization.name;
-    
-    if (currentUser) {
-        const initials = `${currentUser.firstName?.charAt(0) || ''}${currentUser.lastName?.charAt(0) || ''}`.toUpperCase();
-        document.getElementById('currentUserAvatar').textContent = initials;
-        document.getElementById('currentUserName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
-        document.getElementById('currentUserRole').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
-    }
-    
-    updateLicenseUsage(usage, organization);
-    updateUsersTable(users);
-    updateInviteModalInfo(usage);
-}
+        function updateDashboardUI(data) {
+            const { organization, users, usage } = data;
+            
+            document.getElementById('orgName').textContent = organization.name;
+            
+            if (currentUser) {
+                const initials = `${currentUser.firstName?.charAt(0) || ''}${currentUser.lastName?.charAt(0) || ''}`.toUpperCase();
+                document.getElementById('currentUserAvatar').textContent = initials;
+                document.getElementById('currentUserName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+                document.getElementById('currentUserRole').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+                
+                if (currentPage === 'billing') {
+                    updateBillingPageUserInfo();
+                }
+            }
+            
+            updateLicenseUsage(usage, organization);
+            updateUsersTable(users);
+            updateInviteModalInfo(usage);
+        }
 
         function updateLicenseUsage(usage, organization) {
     document.getElementById('licenseUsageText').textContent = `${usage.used} of ${usage.total} licenses used`;
