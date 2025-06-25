@@ -593,7 +593,6 @@
                 <div class="license-card">
                     <div class="license-header">
                         <h3><i class="fas fa-id-card"></i> License Usage</h3>
-                        // Update the upgrade button in the license card
 <button class="upgrade-btn" onclick="showManagePlanModal()">
     <i class="fas fa-arrow-up"></i> Manage Plan
 </button>
@@ -1068,26 +1067,37 @@ function updatePlanPreview() {
     document.getElementById('newMonthlyPrice').textContent = newPrice;
     
     const diffElement = document.getElementById('priceDifference');
+    const updateBtn = document.getElementById('updatePlanBtn');
+    const warningDiv = document.getElementById('licenseChangeWarning');
+    
+    // Handle price difference display and button text
     if (difference > 0) {
-        diffElement.innerHTML = `<span style="color: #e74c3c;">+£${difference}/month</span>`;
+        diffElement.innerHTML = `<span style="color: #e74c3c;">+£${difference}/month (immediate charge: £${difference})</span>`;
+        updateBtn.textContent = 'Upgrade Plan (Pay Now)';
+        updateBtn.className = 'btn btn-primary';
     } else if (difference < 0) {
-        diffElement.innerHTML = `<span style="color: #27ae60;">£${Math.abs(difference)}/month savings</span>`;
+        diffElement.innerHTML = `<span style="color: #27ae60;">£${Math.abs(difference)}/month savings (starts next billing cycle)</span>`;
+        updateBtn.textContent = 'Schedule Downgrade';
+        updateBtn.className = 'btn btn-warning';
     } else {
         diffElement.innerHTML = 'No change';
+        updateBtn.textContent = 'No Changes';
+        updateBtn.className = 'btn btn-secondary';
+        updateBtn.disabled = true;
+        return;
     }
     
+    updateBtn.disabled = false;
+    
     // Show warning if reducing licenses below active users
-    const warningDiv = document.getElementById('licenseChangeWarning');
     const activeUsers = organizationUsers.filter(u => u.status === 'active').length;
     
     if (newLicenses < activeUsers) {
         warningDiv.style.display = 'block';
         document.getElementById('warningText').textContent = 
             ` You have ${activeUsers} active users. Reducing to ${newLicenses} license${newLicenses > 1 ? 's' : ''} will require deactivating ${activeUsers - newLicenses} user${activeUsers - newLicenses > 1 ? 's' : ''}.`;
-        document.getElementById('updatePlanBtn').textContent = 'Update Plan';
     } else {
         warningDiv.style.display = 'none';
-        document.getElementById('updatePlanBtn').textContent = 'Update Plan';
     }
 }
 
@@ -1103,12 +1113,17 @@ document.getElementById('managePlanForm').addEventListener('submit', async funct
         return;
     }
     
-    if (!confirm(`Are you sure you want to ${newLicenseCount > currentLicenses ? 'increase' : 'decrease'} your licenses from ${currentLicenses} to ${newLicenseCount}? Your new monthly cost will be £${newLicenseCount * 50}.`)) {
-        return;
-    }
+    const isUpgrade = newLicenseCount > currentLicenses;
+    const actionText = isUpgrade ? 'upgrade' : 'downgrade';
+    const newMonthlyPrice = newLicenseCount * 50;
+    
+    // Show loading state
+    const updateBtn = document.getElementById('updatePlanBtn');
+    const originalText = updateBtn.textContent;
+    updateBtn.disabled = true;
+    updateBtn.textContent = 'Processing...';
     
     try {
-        // This would call your API to update the subscription
         const response = await fetch('/api/update-subscription', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1121,17 +1136,40 @@ document.getElementById('managePlanForm').addEventListener('submit', async funct
             })
         });
         
+        const result = await response.json();
+        
         if (response.ok) {
-            showSuccess('Plan updated successfully! Changes will be reflected in your next billing cycle.');
-            hideManagePlanModal();
-            loadDashboardData(); // Reload to show new license count
+            if (result.requiresPayment) {
+                // For upgrades: redirect to Stripe checkout
+                showSuccess('Redirecting to payment...');
+                setTimeout(() => {
+                    window.location.href = result.checkoutUrl;
+                }, 1000);
+            } else if (result.isDowngrade) {
+                // For downgrades: show success message and refresh
+                showSuccess(result.message);
+                hideManagePlanModal();
+                setTimeout(() => {
+                    loadDashboardData();
+                }, 1000);
+            } else {
+                // No change or other success
+                showSuccess(result.message || 'Plan updated successfully!');
+                hideManagePlanModal();
+                setTimeout(() => {
+                    loadDashboardData();
+                }, 1000);
+            }
         } else {
-            const error = await response.json();
-            showError(error.message || 'Failed to update plan');
+            showError(result.error || 'Failed to update plan');
+            updateBtn.disabled = false;
+            updateBtn.textContent = originalText;
         }
     } catch (error) {
         console.error('Plan update error:', error);
         showError('Failed to update plan. Please try again.');
+        updateBtn.disabled = false;
+        updateBtn.textContent = originalText;
     }
 });
 
@@ -1188,37 +1226,36 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
 
         // Load dashboard data
         async function loadDashboardData() {
-            if (!currentUser || !currentUserOrganization) {
-                showError("Authentication required");
-                return;
-            }
+    if (!currentUser || !currentUserOrganization) {
+        showError("Authentication required");
+        return;
+    }
 
-            try {
-                const orgId = currentUserOrganization.id;
-                
-                // NOTE: This API endpoint is assumed. You will need to build it.
-                // It should return an object like: { organization: { id, name, status, trialEndDate }, users: [...], usage: { used, total, available, percentage } }
-                const response = await fetch(`/api/organization/${orgId}/overview`);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    if (data.organization.id !== orgId) {
-                        throw new Error("Data mismatch - security violation");
-                    }
-                    
-                    currentOrganization = data.organization;
-                    organizationUsers = data.users;
-                    currentUser = organizationUsers.find(u => u.email === currentUser.email) || currentUser;
-                    
-                    updateDashboardUI(data);
-                } else {
-                    showError('Error loading dashboard: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-                showError('Failed to load dashboard data');
+    try {
+        const orgId = currentUserOrganization.id;
+        
+        // FIXED: Azure Static Web Apps API call with query parameter
+        const response = await fetch(`/api/organization-overview?orgId=${orgId}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (data.organization.id !== orgId) {
+                throw new Error("Data mismatch - security violation");
             }
+            
+            currentOrganization = data.organization;
+            organizationUsers = data.users;
+            currentUser = organizationUsers.find(u => u.email === currentUser.email) || currentUser;
+            
+            updateDashboardUI(data);
+        } else {
+            showError('Error loading dashboard: ' + (data.error || 'Unknown error'));
         }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showError('Failed to load dashboard data');
+    }
+}
 
         // Update dashboard UI with real data
         function updateDashboardUI(data) {
@@ -1243,30 +1280,50 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
         }
 
         function updateLicenseUsage(usage, organization) {
-            document.getElementById('licenseUsageText').textContent = `${usage.used} of ${usage.total} licenses used`;
-            document.getElementById('usageBar').style.width = `${usage.percentage}%`;
-            document.getElementById('availableLicenses').textContent = `${usage.available} available`;
+    document.getElementById('licenseUsageText').textContent = `${usage.used} of ${usage.total} licenses used`;
+    document.getElementById('usageBar').style.width = `${usage.percentage}%`;
+    document.getElementById('availableLicenses').textContent = `${usage.available} available`;
+    
+    const planDetailsEl = document.getElementById('planDetails');
+    const trialBannerEl = document.getElementById('trialStatusBanner');
+
+    // Handle trial status display
+    if (organization.status === 'trialing' && organization.trialEndDate) {
+        const endDate = new Date(organization.trialEndDate);
+        const now = new Date();
+        const daysRemaining = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
+
+        trialBannerEl.innerHTML = `<i class="fas fa-gift"></i> You are on a free trial with ${usage.total} licenses. Your trial ends in ${daysRemaining} day(s).`;
+        trialBannerEl.style.display = 'block';
+        planDetailsEl.textContent = 'After the trial, your plan will become TIA Professional.';
+        document.querySelector('.license-card').style.borderLeftColor = '#3498db';
+    } else {
+        trialBannerEl.style.display = 'none';
+        const monthlyPrice = usage.total * 50;
+        
+        // Check for pending downgrade
+        if (organization.pendingDowngrade && organization.pendingLicenseCount) {
+            const scheduledDate = new Date(organization.downgradeScheduledAt);
+            const newMonthlyPrice = organization.pendingLicenseCount * 50;
             
-            const planDetailsEl = document.getElementById('planDetails');
-            const trialBannerEl = document.getElementById('trialStatusBanner');
-
-            // Handle trial status display
-            if (organization.status === 'trialing' && organization.trialEndDate) {
-                const endDate = new Date(organization.trialEndDate);
-                const now = new Date();
-                const daysRemaining = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
-
-                trialBannerEl.innerHTML = `<i class="fas fa-gift"></i> You are on a free trial with ${usage.total} licenses. Your trial ends in ${daysRemaining} day(s).`;
-                trialBannerEl.style.display = 'block';
-                planDetailsEl.textContent = 'After the trial, your plan will become TIA Professional.';
-                document.querySelector('.license-card').style.borderLeftColor = '#3498db';
-            } else {
-                trialBannerEl.style.display = 'none';
-                const monthlyPrice = usage.total * 50;
-                planDetailsEl.innerHTML = `Professional Plan - £${monthlyPrice}/month - Status: <span class="status-badge status-${organization.status}">${organization.status}</span>`;
-                document.querySelector('.license-card').style.borderLeftColor = '#27ae60';
-            }
+            planDetailsEl.innerHTML = `
+                Professional Plan - £${monthlyPrice}/month - Status: <span class="status-badge status-${organization.status}">${organization.status}</span>
+                <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fff3cd; border-radius: 4px; font-size: 0.9rem; border: 1px solid #ffeaa7;">
+                    <i class="fas fa-clock" style="color: #f39c12;"></i>
+                    <strong>Pending Change:</strong> License count will be reduced to ${organization.pendingLicenseCount} 
+                    (£${newMonthlyPrice}/month) at your next billing cycle.
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
+                        Scheduled: ${scheduledDate.toLocaleDateString('en-GB')}
+                    </div>
+                </div>
+            `;
+        } else {
+            planDetailsEl.innerHTML = `Professional Plan - £${monthlyPrice}/month - Status: <span class="status-badge status-${organization.status}">${organization.status}</span>`;
         }
+        
+        document.querySelector('.license-card').style.borderLeftColor = '#27ae60';
+    }
+}
 
         function updateBillingData(usage, organization) {
             const monthlyPrice = usage.total * 50;

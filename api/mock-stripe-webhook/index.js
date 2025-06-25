@@ -111,156 +111,217 @@ async function handleCheckoutCompleted(context, session) {
     try {
         context.log('Processing checkout completion for session:', session.id);
 
-        // Retrieve the full subscription object to check for trial status
-        const subscription = await stripe.subscriptions.retrieve(session.subscription);
-        const isTrial = subscription.status === 'trialing';
-        const orgStatus = isTrial ? 'trialing' : 'active';
-        context.log(`Subscription ${subscription.id} status is ${subscription.status}. Org status will be set to ${orgStatus}.`);
-
-
-        // Get customer details from Stripe
-        const customer = await stripe.customers.retrieve(session.customer);
-        const email = customer.email;
+        const { metadata } = session;
         
-        // Get session line items to determine license count
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
-        const licenseCount = lineItems.data.reduce((total, item) => total + item.quantity, 0);
-
-        // Extract company info from session metadata or customer metadata
-        const metadata = session.metadata || {};
-        const customerMetadata = customer.metadata || {};
-        
-        const companyName = metadata.companyName || customerMetadata.companyName || 
-                          `${email.split('@')[1].split('.')[0].charAt(0).toUpperCase()}${email.split('@')[1].split('.')[0].slice(1)} Ltd`;
-        const firstName = metadata.firstName || customer.name?.split(' ')[0] || email.split('@')[0];
-        const lastName = metadata.lastName || customer.name?.split(' ').slice(1).join(' ') || 'User';
-        const phone = metadata.phone || customer.phone || null;
-
-        // Extract domain for organization lookup
-        const domain = email.split('@')[1];
-        let organizationId;
-        let isNewOrganization = false;
-        let userRole = 'user';
-
-        // Check if organization already exists for this domain
-        const orgDomainQuery = {
-            query: "SELECT * FROM c WHERE c.adminEmail LIKE @domain",
-            parameters: [
-                { name: "@domain", value: `%@${domain}` }
-            ]
-        };
-
-        const { resources: existingOrgs } = await organizationsContainer.items.query(orgDomainQuery).fetchAll();
-
-        if (existingOrgs.length > 0) {
-            // Organization exists
-            const existingOrg = existingOrgs[0];
-            organizationId = existingOrg.id;
-            context.log('Using existing organization:', organizationId);
-            
-            // Check license limits
-            const userCountQuery = {
-                query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
-                parameters: [{ name: "@orgId", value: organizationId }]
-            };
-            
-            const { resources: userCountResult } = await usersContainer.items.query(userCountQuery).fetchAll();
-            const currentUserCount = userCountResult[0] || 0;
-            
-            if (currentUserCount >= existingOrg.licenseCount) {
-                // Update organization license count if needed
-                if (licenseCount > existingOrg.licenseCount) {
-                    const updatedOrg = {
-                        ...existingOrg,
-                        licenseCount: licenseCount,
-                        stripeCustomerId: customer.id,
-                        stripeSubscriptionId: session.subscription,
-                        lastUpdated: new Date().toISOString()
-                    };
-                    await organizationsContainer.item(existingOrg.id, existingOrg.id).replace(updatedOrg);
-                    context.log('Updated organization license count to:', licenseCount);
-                }
-            }
-            
-            userRole = existingOrg.adminEmail === email ? 'admin' : 'user';
+        // Check if this is a license upgrade
+        if (metadata && metadata.type === 'license_upgrade') {
+            await processLicenseUpgrade(context, metadata, session);
         } else {
-            // Create new organization
-            organizationId = uuidv4();
-            isNewOrganization = true;
-            userRole = 'admin';
-
-            const organization = {
-                id: organizationId,
-                name: companyName,
-                stripeCustomerId: customer.id,
-                stripeSubscriptionId: session.subscription,
-                licenseCount: licenseCount,
-                status: orgStatus, // MODIFIED: Use determined status
-                adminEmail: email,
-                createdAt: new Date().toISOString(),
-                stripeCheckoutSessionId: session.id
-            };
-            // ADDED: Add trial end date if applicable
-            if (isTrial && subscription.trial_end) {
-                organization.trialEndDate = new Date(subscription.trial_end * 1000).toISOString();
-                context.log(`Setting trial end date: ${organization.trialEndDate}`);
-            }
-            await organizationsContainer.items.create(organization);
-            context.log('Created new organization:', organizationId, 'with status:', orgStatus, 'and', licenseCount, 'licenses');
+            // Handle regular subscription creation (your existing logic)
+            await handleRegularCheckout(context, session);
         }
-
-        // Handle user creation/update
-        const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @email",
-            parameters: [{ name: "@email", value: email }]
-        };
-
-        const { resources: existingUsers } = await usersContainer.items.query(userQuery).fetchAll();
-
-        if (existingUsers.length > 0) {
-            // Update existing user
-            const existingUser = existingUsers[0];
-            const updatedUser = {
-                ...existingUser,
-                organizationId: organizationId,
-                role: userRole,
-                status: 'active',
-                firstName: firstName,
-                lastName: lastName,
-                phone: phone,
-                stripeCustomerId: customer.id,
-                lastUpdated: new Date().toISOString()
-            };
-
-            await usersContainer.item(existingUser.id, existingUser.id).replace(updatedUser);
-            context.log('Updated existing user:', email);
-        } else {
-            // Create new user
-            const userId = uuidv4();
-            const newUser = {
-                id: userId,
-                email: email,
-                firstName: firstName,
-                lastName: lastName,
-                phone: phone,
-                organizationId: organizationId,
-                role: userRole,
-                status: 'active',
-                stripeCustomerId: customer.id,
-                createdAt: new Date().toISOString(),
-                lastLogin: null
-            };
-
-            await usersContainer.items.create(newUser);
-            context.log('Created new user:', email, 'with role:', userRole);
-        }
-
-        context.log('Checkout completed successfully');
 
     } catch (error) {
         context.log.error('Error in handleCheckoutCompleted:', error);
         throw error;
     }
+}
+
+async function processLicenseUpgrade(context, metadata, session) {
+    const { organizationId, newLicenseCount, stripeSubscriptionId, currentLicenseCount } = metadata;
+    
+    try {
+        context.log(`Processing license upgrade for org ${organizationId}: ${currentLicenseCount} -> ${newLicenseCount}`);
+
+        // Update the subscription quantity immediately (since payment was successful)
+        if (stripeSubscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            const subscriptionItem = subscription.items.data[0];
+            
+            await stripe.subscriptions.update(stripeSubscriptionId, {
+                items: [{
+                    id: subscriptionItem.id,
+                    quantity: parseInt(newLicenseCount)
+                }],
+                proration_behavior: 'create_prorations' // Create prorations for immediate effect
+            });
+
+            context.log('Stripe subscription quantity updated to:', newLicenseCount);
+        }
+
+        // Update organization record
+        const { resource: organization } = await organizationsContainer.item(organizationId, organizationId).read();
+        
+        if (organization) {
+            const updatedOrg = {
+                ...organization,
+                licenseCount: parseInt(newLicenseCount),
+                status: 'active',
+                lastUpgradeDate: new Date().toISOString(),
+                lastModified: new Date().toISOString(),
+                // Clear any pending downgrade since we just upgraded
+                pendingDowngrade: false,
+                pendingLicenseCount: null,
+                downgradeScheduledAt: null,
+                downgradeScheduledBy: null
+            };
+
+            await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
+            context.log(`License count updated to ${newLicenseCount} for organization ${organizationId}`);
+        }
+
+    } catch (error) {
+        context.log.error('Error processing license upgrade:', error);
+        throw error;
+    }
+}
+
+async function handleRegularCheckout(context, session) {
+    // Your existing checkout logic for new subscriptions
+    // Retrieve the full subscription object to check for trial status
+    const subscription = await stripe.subscriptions.retrieve(session.subscription);
+    const isTrial = subscription.status === 'trialing';
+    const orgStatus = isTrial ? 'trialing' : 'active';
+    context.log(`Subscription ${subscription.id} status is ${subscription.status}. Org status will be set to ${orgStatus}.`);
+
+    // Get customer details from Stripe
+    const customer = await stripe.customers.retrieve(session.customer);
+    const email = customer.email;
+    
+    // Get session line items to determine license count
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
+    const licenseCount = lineItems.data.reduce((total, item) => total + item.quantity, 0);
+
+    // Extract company info from session metadata or customer metadata
+    const metadata = session.metadata || {};
+    const customerMetadata = customer.metadata || {};
+    
+    const companyName = metadata.companyName || customerMetadata.companyName || 
+                      `${email.split('@')[1].split('.')[0].charAt(0).toUpperCase()}${email.split('@')[1].split('.')[0].slice(1)} Ltd`;
+    const firstName = metadata.firstName || customer.name?.split(' ')[0] || email.split('@')[0];
+    const lastName = metadata.lastName || customer.name?.split(' ').slice(1).join(' ') || 'User';
+    const phone = metadata.phone || customer.phone || null;
+
+    // Extract domain for organization lookup
+    const domain = email.split('@')[1];
+    let organizationId;
+    let isNewOrganization = false;
+    let userRole = 'user';
+
+    // Check if organization already exists for this domain
+    const orgDomainQuery = {
+        query: "SELECT * FROM c WHERE c.adminEmail LIKE @domain",
+        parameters: [
+            { name: "@domain", value: `%@${domain}` }
+        ]
+    };
+
+    const { resources: existingOrgs } = await organizationsContainer.items.query(orgDomainQuery).fetchAll();
+
+    if (existingOrgs.length > 0) {
+        // Organization exists
+        const existingOrg = existingOrgs[0];
+        organizationId = existingOrg.id;
+        context.log('Using existing organization:', organizationId);
+        
+        // Check license limits
+        const userCountQuery = {
+            query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
+            parameters: [{ name: "@orgId", value: organizationId }]
+        };
+        
+        const { resources: userCountResult } = await usersContainer.items.query(userCountQuery).fetchAll();
+        const currentUserCount = userCountResult[0] || 0;
+        
+        if (currentUserCount >= existingOrg.licenseCount) {
+            // Update organization license count if needed
+            if (licenseCount > existingOrg.licenseCount) {
+                const updatedOrg = {
+                    ...existingOrg,
+                    licenseCount: licenseCount,
+                    stripeCustomerId: customer.id,
+                    stripeSubscriptionId: session.subscription,
+                    lastUpdated: new Date().toISOString()
+                };
+                await organizationsContainer.item(existingOrg.id, existingOrg.id).replace(updatedOrg);
+                context.log('Updated organization license count to:', licenseCount);
+            }
+        }
+        
+        userRole = existingOrg.adminEmail === email ? 'admin' : 'user';
+    } else {
+        // Create new organization
+        organizationId = uuidv4();
+        isNewOrganization = true;
+        userRole = 'admin';
+
+        const organization = {
+            id: organizationId,
+            name: companyName,
+            stripeCustomerId: customer.id,
+            stripeSubscriptionId: session.subscription,
+            licenseCount: licenseCount,
+            status: orgStatus,
+            adminEmail: email,
+            createdAt: new Date().toISOString(),
+            stripeCheckoutSessionId: session.id
+        };
+        
+        if (isTrial && subscription.trial_end) {
+            organization.trialEndDate = new Date(subscription.trial_end * 1000).toISOString();
+            context.log(`Setting trial end date: ${organization.trialEndDate}`);
+        }
+        await organizationsContainer.items.create(organization);
+        context.log('Created new organization:', organizationId, 'with status:', orgStatus, 'and', licenseCount, 'licenses');
+    }
+
+    // Handle user creation/update
+    const userQuery = {
+        query: "SELECT * FROM c WHERE c.email = @email",
+        parameters: [{ name: "@email", value: email }]
+    };
+
+    const { resources: existingUsers } = await usersContainer.items.query(userQuery).fetchAll();
+
+    if (existingUsers.length > 0) {
+        // Update existing user
+        const existingUser = existingUsers[0];
+        const updatedUser = {
+            ...existingUser,
+            organizationId: organizationId,
+            role: userRole,
+            status: 'active',
+            firstName: firstName,
+            lastName: lastName,
+            phone: phone,
+            stripeCustomerId: customer.id,
+            lastUpdated: new Date().toISOString()
+        };
+
+        await usersContainer.item(existingUser.id, existingUser.id).replace(updatedUser);
+        context.log('Updated existing user:', email);
+    } else {
+        // Create new user
+        const userId = uuidv4();
+        const newUser = {
+            id: userId,
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            phone: phone,
+            organizationId: organizationId,
+            role: userRole,
+            status: 'active',
+            stripeCustomerId: customer.id,
+            createdAt: new Date().toISOString(),
+            lastLogin: null
+        };
+
+        await usersContainer.items.create(newUser);
+        context.log('Created new user:', email, 'with role:', userRole);
+    }
+
+    context.log('Regular checkout completed successfully');
 }
 
 async function handleSubscriptionUpdated(context, subscription) {
@@ -282,7 +343,10 @@ async function handleSubscriptionUpdated(context, subscription) {
 
         const organization = organizations[0];
 
-        // Update organization status based on subscription status
+        // Check if this update includes a quantity change (downgrade applied)
+        const newQuantity = subscription.items.data[0]?.quantity;
+        const currentLicenseCount = organization.licenseCount;
+
         let newStatus = subscription.status;
         if (subscription.status === 'past_due') {
             newStatus = 'past_due';
@@ -300,6 +364,22 @@ async function handleSubscriptionUpdated(context, subscription) {
             lastUpdated: new Date().toISOString()
         };
 
+        // If quantity changed and there was a pending downgrade, apply it
+        if (newQuantity && newQuantity !== currentLicenseCount && organization.pendingDowngrade) {
+            updatedOrg.licenseCount = newQuantity;
+            updatedOrg.pendingDowngrade = false;
+            updatedOrg.pendingLicenseCount = null;
+            updatedOrg.downgradeScheduledAt = null;
+            updatedOrg.downgradeScheduledBy = null;
+            updatedOrg.lastDowngradeDate = new Date().toISOString();
+            
+            context.log(`Applied pending downgrade: ${currentLicenseCount} -> ${newQuantity} licenses`);
+        } else if (newQuantity && newQuantity !== currentLicenseCount) {
+            // Quantity changed but no pending downgrade recorded (direct Stripe change)
+            updatedOrg.licenseCount = newQuantity;
+            context.log(`License count updated directly: ${currentLicenseCount} -> ${newQuantity} licenses`);
+        }
+
         // Add grace period for past due subscriptions
         if (subscription.status === 'past_due') {
             updatedOrg.gracePeriodEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -308,7 +388,7 @@ async function handleSubscriptionUpdated(context, subscription) {
         }
 
         await organizationsContainer.item(organization.id, organization.id).replace(updatedOrg);
-        context.log('Organization status updated to:', newStatus);
+        context.log('Organization updated with status:', newStatus, 'and license count:', updatedOrg.licenseCount);
 
     } catch (error) {
         context.log.error('Error in handleSubscriptionUpdated:', error);

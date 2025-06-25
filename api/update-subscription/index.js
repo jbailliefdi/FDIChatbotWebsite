@@ -1,3 +1,4 @@
+// Modified version of your existing update-subscription API
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 
@@ -24,7 +25,7 @@ module.exports = async function (context, req) {
         return;
     }
 
-    const { organizationId, stripeCustomerId, stripeSubscriptionId, newLicenseCount, userEmail } = req.body;
+    const { organizationId, stripeCustomerId, stripeSubscriptionId, newLicenseCount, userEmail, action } = req.body;
 
     if (!organizationId || !stripeCustomerId || !newLicenseCount || !userEmail) {
         context.res.status = 400;
@@ -66,6 +67,10 @@ module.exports = async function (context, req) {
             return;
         }
 
+        const currentLicenseCount = organization.licenseCount || 1;
+        const isUpgrade = newLicenseCount > currentLicenseCount;
+        const isDowngrade = newLicenseCount < currentLicenseCount;
+
         // Check active users don't exceed new license count
         const activeUsersQuery = {
             query: "SELECT COUNT(1) as count FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
@@ -85,56 +90,130 @@ module.exports = async function (context, req) {
             return;
         }
 
-        let updatedSubscription = null;
-
-        // Update Stripe subscription if exists
-        if (stripeSubscriptionId) {
+        // SECURITY FIX: Handle upgrades and downgrades differently
+        if (isUpgrade) {
+            // For upgrades, create a Stripe checkout session instead of immediate update
+            const additionalLicenses = newLicenseCount - currentLicenseCount;
+            const immediateCharge = additionalLicenses * 50; // £50 per license
+            
             try {
-                // Get current subscription
-                const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-                
-                // Find the subscription item (assumes single item)
-                const subscriptionItem = subscription.items.data[0];
-                
-                if (subscriptionItem) {
-                    // Update the quantity
-                    updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-                        items: [{
-                            id: subscriptionItem.id,
-                            quantity: newLicenseCount
-                        }],
-                        proration_behavior: 'create_prorations'
-                    });
+                const session = await stripe.checkout.sessions.create({
+                    customer: stripeCustomerId,
+                    payment_method_types: ['card'],
+                    mode: 'payment',
+                    line_items: [
+                        {
+                            price_data: {
+                                currency: 'gbp',
+                                product_data: {
+                                    name: `TIA License Upgrade`,
+                                    description: `Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} (pro-rated for current billing period)`
+                                },
+                                unit_amount: 5000 // £50 in pence
+                            },
+                            quantity: additionalLicenses
+                        }
+                    ],
+                    metadata: {
+                        type: 'license_upgrade',
+                        organizationId: organizationId,
+                        currentLicenseCount: currentLicenseCount.toString(),
+                        newLicenseCount: newLicenseCount.toString(),
+                        stripeSubscriptionId: stripeSubscriptionId || '',
+                        userEmail: userEmail
+                    },
+                    success_url: `${req.headers.referer || 'https://kind-mud-048fffa03.6.azurestaticapps.net'}payment-success`,
+                    cancel_url: req.headers.referer || 'https://google.com'
+                });
 
-                    context.log('Stripe subscription updated:', updatedSubscription.id);
-                }
+                context.res.status = 200;
+                context.res.body = { 
+                    requiresPayment: true,
+                    checkoutUrl: session.url,
+                    sessionId: session.id,
+                    message: `Upgrade requires payment of £${immediateCharge}. You will be redirected to Stripe.`
+                };
+                return;
+
             } catch (stripeError) {
-                context.log.error('Stripe update error:', stripeError);
+                context.log.error('Stripe checkout creation error:', stripeError);
                 context.res.status = 500;
-                context.res.body = { error: 'Failed to update Stripe subscription: ' + stripeError.message };
+                context.res.body = { error: 'Failed to create checkout session: ' + stripeError.message };
                 return;
             }
+
+        } else if (isDowngrade) {
+            // For downgrades, schedule the change for next billing cycle
+            if (stripeSubscriptionId) {
+                try {
+                    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+                    const subscriptionItem = subscription.items.data[0];
+                    
+                    // Schedule the subscription modification for the next billing cycle
+                    const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+                        items: [{
+                            id: subscriptionItem.id,
+                            price: subscriptionItem.price.id,
+                            quantity: newLicenseCount
+                        }],
+                        proration_behavior: 'none', // Don't prorate, wait until next billing cycle
+                        metadata: {
+                            ...subscription.metadata,
+                            pendingDowngrade: 'true',
+                            pendingLicenseCount: newLicenseCount.toString(),
+                            downgradeScheduledBy: userEmail,
+                            downgradeScheduledAt: new Date().toISOString()
+                        }
+                    });
+
+                    // Update organization record with pending downgrade info
+                    const updatedOrg = {
+                        ...organization,
+                        pendingLicenseCount: newLicenseCount,
+                        pendingDowngrade: true,
+                        downgradeScheduledAt: new Date().toISOString(),
+                        downgradeScheduledBy: userEmail,
+                        lastModified: new Date().toISOString()
+                    };
+
+                    await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
+
+                    const nextBillingDate = new Date(subscription.current_period_end * 1000);
+
+                    context.res.status = 200;
+                    context.res.body = { 
+                        success: true,
+                        isDowngrade: true,
+                        message: `Downgrade scheduled! Your license count will change from ${currentLicenseCount} to ${newLicenseCount} on ${nextBillingDate.toLocaleDateString('en-GB')}.`,
+                        nextBillingDate: nextBillingDate.toISOString(),
+                        newLicenseCount: newLicenseCount,
+                        newMonthlyAmount: newLicenseCount * 50,
+                        pendingDowngrade: true
+                    };
+                    return;
+
+                } catch (stripeError) {
+                    context.log.error('Stripe downgrade scheduling error:', stripeError);
+                    context.res.status = 500;
+                    context.res.body = { error: 'Failed to schedule downgrade: ' + stripeError.message };
+                    return;
+                }
+            }
+
+        } else {
+            // No change in license count
+            context.res.status = 200;
+            context.res.body = { 
+                success: true,
+                message: 'No changes needed - license count is the same.',
+                newLicenseCount: currentLicenseCount
+            };
+            return;
         }
 
-        // Update organization in Cosmos DB
-        organization.licenseCount = newLicenseCount;
-        organization.lastModified = new Date().toISOString();
-        
-        await organizationsContainer.item(organizationId, organizationId).replace(organization);
-
-        context.log('Organization updated with new license count:', newLicenseCount);
-
-        context.res.status = 200;
-        context.res.body = { 
-            success: true,
-            newLicenseCount: newLicenseCount,
-            previousLicenseCount: organization.licenseCount,
-            subscription: updatedSubscription ? {
-                id: updatedSubscription.id,
-                status: updatedSubscription.status,
-                currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000).toISOString()
-            } : null
-        };
+        // This should not be reached, but keeping as fallback
+        context.res.status = 400;
+        context.res.body = { error: 'Invalid operation' };
 
     } catch (error) {
         context.log.error('Error updating subscription:', error);
