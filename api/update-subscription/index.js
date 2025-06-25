@@ -216,45 +216,57 @@ module.exports = async function (context, req) {
             }
         }
         else if (isDowngrade) {
-            // For downgrades, schedule the change for next billing cycle (no immediate payment)
+            // For downgrades, actually update the subscription quantity for next billing cycle
             if (stripeSubscriptionId) {
                 try {
                     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+                    const subscriptionItem = subscription.items.data[0];
                     
-                    // Update the subscription metadata to track pending downgrade
+                    // 🔧 FIXED: Actually update the subscription quantity in Stripe
+                    // This will take effect at the next billing cycle with no proration
                     await stripe.subscriptions.update(stripeSubscriptionId, {
+                        items: [{
+                            id: subscriptionItem.id,
+                            quantity: newLicenseCount,
+                        }],
+                        proration_behavior: 'none', // No proration for downgrades - change happens at next billing cycle
+                        billing_cycle_anchor: 'unchanged', // Keep current billing cycle date
                         metadata: {
                             ...subscription.metadata,
-                            pendingDowngrade: 'true',
-                            pendingLicenseCount: newLicenseCount.toString(),
-                            downgradeScheduledBy: userEmail,
-                            downgradeScheduledAt: new Date().toISOString()
+                            lastDowngradeDate: new Date().toISOString(),
+                            downgradeBy: userEmail,
+                            previousLicenseCount: currentLicenseCount.toString()
                         }
                     });
 
-                    // Update organization record with pending downgrade info
+                    // Update organization record - remove pending flags since change is now scheduled in Stripe
                     const updatedOrg = {
                         ...organization,
-                        pendingLicenseCount: newLicenseCount,
-                        pendingDowngrade: true,
-                        downgradeScheduledAt: new Date().toISOString(),
+                        licenseCount: newLicenseCount, // Update to new count since it's now scheduled in Stripe
+                        lastModified: new Date().toISOString(),
+                        lastDowngradeDate: new Date().toISOString(),
                         downgradeScheduledBy: userEmail,
-                        lastModified: new Date().toISOString()
+                        // Clear pending flags since it's now properly scheduled in Stripe
+                        pendingDowngrade: false,
+                        pendingLicenseCount: null,
+                        downgradeScheduledAt: null
                     };
 
                     await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
 
                     const nextBillingDate = new Date(subscription.current_period_end * 1000);
+                    const newMonthlyAmount = newLicenseCount * 50;
 
                     context.res.status = 200;
                     context.res.body = { 
                         success: true,
                         isDowngrade: true,
-                        message: `Downgrade scheduled! Your license count will change from ${currentLicenseCount} to ${newLicenseCount} on ${nextBillingDate.toLocaleDateString('en-GB')}.`,
+                        message: `Downgrade successful! Your license count will change from ${currentLicenseCount} to ${newLicenseCount} at your next billing cycle on ${nextBillingDate.toLocaleDateString('en-GB')}. Your new monthly cost will be £${newMonthlyAmount}.`,
                         nextBillingDate: nextBillingDate.toISOString(),
                         newLicenseCount: newLicenseCount,
-                        newMonthlyAmount: newLicenseCount * 50,
-                        pendingDowngrade: true
+                        newMonthlyAmount: newMonthlyAmount,
+                        currentLicenseCount: currentLicenseCount,
+                        effectiveDate: nextBillingDate.toISOString()
                     };
                     return;
 
