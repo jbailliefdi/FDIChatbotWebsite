@@ -1,4 +1,5 @@
 const { CosmosClient } = require('@azure/cosmos');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
@@ -42,6 +43,33 @@ module.exports = async function (context, req) {
             return;
         }
 
+        // 🔧 FIXED: Get billing interval from Stripe if not already stored
+        let billingInterval = organization.billingInterval || 'month'; // Default to monthly
+
+        if (organization.stripeSubscriptionId) {
+            try {
+                const subscription = await stripe.subscriptions.retrieve(organization.stripeSubscriptionId);
+                if (subscription && subscription.items.data.length > 0) {
+                    const priceData = subscription.items.data[0].price;
+                    billingInterval = priceData.recurring.interval; // 'month' or 'year'
+                    
+                    // Update organization record if billing interval wasn't stored
+                    if (!organization.billingInterval) {
+                        const updatedOrg = {
+                            ...organization,
+                            billingInterval: billingInterval,
+                            lastModified: new Date().toISOString()
+                        };
+                        await organizationsContainer.item(orgId, orgId).replace(updatedOrg);
+                        context.log(`Updated organization ${orgId} with billing interval: ${billingInterval}`);
+                    }
+                }
+            } catch (stripeError) {
+                context.log.warn('Could not retrieve billing interval from Stripe:', stripeError.message);
+                // Continue with default billing interval
+            }
+        }
+
         // Get organization users
         const { resources: users } = await usersContainer.items
             .query({
@@ -56,7 +84,7 @@ module.exports = async function (context, req) {
         const availableLicenses = Math.max(0, totalLicenses - activeUsers);
         const usagePercentage = totalLicenses > 0 ? Math.round((activeUsers / totalLicenses) * 100) : 0;
 
-        // Prepare organization data with pending changes info
+        // Prepare organization data with pending changes info and billing interval
         const orgData = {
             id: organization.id,
             name: organization.name,
@@ -66,6 +94,8 @@ module.exports = async function (context, req) {
             stripeCustomerId: organization.stripeCustomerId,
             stripeSubscriptionId: organization.stripeSubscriptionId,
             createdAt: organization.createdAt,
+            // 🔧 FIXED: Include billing interval information
+            billingInterval: billingInterval,
             // Include pending downgrade information
             pendingDowngrade: organization.pendingDowngrade || false,
             pendingLicenseCount: organization.pendingLicenseCount,
