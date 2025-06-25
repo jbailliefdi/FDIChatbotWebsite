@@ -30,20 +30,22 @@ module.exports = async function (context, req) {
             expand: ['line_items', 'customer']
         });
 
+        // Get metadata FIRST - this was the bug!
+        const metadata = session.metadata || {};
+
         // Get line items to calculate totals
         const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 100 });
         
         // Calculate license count from line items
         const licenseCount = lineItems.data.reduce((total, item) => total + item.quantity, 0);
         
-        // Format amount
-        // Determine billing period based on plan type
-const planType = metadata.planType || 'monthly';
-const billingPeriod = planType === 'annual' ? '/year' : '/month';
+        // Determine billing period based on plan type (now metadata is available)
+        const planType = metadata.planType || 'monthly';
+        const billingPeriod = planType === 'annual' ? '/year' : '/month';
 
-const totalAmount = session.amount_total ? 
-    `£${(session.amount_total / 100).toFixed(2)}${billingPeriod} (inc. VAT)` : 
-    'Amount not available';
+        const totalAmount = session.amount_total ? 
+            `£${(session.amount_total / 100).toFixed(2)}${billingPeriod} (inc. VAT)` : 
+            'Amount not available';
 
         // Extract customer email
         let customerEmail = null;
@@ -53,32 +55,27 @@ const totalAmount = session.amount_total ?
             customerEmail = session.customer_details.email;
         }
 
-        // Get metadata if available
-        const metadata = session.metadata || {};
-
         context.log('Session retrieved successfully:', {
             sessionId: session.id,
             licenseCount: licenseCount,
             totalAmount: totalAmount,
-            customerEmail: customerEmail
+            customerEmail: customerEmail,
+            planType: planType
         });
 
-        context.res = {
-            status: 200,
-            body: {
-                sessionId: session.id,
-                licenseCount: licenseCount,
-                totalAmount: totalAmount,
-                customerEmail: customerEmail,
-                customerId: session.customer.id || session.customer,
-                paymentStatus: session.payment_status,
-                subscriptionId: session.subscription,
-                companyName: metadata.companyName,
-                firstName: metadata.firstName,
-                lastName: metadata.lastName,
-                planType: metadata.planType,
-                trialEndDate: null
-            }
+        const responseData = {
+            sessionId: session.id,
+            licenseCount: licenseCount,
+            totalAmount: totalAmount,
+            customerEmail: customerEmail,
+            customerId: session.customer.id || session.customer,
+            paymentStatus: session.payment_status,
+            subscriptionId: session.subscription,
+            companyName: metadata.companyName,
+            firstName: metadata.firstName,
+            lastName: metadata.lastName,
+            planType: planType,
+            trialEndDate: null
         };
 
         // Get organizationId from user record
@@ -92,7 +89,7 @@ const totalAmount = session.amount_total ?
                 const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
                 if (users.length > 0) {
                     organizationId = users[0].organizationId;
-                    context.res.body.organizationId = organizationId;
+                    responseData.organizationId = organizationId;
                 }
             } catch (dbError) {
                 context.log.warn('Could not retrieve organizationId:', dbError);
@@ -100,16 +97,21 @@ const totalAmount = session.amount_total ?
         }
 
         // If this is a trial, get the trial end date from the subscription
-        if (session.subscription && metadata.planType === 'trial') {
+        if (session.subscription && planType === 'trial') {
             try {
                 const subscription = await stripe.subscriptions.retrieve(session.subscription);
                 if (subscription.trial_end) {
-                    context.res.body.trialEndDate = new Date(subscription.trial_end * 1000).toISOString();
+                    responseData.trialEndDate = new Date(subscription.trial_end * 1000).toISOString();
                 }
             } catch (subError) {
                 context.log.warn('Could not retrieve subscription trial info:', subError);
             }
         }
+
+        context.res = {
+            status: 200,
+            body: responseData
+        };
 
     } catch (error) {
         context.log.error('Error retrieving checkout session:', error);
