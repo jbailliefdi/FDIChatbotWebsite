@@ -109,56 +109,20 @@ module.exports = async function (context, req) {
                 const subscriptionItem = subscription.items.data[0];
                 const additionalLicenses = newLicenseCount - currentLicenseCount;
                 
-                // Calculate prorated charge for immediate payment
-                const currentPeriodStart = subscription.current_period_start;
-                const currentPeriodEnd = subscription.current_period_end;
-                const now = Math.floor(Date.now() / 1000);
-                const totalPeriodDuration = currentPeriodEnd - currentPeriodStart;
-                const remainingPeriodDuration = currentPeriodEnd - now;
-                const proratedFraction = remainingPeriodDuration / totalPeriodDuration;
-                
-                // Get price per license based on subscription interval
+                // Get price per license based on subscription interval for messaging
                 const priceData = subscription.items.data[0].price;
                 const isAnnual = priceData.recurring.interval === 'year';
                 const pricePerLicense = isAnnual ? 550 : 50; // £550 annual, £50 monthly
                 
-                // Calculate immediate charge (prorated for current period)
-                const immediateChargeAmount = Math.round(additionalLicenses * pricePerLicense * proratedFraction);
-                
-                // 🔒 CRITICAL: Create immediate invoice for the upgrade
-                const invoiceItem = await stripe.invoiceItems.create({
-                    customer: stripeCustomerId,
-                    amount: immediateChargeAmount * 100, // Convert to pence
-                    currency: 'gbp',
-                    description: `TIA License Upgrade - ${additionalLicenses} additional license${additionalLicenses > 1 ? 's' : ''} (prorated)`,
-                    metadata: {
-                        type: 'license_upgrade',
-                        organizationId: organizationId,
-                        additionalLicenses: additionalLicenses.toString(),
-                        previousLicenseCount: currentLicenseCount.toString(),
-                        newLicenseCount: newLicenseCount.toString(),
-                        billingInterval: isAnnual ? 'annual' : 'monthly'
-                    }
-                });
-
-                // Create and finalize invoice for immediate payment
-                const invoice = await stripe.invoices.create({
-                    customer: stripeCustomerId,
-                    description: `TIA License Upgrade`,
-                    metadata: {
-                        type: 'license_upgrade',
-                        organizationId: organizationId
-                    }
-                });
-
-                // Attempt to pay the invoice immediately
-                const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-                const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
-
-                // ✅ Only if payment succeeds, update the subscription quantity
-                await stripe.subscriptionItems.update(subscriptionItem.id, {
-                    quantity: newLicenseCount,
-                    proration_behavior: 'none' // We already handled proration with the immediate charge
+                // 🔒 SECURE APPROACH: Use subscription update with immediate proration
+                // This automatically creates prorated charges and updates the subscription correctly
+                const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+                    items: [{
+                        id: subscriptionItem.id,
+                        quantity: newLicenseCount,
+                    }],
+                    proration_behavior: 'always_invoice', // Creates immediate invoice for proration
+                    payment_behavior: 'error_if_incomplete' // Fail if payment doesn't work
                 });
 
                 // Update organization record in database
@@ -180,13 +144,12 @@ module.exports = async function (context, req) {
                 context.res.status = 200;
                 context.res.body = { 
                     success: true,
-                    requiresPayment: false, // Payment already processed
-                    message: `Upgrade successful! You now have ${newLicenseCount} licenses. Charged £${immediateChargeAmount} for the remaining ${Math.round(proratedFraction * 100)}% of this billing period. Your next bill will be £${newMonthlyAmount}/${isAnnual ? 'year' : 'month'}.`,
+                    requiresPayment: false, // Payment already processed via proration
+                    message: `Upgrade successful! You now have ${newLicenseCount} licenses. You'll see a prorated charge for the ${additionalLicenses} additional license${additionalLicenses > 1 ? 's' : ''} on your next invoice. Your future bills will be £${newMonthlyAmount}/${isAnnual ? 'year' : 'month'}.`,
                     newLicenseCount: newLicenseCount,
                     newMonthlyAmount: newMonthlyAmount,
-                    immediateCharge: immediateChargeAmount,
                     isUpgrade: true,
-                    invoiceId: paidInvoice.id
+                    subscriptionId: updatedSubscription.id
                 };
                 return;
 
