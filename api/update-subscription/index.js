@@ -123,56 +123,70 @@ if (isUpgrade) {
         const origin = req.headers.origin || req.headers.referer || 'https://kind-mud-048fffa03.6.azurestaticapps.net';
         
         const session = await stripe.checkout.sessions.create({
-            customer: stripeCustomerId,
-            payment_method_types: ['card'],
-            mode: 'payment',
-            allow_promotion_codes: true,
-            billing_address_collection: 'required',
-            tax_id_collection: {
-                enabled: true
-            },
-            customer_update: {
-                address: 'auto',
-                name: 'auto'
-            },
-            line_items: [
-                {
-                    price_data: {
-                        currency: 'gbp',
-                        product_data: {
-                            name: `TIA License Upgrade`,
-                            description: `Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} (${billingInterval === 'year' ? 'annual' : 'monthly'} billing)`,
-                            metadata: {
-                                organizationId: organizationId,
-                                upgradeType: 'license_upgrade',
-                                additionalLicenses: additionalLicenses.toString(),
-                                billingInterval: billingInterval
-                            }
-                        },
-                        unit_amount: pricePerLicense,
-                        tax_behavior: 'exclusive'
-                    },
-                    quantity: additionalLicenses
-                }
-            ],
+    customer: stripeCustomerId,
+    payment_method_types: ['card'],
+    mode: 'payment',
+    allow_promotion_codes: true,
+    billing_address_collection: 'required',
+    tax_id_collection: {
+        enabled: true
+    },
+    customer_update: {
+        address: 'auto',
+        name: 'auto'
+    },
+    // ADD THIS: Force invoice creation
+    invoice_creation: {
+        enabled: true,
+        invoice_data: {
+            description: `TIA License Upgrade - Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''}`,
             metadata: {
-                type: 'license_upgrade',
                 organizationId: organizationId,
-                currentLicenseCount: currentLicenseCount.toString(), // FIXED: was currentLicenses
-                newLicenseCount: newLicenseCount.toString(),
-                stripeSubscriptionId: stripeSubscriptionId || '',
-                userEmail: userEmail,
+                upgradeType: 'license_upgrade',
+                additionalLicenses: additionalLicenses.toString(),
                 billingInterval: billingInterval
             },
-            automatic_tax: {
-                enabled: true,
+            footer: `Thank you for upgrading your TIA subscription!`
+        }
+    },
+    line_items: [
+        {
+            price_data: {
+                currency: 'gbp',
+                product_data: {
+                    name: `TIA License Upgrade`,
+                    description: `Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} (${billingInterval === 'year' ? 'annual' : 'monthly'} billing)`,
+                    metadata: {
+                        organizationId: organizationId,
+                        upgradeType: 'license_upgrade',
+                        additionalLicenses: additionalLicenses.toString(),
+                        billingInterval: billingInterval
+                    }
+                },
+                unit_amount: pricePerLicense,
+                tax_behavior: 'exclusive'
             },
-            success_url: `${origin}/dashboard.html?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${origin}/dashboard.html?upgrade=cancelled`,
-            consent_collection: {
-                terms_of_service: 'required'
-            }
-        });
+            quantity: additionalLicenses
+        }
+    ],
+    metadata: {
+        type: 'license_upgrade',
+        organizationId: organizationId,
+        currentLicenseCount: currentLicenseCount.toString(),
+        newLicenseCount: newLicenseCount.toString(),
+        stripeSubscriptionId: stripeSubscriptionId || '',
+        userEmail: userEmail,
+        billingInterval: billingInterval
+    },
+    automatic_tax: {
+        enabled: true,
+    },
+    success_url: `${origin}/dashboard.html?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/dashboard.html?upgrade=cancelled`,
+    consent_collection: {
+        terms_of_service: 'required'
+    }
+});
 
         context.res.status = 200;
         context.res.body = { 

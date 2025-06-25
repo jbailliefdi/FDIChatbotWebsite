@@ -1332,13 +1332,18 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
             
             planDetailsEl.innerHTML = `
                 Professional Plan - £${monthlyPrice}/month - Status: <span class="status-badge status-${organization.status}">${organization.status}</span>
-                <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fff3cd; border-radius: 4px; font-size: 0.9rem; border: 1px solid #ffeaa7;">
-                    <i class="fas fa-clock" style="color: #f39c12;"></i>
-                    <strong>Pending Change:</strong> License count will be reduced to ${organization.pendingLicenseCount} 
-                    (£${newMonthlyPrice}/month) at your next billing cycle.
-                    <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
-                        Scheduled: ${scheduledDate.toLocaleDateString('en-GB')}
+                <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fff3cd; border-radius: 4px; font-size: 0.9rem; border: 1px solid #ffeaa7; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <i class="fas fa-clock" style="color: #f39c12;"></i>
+                        <strong>Pending Change:</strong> License count will be reduced to ${organization.pendingLicenseCount} 
+                        (£${newMonthlyPrice}/month) at your next billing cycle.
+                        <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
+                            Scheduled: ${scheduledDate.toLocaleDateString('en-GB')}
+                        </div>
                     </div>
+                    <button onclick="cancelPendingDowngrade()" style="background: #dc3545; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">
+                        Cancel
+                    </button>
                 </div>
             `;
         } else {
@@ -1346,6 +1351,43 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
         }
         
         document.querySelector('.license-card').style.borderLeftColor = '#27ae60';
+    }
+}
+
+async function cancelPendingDowngrade() {
+    if (!currentOrganization || !currentUser) {
+        showError("Authentication required");
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to cancel the pending downgrade? Your license count will remain at the current level.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/cancel-downgrade', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                organizationId: currentOrganization.id,
+                stripeSubscriptionId: currentOrganization.stripeSubscriptionId,
+                userEmail: currentUser.email
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showSuccess('Pending downgrade cancelled successfully!');
+            setTimeout(() => {
+                loadDashboardData();
+            }, 1000);
+        } else {
+            showError(result.error || 'Failed to cancel downgrade');
+        }
+    } catch (error) {
+        console.error('Cancel downgrade error:', error);
+        showError('Failed to cancel downgrade. Please try again.');
     }
 }
 
