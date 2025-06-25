@@ -506,33 +506,35 @@
 
     <script>
         window.addEventListener('load', loadSubscriptionDetails);
-async function openBillingPortal() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-    
-    if (!sessionId) {
-        alert('Unable to access billing portal. Please contact support.');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/create-billing-portal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId: sessionId })
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            window.open(result.url, '_blank');
-        } else {
-            throw new Error('Failed to create billing portal session');
+
+        async function openBillingPortal() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+            
+            if (!sessionId) {
+                alert('Unable to access billing portal. Please contact support.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/create-billing-portal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: sessionId })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    window.open(result.url, '_blank');
+                } else {
+                    throw new Error('Failed to create billing portal session');
+                }
+            } catch (error) {
+                console.error('Error opening billing portal:', error);
+                alert('Unable to access billing portal. Please contact support.');
+            }
         }
-    } catch (error) {
-        console.error('Error opening billing portal:', error);
-        alert('Unable to access billing portal. Please contact support.');
-    }
-}
+
         async function loadSubscriptionDetails() {
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('session_id');
@@ -567,35 +569,46 @@ async function openBillingPortal() {
             document.getElementById('loadingDetails').style.display = 'none';
             document.getElementById('subscriptionDetails').style.display = 'block';
 
-            // Determine state from data or fallbacks
-            const isTrial = data && data.trialEndDate;
-            const licenseCount = data ? data.licenseCount : 1;
-            const customerEmail = data ? data.customerEmail : null;
+            // Extract actual data from API response
+            const planType = data?.planType || 'monthly';
+            const licenseCount = data?.licenseCount || 1;
+            const customerEmail = data?.customerEmail;
+            const totalAmount = data?.totalAmount; // This already includes VAT from Stripe
+            const trialEndDate = data?.trialEndDate;
             
+            // Display user count
             const userText = licenseCount === 1 ? '1 user' : `${licenseCount} users`;
             document.getElementById('userCount').textContent = userText;
 
-            if (isTrial) {
-                // UI for Trial Success
+            // Handle different plan types correctly
+            if (planType === 'trial' && trialEndDate) {
+                // Trial plan
                 document.querySelector('.success-title').textContent = 'Your Trial Has Started!';
                 document.querySelector('.success-subtitle').textContent = 'Enjoy full access to TIA for the next 3 days, on us!';
                 document.getElementById('planName').textContent = 'TIA Professional (Trial)';
-                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Trialing</span>';                
-                const endDate = new Date(data.trialEndDate);
-const formattedDate = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-const postTrialAmount = (data.licenseCount * 50 * 1.2).toFixed(2); // Calculate with VAT
-document.getElementById('totalAmount').textContent = `£0.00 today, then £${postTrialAmount}/month from ${formattedDate}`;
-
+                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Trialing</span>';
+                
+                // Show trial billing info
+                const endDate = new Date(trialEndDate);
+                const formattedDate = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                document.getElementById('totalAmount').textContent = `£0.00 today, then ${totalAmount || 'billing will resume'} from ${formattedDate}`;
+            } else if (planType === 'annual') {
+                // Annual plan
+                document.querySelector('.success-title').textContent = 'Welcome to TIA!';
+                document.querySelector('.success-subtitle').textContent = 'Your annual subscription is now active and ready to use';
+                document.getElementById('planName').textContent = 'TIA Professional (Annual)';
+                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Active</span>';
+                document.getElementById('totalAmount').textContent = totalAmount || `£${licenseCount * 550} / year`;
             } else {
-                // UI for Paid Plan Success or Fallback
+                // Monthly plan or fallback
                 document.querySelector('.success-title').textContent = 'Welcome to TIA!';
                 document.querySelector('.success-subtitle').textContent = 'Your subscription is now active and ready to use';
-                document.getElementById('planName').textContent = 'TIA Professional';
-document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Active</span>';
-                const totalAmount = data ? data.totalAmount : `£${(licenseCount * 50 * 1.2).toFixed(2)} / month`;
-                document.getElementById('totalAmount').textContent = totalAmount;
+                document.getElementById('planName').textContent = 'TIA Professional (Monthly)';
+                document.getElementById('planStatus').innerHTML = '<span style="color: #28a745; font-weight: bold;">✓ Active</span>';
+                document.getElementById('totalAmount').textContent = totalAmount || `£${licenseCount * 50} / month`;
             }
 
+            // Update dashboard link with customer email if available
             if (customerEmail) {
                 console.log('Payment completed for:', customerEmail);
                 const dashboardBtn = document.querySelector('a[href="/dashboard.html"]');
