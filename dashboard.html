@@ -662,6 +662,13 @@
                         <button class="btn btn-warning" style="width: 100%; margin-top: 1rem;" onclick="updatePaymentMethod()">
                             <i class="fas fa-edit"></i> Update Payment Method
                         </button>
+                        <button class="btn btn-warning" style="width: 100%; margin-top: 1rem;" onclick="updatePaymentMethod()">
+    <i class="fas fa-edit"></i> Update Payment Method
+</button>
+
+<button class="btn" style="width: 100%; margin-top: 1rem; background: #dc3545; color: white; border: none;" onclick="cancelSubscription()">
+    <i class="fas fa-times"></i> Cancel Subscription
+</button>
                     </div>
 
                     <div class="billing-card plan-card">
@@ -1787,6 +1794,13 @@ function updateBillingInfo(data) {
 // Billing action functions (placeholders for now)
 function updatePaymentMethod() {
     openBillingPortal();
+}
+
+function cancelSubscription() {
+    if (confirm('Are you sure you want to cancel your subscription? This will end your access to TIA at the end of your current billing period.')) {
+        // Redirect to Stripe billing portal where they can cancel
+        openBillingPortal();
+    }
 }
 
 async function openBillingPortal() {
