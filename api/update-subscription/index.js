@@ -1,4 +1,4 @@
-// SECURE Fixed version of your update-subscription API
+// SECURE Fixed version of your update-subscription API with Stripe Checkout
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 
@@ -90,7 +90,7 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // 🔒 SECURE: Handle upgrades with immediate payment + subscription update
+        // 🔒 SECURE: Handle upgrades with Stripe Checkout for transparency
         if (isUpgrade) {
             if (!stripeSubscriptionId) {
                 context.res.status = 400;
@@ -99,71 +99,119 @@ module.exports = async function (context, req) {
             }
 
             try {
-                // Get the current subscription to understand billing cycle
+                // Get the current subscription to understand billing cycle and calculate costs
                 const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
                 
                 if (!subscription || subscription.items.data.length === 0) {
                     throw new Error('Invalid subscription structure');
                 }
 
-                const subscriptionItem = subscription.items.data[0];
                 const additionalLicenses = newLicenseCount - currentLicenseCount;
                 
-                // Get price per license based on subscription interval for messaging
+                // Calculate prorated cost for transparency
+                const currentPeriodStart = subscription.current_period_start;
+                const currentPeriodEnd = subscription.current_period_end;
+                const now = Math.floor(Date.now() / 1000);
+                const totalPeriodDuration = currentPeriodEnd - currentPeriodStart;
+                const remainingPeriodDuration = currentPeriodEnd - now;
+                const proratedFraction = remainingPeriodDuration / totalPeriodDuration;
+                
+                // Get price per license based on subscription interval
                 const priceData = subscription.items.data[0].price;
                 const isAnnual = priceData.recurring.interval === 'year';
                 const pricePerLicense = isAnnual ? 550 : 50; // £550 annual, £50 monthly
                 
-                // 🔒 SECURE APPROACH: Use subscription update with immediate proration
-                // This automatically creates prorated charges and updates the subscription correctly
-                const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
-                    items: [{
-                        id: subscriptionItem.id,
-                        quantity: newLicenseCount,
-                    }],
-                    proration_behavior: 'always_invoice', // Creates immediate invoice for proration
-                    payment_behavior: 'error_if_incomplete' // Fail if payment doesn't work
+                // Calculate immediate charge (prorated for current period)
+                const proratedChargePerLicense = Math.round(pricePerLicense * proratedFraction);
+                const totalImmediateCharge = proratedChargePerLicense * additionalLicenses;
+
+                // Get the base URL for redirects
+                const origin = req.headers.origin || req.headers.referer || 'https://kind-mud-048fffa03.6.azurestaticapps.net';
+                
+                // Create Stripe Checkout session for transparent payment
+                const session = await stripe.checkout.sessions.create({
+                    customer: stripeCustomerId,
+                    payment_method_types: ['card'],
+                    mode: 'payment',
+                    allow_promotion_codes: true,
+                    billing_address_collection: 'required',
+                    tax_id_collection: {
+                        enabled: true
+                    },
+                    customer_update: {
+                        address: 'auto',
+                        name: 'auto'
+                    },
+                    invoice_creation: {
+                        enabled: true,
+                        invoice_data: {
+                            description: `TIA License Upgrade - Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} (prorated)`,
+                            metadata: {
+                                organizationId: organizationId,
+                                upgradeType: 'license_upgrade',
+                                currentLicenseCount: currentLicenseCount.toString(),
+                                newLicenseCount: newLicenseCount.toString(),
+                                stripeSubscriptionId: stripeSubscriptionId,
+                                billingInterval: isAnnual ? 'annual' : 'monthly'
+                            },
+                            footer: `After payment, your subscription will be updated to ${newLicenseCount} licenses at £${newLicenseCount * pricePerLicense}/${isAnnual ? 'year' : 'month'}.`
+                        }
+                    },
+                    line_items: [
+                        {
+                            price_data: {
+                                currency: 'gbp',
+                                product_data: {
+                                    name: `TIA License Upgrade`,
+                                    description: `Add ${additionalLicenses} license${additionalLicenses > 1 ? 's' : ''} to your subscription (prorated for remaining ${Math.round(proratedFraction * 100)}% of billing period)`,
+                                    metadata: {
+                                        organizationId: organizationId,
+                                        upgradeType: 'license_upgrade'
+                                    }
+                                },
+                                unit_amount: Math.round(proratedChargePerLicense * 100), // Prorated price per license in pence
+                                tax_behavior: 'exclusive'
+                            },
+                            quantity: additionalLicenses
+                        }
+                    ],
+                    metadata: {
+                        type: 'license_upgrade',
+                        organizationId: organizationId,
+                        currentLicenseCount: currentLicenseCount.toString(),
+                        newLicenseCount: newLicenseCount.toString(),
+                        stripeSubscriptionId: stripeSubscriptionId,
+                        userEmail: userEmail,
+                        billingInterval: isAnnual ? 'annual' : 'monthly',
+                        // 🔒 CRITICAL: Flag that this requires subscription update after payment
+                        requiresSubscriptionUpdate: 'true'
+                    },
+                    automatic_tax: {
+                        enabled: true,
+                    },
+                    success_url: `${origin}/dashboard.html?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+                    cancel_url: `${origin}/dashboard.html?upgrade=cancelled`,
+                    consent_collection: {
+                        terms_of_service: 'required'
+                    }
                 });
 
-                // Update organization record in database
-                const updatedOrg = {
-                    ...organization,
-                    licenseCount: newLicenseCount,
-                    lastModified: new Date().toISOString(),
-                    // Clear any pending downgrade info
-                    pendingDowngrade: false,
-                    pendingLicenseCount: null,
-                    downgradeScheduledAt: null,
-                    downgradeScheduledBy: null
-                };
-
-                await organizationsContainer.item(organizationId, organizationId).replace(updatedOrg);
-
-                const newMonthlyAmount = newLicenseCount * pricePerLicense;
-                
                 context.res.status = 200;
                 context.res.body = { 
-                    success: true,
-                    requiresPayment: false, // Payment already processed via proration
-                    message: `Upgrade successful! You now have ${newLicenseCount} licenses. You'll see a prorated charge for the ${additionalLicenses} additional license${additionalLicenses > 1 ? 's' : ''} on your next invoice. Your future bills will be £${newMonthlyAmount}/${isAnnual ? 'year' : 'month'}.`,
-                    newLicenseCount: newLicenseCount,
-                    newMonthlyAmount: newMonthlyAmount,
-                    isUpgrade: true,
-                    subscriptionId: updatedSubscription.id
+                    requiresPayment: true,
+                    checkoutUrl: session.url,
+                    sessionId: session.id,
+                    billingInterval: isAnnual ? 'annual' : 'monthly',
+                    proratedCharge: totalImmediateCharge,
+                    newMonthlyAmount: newLicenseCount * pricePerLicense,
+                    message: `Upgrade requires payment of £${totalImmediateCharge} (prorated) for ${additionalLicenses} additional license${additionalLicenses > 1 ? 's' : ''}. You will be redirected to Stripe to confirm payment.`
                 };
                 return;
 
             } catch (stripeError) {
-                context.log.error('Stripe subscription update error:', stripeError);
-                
-                // If payment fails, don't update anything
-                if (stripeError.code === 'card_declined' || stripeError.type === 'card_error') {
-                    context.res.status = 402;
-                    context.res.body = { error: 'Payment failed: ' + stripeError.message };
-                } else {
-                    context.res.status = 500;
-                    context.res.body = { error: 'Failed to process upgrade: ' + stripeError.message };
-                }
+                context.log.error('Stripe checkout creation error:', stripeError);
+                context.res.status = 500;
+                context.res.body = { error: 'Failed to create checkout session: ' + stripeError.message };
                 return;
             }
         }
