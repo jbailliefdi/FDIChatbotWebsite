@@ -40,9 +40,9 @@
         }
 
         .logo-section h2 {
-            color: #3498db;
-            margin-bottom: 0.5rem;
-        }
+    color: #3498db;
+    margin-bottom: 0; /* Remove bottom margin since we're using flexbox */
+}
 
         .org-name {
             font-size: 0.9rem;
@@ -540,9 +540,12 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <div class="logo-section">
-                <h2>TIA</h2>
-                <div class="org-name" id="orgName">Loading...</div>
-            </div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <h2 style="margin: 0;">TIA</h2>
+        <img src="/FDi_Logo_Device_Transparent_Outer.png" alt="FDI Logo" style="height: 32px; width: auto;">
+    </div>
+    <div class="org-name" id="orgName">Loading...</div>
+</div>
             
             <ul class="nav-menu">
                 <li class="nav-item">
@@ -695,25 +698,6 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-
-                <!-- Manage Subscription -->
-                <div class="billing-section">
-                    <h3><i class="fas fa-cogs"></i> Manage Subscription</h3>
-                    <p style="color: #666; margin-bottom: 1.5rem;">
-                        Manage your subscription settings, cancel or modify your plan.
-                    </p>
-                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" onclick="pauseSubscription()">
-                            <i class="fas fa-pause"></i> Pause Subscription
-                        </button>
-                        <button class="btn btn-warning" onclick="changeSubscription()">
-                            <i class="fas fa-exchange-alt"></i> Change Plan
-                        </button>
-                        <button class="btn" style="background: #dc3545; color: white;" onclick="cancelSubscription()">
-                            <i class="fas fa-times"></i> Cancel Subscription
-                        </button>
-                    </div>
                 </div>
             </div>
         </main>
@@ -1842,20 +1826,6 @@ async function openBillingPortal() {
     } catch (error) {
         console.error('Billing portal error:', error);
         alert('Failed to open billing portal. Please try again.');
-    }
-}
-
-function pauseSubscription() {
-    alert('Subscription management coming soon. Please contact support.');
-}
-
-function changeSubscription() {
-    window.location.href = '/pricing';
-}
-
-function cancelSubscription() {
-    if (confirm('Are you sure you want to cancel your subscription? This will end your access to TIA.')) {
-        alert('Cancellation process coming soon. Please contact support to cancel.');
     }
 }
 

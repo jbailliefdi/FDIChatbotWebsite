@@ -131,7 +131,7 @@ module.exports = async function (context, req) {
                     currency: inv.currency,
                     status: inv.status,
                     invoicePdf: inv.invoice_pdf,
-                    description: inv.description || `TIA Professional - ${organization.licenseCount} licenses`
+                    description: inv.description || `TIA Professional - Initial Purchase`
                 }));
 
             } catch (stripeError) {
