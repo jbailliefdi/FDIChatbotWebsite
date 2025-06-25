@@ -619,19 +619,23 @@ body.dark-mode .account-status-modal .contact-info {
       fill: white !important; 
     }
 
-    footer.chat-footer { 
-      height: var(--footer-height); 
-      background: var(--content-bg-color); 
-      border-top: 1px solid var(--border-color); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      gap: 12px; 
-      padding: 0 30px; 
-      flex-shrink: 0; 
-      z-index: 10; 
-      transition: background-color var(--transition-speed), border-color var(--transition-speed); 
-    }
+    footer.chat-footer {
+  height: var(--footer-height);
+  background: var(--content-bg-color);
+  border-top: 1px solid var(--border-color);
+  display: none; /* Changed from 'flex' to 'none' */
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 30px;
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+footer.chat-footer.show {
+  display: flex;
+}
     
     .footer-btn { 
       padding: 10px 20px; 
@@ -1626,6 +1630,17 @@ async function initializeMSAL() {
 }
 function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
 
+function updateFooterVisibility() {
+    const footer = document.querySelector('footer.chat-footer');
+    const account = msalInstance?.getActiveAccount();
+    
+    if (account && subscriptionData?.active) {
+        footer?.classList.add('show');
+    } else {
+        footer?.classList.remove('show');
+    }
+}
+
 function updateAuthUI() {
     const authBtn = document.getElementById("authBtn");
     const userStatus = document.getElementById("user-status");
@@ -1674,6 +1689,8 @@ function updateAuthUI() {
         dashboardBtn.style.display = "none";
     }
     
+    // Add this line to update footer visibility
+    updateFooterVisibility();
 }
 function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
 async function signIn() { const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; try { await msalInstance.loginRedirect(loginRequest); } catch (error) { alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); } }
