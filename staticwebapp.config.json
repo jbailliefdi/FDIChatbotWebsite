@@ -1,4 +1,14 @@
 {
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/common/v2.0",
+          "clientIdSettingName": "AZURE_CLIENT_ID"
+        }
+      }
+    }
+  },
   "routes": [
     {
       "route": "/pricing",
@@ -18,6 +28,18 @@
       "route": "/dashboard*",
       "rewrite": "/dashboard.html",
       "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/public/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/get-auth-config",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/stripe-webhook",
+      "allowedRoles": ["anonymous"]
     },
     {
       "route": "/api/*",

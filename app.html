@@ -1244,7 +1244,6 @@ footer.chat-footer.show {
       }
     }
   </style>
-  <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -1415,7 +1414,7 @@ async function checkUserStatus(account) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email: account.username })
+            body: JSON.stringify({ email: account.email || account.username })
         });
 
         if (!response.ok) {
@@ -1599,192 +1598,107 @@ function initializeChat() {
  * MSAL & Authentication Setup
  **********************/
 let subscriptionData = null;
-// Remove hardcoded config and replace with:
-let msalConfig = null;
-let msalInstance = null;
-
-async function initializeMSAL() {
-    try {
-        const response = await fetch('/api/get-auth-config');
-        const config = await response.json();
-        
-        msalConfig = {
-            auth: {
-                clientId: config.clientId,
-                authority: config.authority,
-                redirectUri: window.location.origin + window.location.pathname,
-            },
-            cache: {
-                cacheLocation: "localStorage",
-                storeAuthStateInCookie: false,
-            }
-        };
-        
-        msalInstance = new msal.PublicClientApplication(msalConfig);
-        return true;
-    } catch (e) {
-        console.error("MSAL Initialization Failed:", e);
-        alert("Critical error initializing authentication library. Please refresh the page or contact support.");
-        return false;
-    }
-}
+let currentUser = null;
 function getAuthToken() { return localStorage.getItem("authToken"); } function saveAuthToken(token) { localStorage.setItem("authToken", token); } function clearAuthToken() { localStorage.removeItem("authToken"); subscriptionData = null; }
 
 function updateFooterVisibility() {
     const footer = document.querySelector('footer.chat-footer');
-    const account = msalInstance?.getActiveAccount();
     
-    if (account && subscriptionData?.active) {
+    if (currentUser && subscriptionData?.active) {
         footer?.classList.add('show');
     } else {
         footer?.classList.remove('show');
     }
 }
 
-function updateAuthUI() {
+async function updateAuthUI() {
     const authBtn = document.getElementById("authBtn");
     const userStatus = document.getElementById("user-status");
     const dashboardBtn = document.getElementById("dashboardBtn");
     if (!authBtn || !userStatus) return;
 
-    // Check if MSAL is initialized and has the required methods
-    if (!msalInstance || typeof msalInstance.getActiveAccount !== 'function') {
-        authBtn.textContent = "Loading...";
-        authBtn.disabled = true;
-        userStatus.textContent = "Initializing...";
-        if (dashboardBtn) dashboardBtn.style.display = "none";
-        return;
-    }
-
-    // Re-enable button if it was disabled
-    authBtn.disabled = false;
-
-    let account = null;
+    // Check authentication status using Azure Static Web Apps
     try {
-        account = msalInstance.getActiveAccount();
-    } catch (error) {
-        console.error("Error getting active account:", error);
-        authBtn.textContent = "Error";
-        authBtn.disabled = true;
-        userStatus.textContent = "Authentication error";
-        if (dashboardBtn) dashboardBtn.style.display = "none";
-        return;
-    }
-    if (account) {
-        authBtn.textContent = "Sign Out";
+        const response = await fetch('/.auth/me');
+        const authData = await response.json();
         
-        // Show/hide dashboard button based on admin role
-        if (userData && userData.userRole === 'admin') {
-            if (dashboardBtn) dashboardBtn.style.display = "inline-flex";
+        if (authData.clientPrincipal) {
+            currentUser = {
+                email: authData.clientPrincipal.userDetails,
+                name: authData.clientPrincipal.userDetails.split('@')[0].replace('.', ' '),
+                roles: authData.clientPrincipal.userRoles || []
+            };
+            
+            authBtn.textContent = "Sign Out";
+            
+            // Show/hide dashboard button based on admin role
+            if (userData && userData.userRole === 'admin') {
+                if (dashboardBtn) dashboardBtn.style.display = "inline-flex";
+            } else {
+                if (dashboardBtn) dashboardBtn.style.display = "none";
+            }
+            
+            if (subscriptionData && subscriptionData.active) {
+                const companyInfo = subscriptionData.companyName || currentUser.name || "User";
+                let licenseInfo = '';
+                let statusInfo = '';
+                
+                if (subscriptionData.usedLicenses && subscriptionData.totalLicenses) {
+                    licenseInfo = ` (${subscriptionData.usedLicenses}/${subscriptionData.totalLicenses} users)`;
+                }
+                
+                // Add trial status if applicable
+                if (subscriptionData.isTrialing && subscriptionData.trial) {
+                    const trial = subscriptionData.trial;
+                    if (trial.daysLeft > 0) {
+                        statusInfo = `<br><small style="color: #ff6b6b;">Trial: ${trial.daysLeft} day${trial.daysLeft !== 1 ? 's' : ''} left</small>`;
+                    } else if (trial.hoursLeft > 0) {
+                        statusInfo = `<br><small style="color: #e74c3c;">Trial: ${trial.hoursLeft} hour${trial.hoursLeft !== 1 ? 's' : ''} left</small>`;
+                    } else {
+                        statusInfo = `<br><small style="color: #e74c3c;">Trial ending soon</small>`;
+                    }
+                }
+                
+                userStatus.innerHTML = `${companyInfo}${licenseInfo}${statusInfo}<br><small>${currentUser.email}</small>`;
+            } else {
+                 userStatus.innerHTML = `${currentUser.name || currentUser.email}<br><small>No active subscription</small>`;
+            }
         } else {
+            currentUser = null;
+            authBtn.textContent = "Sign In";
+            userStatus.textContent = "User not signed in";
             if (dashboardBtn) dashboardBtn.style.display = "none";
         }
-        
-        if (subscriptionData && subscriptionData.active) {
-            const companyInfo = subscriptionData.companyName || (account.name ? account.name.split(" ")[0] : "User");
-            let licenseInfo = '';
-            let statusInfo = '';
-            
-            if (subscriptionData.usedLicenses && subscriptionData.totalLicenses) {
-                licenseInfo = ` (${subscriptionData.usedLicenses}/${subscriptionData.totalLicenses} users)`;
-            }
-            
-            // Add trial status if applicable
-            if (subscriptionData.isTrialing && subscriptionData.trial) {
-                const trial = subscriptionData.trial;
-                if (trial.daysLeft > 0) {
-                    statusInfo = `<br><small style="color: #ff6b6b;">Trial: ${trial.daysLeft} day${trial.daysLeft !== 1 ? 's' : ''} left</small>`;
-                } else if (trial.hoursLeft > 0) {
-                    statusInfo = `<br><small style="color: #e74c3c;">Trial: ${trial.hoursLeft} hour${trial.hoursLeft !== 1 ? 's' : ''} left</small>`;
-                } else {
-                    statusInfo = `<br><small style="color: #e74c3c;">Trial ending soon</small>`;
-                }
-            }
-            
-            userStatus.innerHTML = `${companyInfo}${licenseInfo}${statusInfo}<br><small>${account.username}</small>`;
-        } else {
-             userStatus.innerHTML = `${account.name || account.username}<br><small>No active subscription</small>`;
-        }
-    } else {
+    } catch (error) {
+        console.error("Error checking authentication:", error);
+        currentUser = null;
         authBtn.textContent = "Sign In";
-        userStatus.textContent = "User not signed in";
+        userStatus.textContent = "Authentication check failed";
         if (dashboardBtn) dashboardBtn.style.display = "none";
     }
     
-    // Add this line to update footer visibility
+    // Update footer visibility
     updateFooterVisibility();
 }
 async function handleAuth() { 
-    // Check if MSAL is initialized
-    if (!msalInstance) {
-        console.warn("MSAL not yet initialized, showing loading overlay...");
-        
-        // Show loading overlay
-        showAuthLoadingOverlay();
-        
-        // Wait for MSAL to initialize (with timeout)
-        let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max wait
-        while (!msalInstance && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-        
-        // Hide loading overlay
-        hideAuthLoadingOverlay();
-        
-        if (!msalInstance) {
-            alert("Authentication system is still loading. Please try again in a moment.");
-            return;
-        }
-    }
-    
-    // Double-check MSAL is ready and proceed with original logic
-    if (msalInstance && typeof msalInstance.getActiveAccount === 'function') {
-        const account = msalInstance.getActiveAccount();
-        if (account) {
-            signOut();
-        } else {
-            signIn();
-        }
+    if (currentUser) {
+        signOut();
     } else {
-        alert("Authentication system is not ready. Please refresh the page.");
+        signIn();
     }
 }
 async function signIn() { 
-    if (!msalInstance) {
-        alert("Authentication system is not ready. Please wait a moment and try again.");
-        return;
-    }
-    
-    const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; 
     try { 
-        await msalInstance.loginRedirect(loginRequest); 
+        window.location.href = '/.auth/login/aad?post_login_redirect_uri=' + encodeURIComponent(window.location.href);
     } catch (error) { 
-        alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); 
+        alert("Failed to start the sign-in process. Please try again."); 
         console.error("Sign-in error:", error);
     } 
 }
 async function signOut() { 
-    if (!msalInstance) {
-        alert("Authentication system is not ready.");
-        return;
-    }
-    
     clearAuthToken(); 
     try { 
-        const currentAccount = msalInstance.getActiveAccount(); 
-        const logoutRequest = { 
-            account: currentAccount, 
-            postLogoutRedirectUri: window.location.origin + window.location.pathname 
-        }; 
-        if (currentAccount) { 
-            await msalInstance.logoutRedirect(logoutRequest); 
-        } else { 
-            await msalInstance.logoutRedirect({ 
-                postLogoutRedirectUri: window.location.origin + window.location.pathname 
-            }); 
-        } 
+        window.location.href = '/.auth/logout?post_logout_redirect_uri=' + encodeURIComponent(window.location.href);
     } catch (error) { 
         updateAuthUI(); 
         alert("An error occurred initiating sign-out. You might need to clear site data manually."); 
@@ -1820,16 +1734,15 @@ function hideAuthLoadingOverlay() {
 
 function postSignInEvent() {
     const token = getAuthToken();
-    const account = msalInstance.getActiveAccount();
-    if (token && account && window.directLine && window.directLine.connectionStatus$.value === 2) {
+    if (token && currentUser && window.directLine && window.directLine.connectionStatus$.value === 2) {
         window.directLine.postActivity({
             type: "event",
             name: "signin/verifyState",
-            from: { id: "user", name: account.name || account.username, role: "user" },
+            from: { id: "user", name: currentUser.name || currentUser.email, role: "user" },
             value: { 
                 token: token,
-                email: account.username,
-                firstName: account.name ? account.name.split(" ")[0] : "User",
+                email: currentUser.email,
+                firstName: currentUser.name ? currentUser.name.split(" ")[0] : "User",
                 subscription: subscriptionData // Pass subscription data to the bot
             }
         }).subscribe(id => console.log("Generic signin/verifyState sent, client ID:", id),
@@ -1903,21 +1816,19 @@ async function loadExistingChat(chatId, memoryStr) {
     endCurrentDirectLine();
     
     // Check authentication before proceeding
-    const account = msalInstance.getActiveAccount();
     const token = getAuthToken();
-    if (!account || !token) {
+    if (!currentUser || !token) {
         alert("Please sign in to access chat history.");
         isInjectingHistory = false;
         return;
     }
     
     try { 
-    const account = msalInstance.getActiveAccount();
-if (!account) {
+if (!currentUser) {
     alert("Please sign in to start a new chat.");
     return;
 }
-const token = await getDirectLineToken(account.username);
+const token = await getDirectLineToken(currentUser.email);
     window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
@@ -2026,12 +1937,11 @@ async function newchat() {
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${tempChatId}`); });
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
     try { 
-    const account = msalInstance.getActiveAccount();
-    if (!account) {
+    if (!currentUser) {
         alert("Please sign in to start a new chat.");
         return;
     }
-    const token = await getDirectLineToken(account.username);
+    const token = await getDirectLineToken(currentUser.email);
     window.directLine = window.WebChat.createDirectLine({ token: token }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); } catch(e) { alert("Error displaying new chat interface."); console.error("Error rendering WebChat for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
@@ -2087,17 +1997,8 @@ window.onload = async () => {
     console.log("Window onload started.");
     handleTrialUrlParams();
     
-    // Set initial loading state for auth UI
-    updateAuthUI();
-    
-    // Initialize MSAL first
-    const msalInitialized = await initializeMSAL();
-    if (!msalInitialized) {
-        return;
-    }
-    
-    // Update auth UI now that MSAL is initialized
-    updateAuthUI();
+    // Check authentication and update UI
+    await updateAuthUI();
     
     // Setup theme
     const preferredTheme = localStorage.getItem('theme');
@@ -2106,13 +2007,12 @@ window.onload = async () => {
     // Setup subscription modal buttons
     document.getElementById('start-trial-btn').onclick = () => { window.location.href = '/pricing'; };
     document.getElementById('recheck-sub-btn').onclick = async () => { 
-        const account = msalInstance.getActiveAccount();
-        if (!account) {
+        if (!currentUser) {
             showErrorOverlay();
             return;
         }
         
-        const result = await checkUserStatus(account);
+        const result = await checkUserStatus(currentUser);
         subscriptionData = result;
         
         if (result && result.active) {
@@ -2125,39 +2025,37 @@ window.onload = async () => {
     };
 
     try {
-        await msalInstance.handleRedirectPromise();
-        let account = msalInstance.getActiveAccount();
-        if (!account && msalInstance.getAllAccounts().length > 0) {
-            account = msalInstance.getAllAccounts()[0];
-            msalInstance.setActiveAccount(account);
-        }
-
-        if (account) {
-            console.log("MSAL Account found:", account.username);
-            const tokenRequest = { scopes: ["openid", "profile", "User.Read"], account: account };
-            try {
-                const tokenResponse = await msalInstance.acquireTokenSilent(tokenRequest);
-                saveAuthToken(tokenResponse.accessToken);
-                console.log("MSAL token acquired silently.");
-                // Token is ready, now check subscription
-                await verifyUserAndInitialize(account);
-            } catch (error) {
-                if (error instanceof msal.InteractionRequiredAuthError) {
-                    await msalInstance.acquireTokenRedirect(tokenRequest);
-                } else {
-                    console.error("MSAL silent token acquisition error:", error);
-                    clearAuthToken();
-                    updateAuthUI();
-                }
+        // Check authentication status using Azure Static Web Apps
+        const response = await fetch('/.auth/me');
+        const authData = await response.json();
+        
+        if (authData.clientPrincipal) {
+            currentUser = {
+                email: authData.clientPrincipal.userDetails,
+                name: authData.clientPrincipal.userDetails.split('@')[0].replace('.', ' '),
+                roles: authData.clientPrincipal.userRoles || []
+            };
+            
+            console.log("User authenticated:", currentUser.email);
+            
+            // Get auth token for bot communication
+            const token = getAuthToken();
+            if (!token) {
+                // If no token, we might need to get it from the backend
+                console.log("No auth token found, proceeding with user verification");
             }
+            
+            // Verify user and initialize
+            await verifyUserAndInitialize(currentUser);
         } else {
-            console.log("No MSAL account found. User needs to sign in.");
+            console.log("No authenticated user found. User needs to sign in.");
+            currentUser = null;
             clearAuthToken();
             updateAuthUI();
-            // Optional: show overlay with a message to sign in, but current UI is clear.
         }
-    } catch (msalError) {
-        console.error("MSAL error during startup:", msalError);
+    } catch (authError) {
+        console.error("Authentication error during startup:", authError);
+        currentUser = null;
         clearAuthToken();
         updateAuthUI();
     }
@@ -2166,7 +2064,7 @@ window.onload = async () => {
         const token = getAuthToken(); 
         const isActiveConnection = window.directLine && window.directLine.connectionStatus$.value === 2; 
         // Only request updates if subscription is active
-        if (token && isActiveConnection && subscriptionData?.active && msalInstance && msalInstance.getActiveAccount()) { 
+        if (token && isActiveConnection && subscriptionData?.active && currentUser) { 
             window.directLine.postActivity({ type: "event", name: "requestSidebarUpdate", from: { id: "user-client", role: "user" } })
             .subscribe( id => {}, error => {console.warn("Periodic sidebar update request failed:", error);} ); 
         } 

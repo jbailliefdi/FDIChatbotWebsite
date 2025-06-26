@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TIA - Organization Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -811,20 +810,6 @@
 </div>
 
     <script>
-        // MSAL Configuration
-        const msalConfig = {
-            auth: {
-                clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2",
-                authority: "https://login.microsoftonline.com/common",
-                redirectUri: window.location.origin + "/dashboard.html",
-            },
-            cache: {
-                cacheLocation: "localStorage",
-                storeAuthStateInCookie: false,
-            }
-        };
-
-        let msalInstance;
         let currentUser = null;
         let currentUserOrganization = null;
         let currentOrganization = null;
@@ -832,49 +817,31 @@
         let currentPage = 'users';
         let currentBillingData = null;
 
-        // Initialize MSAL
-        try {
-            msalInstance = new msal.PublicClientApplication(msalConfig);
-        } catch (e) {
-            console.error("MSAL Initialization Failed:", e);
-            showError("Authentication system failed to initialize. Please refresh the page.");
-        }
-
         // Authentication functions
         async function checkAdminAuth() {
             try {
-                await msalInstance.handleRedirectPromise();
-                let account = msalInstance.getActiveAccount();
+                // Check authentication status using Azure Static Web Apps built-in auth
+                const response = await fetch('/.auth/me');
+                const authData = await response.json();
                 
-                if (!account && msalInstance.getAllAccounts().length > 0) {
-                    account = msalInstance.getAllAccounts()[0];
-                    msalInstance.setActiveAccount(account);
+                if (!authData.clientPrincipal) {
+                    // User is not authenticated, redirect to login
+                    redirectToLogin();
+                    return false;
                 }
 
-                // Check for email hint in URL
+                const userPrincipal = authData.clientPrincipal;
+                const userEmail = userPrincipal.userDetails;
+                
+                // Clean up URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
-                const emailHint = urlParams.get('email');
-
-                if (!account) {
-                    if (emailHint) {
-                        // Try to find existing account with that email first
-                        const existingAccount = msalInstance.getAllAccounts().find(acc => acc.username === emailHint);
-                        if (existingAccount) {
-                            msalInstance.setActiveAccount(existingAccount);
-                            account = existingAccount;
-                        } else {
-                            // No existing account, redirect to login with email hint
-                            redirectToLoginWithEmail(emailHint);
-                            return false;
-                        }
-                    } else {
-                        redirectToLogin();
-                        return false;
-                    }
+                if (urlParams.has('email') || urlParams.has('trial')) {
+                    const cleanUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
                 }
 
                 // Verify user is admin and get organization
-                const userStatus = await verifyAdminStatus(account);
+                const userStatus = await verifyAdminStatus(userEmail, userPrincipal.userRoles);
                 
                 if (!userStatus.isAdmin || !userStatus.hasAccess) {
                     showUnauthorizedError(userStatus.message);
@@ -885,12 +852,6 @@
                 currentUser = userStatus.user;
                 currentUserOrganization = userStatus.organization;
                 
-                // Clean up URL parameters after successful auth
-                if (emailHint || urlParams.has('trial')) {
-                    const cleanUrl = window.location.pathname;
-                    window.history.replaceState({}, document.title, cleanUrl);
-                }
-                
                 return true;
             } catch (error) {
                 console.error("Authentication check failed:", error);
@@ -899,12 +860,12 @@
             }
         }
 
-        async function verifyAdminStatus(account) {
+        async function verifyAdminStatus(userEmail, userRoles = []) {
             try {
                 const response = await fetch('/api/check-subscription', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: account.username })
+                    body: JSON.stringify({ email: userEmail })
                 });
 
                 if (!response.ok) {
@@ -914,14 +875,19 @@
                 const data = await response.json();
                 console.log('API Response:', data);
                 
+                // Extract user name from email or use a default
+                const userName = userEmail.split('@')[0].split('.').map(part => 
+                    part.charAt(0).toUpperCase() + part.slice(1)
+                ).join(' ');
+                
                 return {
                     isAdmin: data.userRole === 'admin',
                     hasAccess: data.active,
                     user: { 
-                        email: account.username, 
+                        email: userEmail, 
                         role: data.userRole,
-                        firstName: account.name ? account.name.split(' ')[0] : 'User',
-                        lastName: account.name ? account.name.split(' ').slice(1).join(' ') : ''
+                        firstName: userName.split(' ')[0] || 'User',
+                        lastName: userName.split(' ').slice(1).join(' ') || ''
                     },
                     organization: { 
                         id: data.organizationId || data.user?.organizationId || 'fdi-test-org-001',
@@ -939,23 +905,10 @@
             }
         }
 
-        function redirectToLoginWithEmail(email) {
-            const loginRequest = {
-                scopes: ["openid", "profile", "email"],
-                prompt: "select_account",
-                loginHint: email,
-                redirectUri: window.location.href.split('?')[0]
-            };
-            
-            msalInstance.loginRedirect(loginRequest).catch(error => {
-                console.error("Login redirect with email hint failed:", error);
-                redirectToLogin();
-            });
-        }
 
         function redirectToLogin() {
             alert("Please sign in to access the dashboard.");
-            window.location.href = '/app';
+            window.location.href = '/.auth/login/aad?post_login_redirect_uri=' + encodeURIComponent(window.location.href);
         }
 
         function showUnauthorizedError(message) {
@@ -976,9 +929,7 @@
 
         async function signOut() {
             try {
-                await msalInstance.logoutRedirect({
-                    postLogoutRedirectUri: window.location.origin + '/app'
-                });
+                window.location.href = '/.auth/logout?post_logout_redirect_uri=' + encodeURIComponent(window.location.origin + '/app');
             } catch (error) {
                 console.error("Sign out error:", error);
                 window.location.href = '/app';
