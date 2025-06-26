@@ -1647,8 +1647,8 @@ function updateAuthUI() {
     const dashboardBtn = document.getElementById("dashboardBtn");
     if (!authBtn || !userStatus) return;
 
-    // Check if MSAL is initialized
-    if (!msalInstance) {
+    // Check if MSAL is initialized and has the required methods
+    if (!msalInstance || typeof msalInstance.getActiveAccount !== 'function') {
         authBtn.textContent = "Loading...";
         authBtn.disabled = true;
         userStatus.textContent = "Initializing...";
@@ -1659,7 +1659,17 @@ function updateAuthUI() {
     // Re-enable button if it was disabled
     authBtn.disabled = false;
 
-    const account = msalInstance.getActiveAccount();
+    let account = null;
+    try {
+        account = msalInstance.getActiveAccount();
+    } catch (error) {
+        console.error("Error getting active account:", error);
+        authBtn.textContent = "Error";
+        authBtn.disabled = true;
+        userStatus.textContent = "Authentication error";
+        if (dashboardBtn) dashboardBtn.style.display = "none";
+        return;
+    }
     if (account) {
         authBtn.textContent = "Sign Out";
         
@@ -1704,9 +1714,109 @@ function updateAuthUI() {
     // Add this line to update footer visibility
     updateFooterVisibility();
 }
-function handleAuth() { msalInstance.getActiveAccount() ? signOut() : signIn(); }
-async function signIn() { const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; try { await msalInstance.loginRedirect(loginRequest); } catch (error) { alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); } }
-async function signOut() { clearAuthToken(); try { const currentAccount = msalInstance.getActiveAccount(); const logoutRequest = { account: currentAccount, postLogoutRedirectUri: window.location.origin + window.location.pathname }; if (currentAccount) { await msalInstance.logoutRedirect(logoutRequest); } else { await msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.origin + window.location.pathname }); } } catch (error) { updateAuthUI(); alert("An error occurred initiating sign-out. You might need to clear site data manually."); } }
+async function handleAuth() { 
+    // Check if MSAL is initialized
+    if (!msalInstance) {
+        console.warn("MSAL not yet initialized, showing loading overlay...");
+        
+        // Show loading overlay
+        showAuthLoadingOverlay();
+        
+        // Wait for MSAL to initialize (with timeout)
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        while (!msalInstance && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        // Hide loading overlay
+        hideAuthLoadingOverlay();
+        
+        if (!msalInstance) {
+            alert("Authentication system is still loading. Please try again in a moment.");
+            return;
+        }
+    }
+    
+    // Double-check MSAL is ready and proceed with original logic
+    if (msalInstance && typeof msalInstance.getActiveAccount === 'function') {
+        const account = msalInstance.getActiveAccount();
+        if (account) {
+            signOut();
+        } else {
+            signIn();
+        }
+    } else {
+        alert("Authentication system is not ready. Please refresh the page.");
+    }
+}
+async function signIn() { 
+    if (!msalInstance) {
+        alert("Authentication system is not ready. Please wait a moment and try again.");
+        return;
+    }
+    
+    const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; 
+    try { 
+        await msalInstance.loginRedirect(loginRequest); 
+    } catch (error) { 
+        alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); 
+        console.error("Sign-in error:", error);
+    } 
+}
+async function signOut() { 
+    if (!msalInstance) {
+        alert("Authentication system is not ready.");
+        return;
+    }
+    
+    clearAuthToken(); 
+    try { 
+        const currentAccount = msalInstance.getActiveAccount(); 
+        const logoutRequest = { 
+            account: currentAccount, 
+            postLogoutRedirectUri: window.location.origin + window.location.pathname 
+        }; 
+        if (currentAccount) { 
+            await msalInstance.logoutRedirect(logoutRequest); 
+        } else { 
+            await msalInstance.logoutRedirect({ 
+                postLogoutRedirectUri: window.location.origin + window.location.pathname 
+            }); 
+        } 
+    } catch (error) { 
+        updateAuthUI(); 
+        alert("An error occurred initiating sign-out. You might need to clear site data manually."); 
+        console.error("Sign-out error:", error);
+    } 
+}
+function showAuthLoadingOverlay() {
+    let overlay = document.getElementById('auth-loading-overlay');
+    if (!overlay) {
+        // Create the overlay if it doesn't exist
+        overlay = document.createElement('div');
+        overlay.id = 'auth-loading-overlay';
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-modal">
+                <div class="loading-spinner"></div>
+                <h3>Initializing Authentication...</h3>
+                <p>Please wait while we prepare the sign-in system.</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    overlay.classList.add('visible');
+}
+
+function hideAuthLoadingOverlay() {
+    const overlay = document.getElementById('auth-loading-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+}
+
 
 function postSignInEvent() {
     const token = getAuthToken();
@@ -1971,16 +2081,24 @@ function setDarkMode(isDark) { const darkModeBtn = document.getElementById('dark
 window.signIn = signIn; window.signOut = signOut; window.handleAuth = handleAuth; window.toggleSidebar = toggleSidebar; window.newchat = newchat; window.changeFontSize = changeFontSize; window.saveChatTranscript = saveChatTranscript; window.showchat = showchat; window.toggleDarkMode = toggleDarkMode; window.showDeleteOverlay = showDeleteOverlay;
 window.hideDeleteOverlay = hideDeleteOverlay;
 window.confirmDelete = confirmDelete;
-
+window.showAuthLoadingOverlay = showAuthLoadingOverlay;
+window.hideAuthLoadingOverlay = hideAuthLoadingOverlay;
 window.onload = async () => {
     console.log("Window onload started.");
     handleTrialUrlParams();
+    
+    // Set initial loading state for auth UI
+    updateAuthUI();
     
     // Initialize MSAL first
     const msalInitialized = await initializeMSAL();
     if (!msalInitialized) {
         return;
     }
+    
+    // Update auth UI now that MSAL is initialized
+    updateAuthUI();
+    
     // Setup theme
     const preferredTheme = localStorage.getItem('theme');
     setDarkMode(preferredTheme === 'dark');
@@ -1988,23 +2106,23 @@ window.onload = async () => {
     // Setup subscription modal buttons
     document.getElementById('start-trial-btn').onclick = () => { window.location.href = '/pricing'; };
     document.getElementById('recheck-sub-btn').onclick = async () => { 
-  const account = msalInstance.getActiveAccount();
-  if (!account) {
-    showErrorOverlay();
-    return;
-  }
-  
-  const result = await checkUserStatus(account);
-  subscriptionData = result;
-  
-  if (result && result.active) {
-    hideSubscriptionOverlay();
-    updateAuthUI();
-    initializeChat();
-  } else {
-    showErrorOverlay();
-  }
-};
+        const account = msalInstance.getActiveAccount();
+        if (!account) {
+            showErrorOverlay();
+            return;
+        }
+        
+        const result = await checkUserStatus(account);
+        subscriptionData = result;
+        
+        if (result && result.active) {
+            hideSubscriptionOverlay();
+            updateAuthUI();
+            initializeChat();
+        } else {
+            showErrorOverlay();
+        }
+    };
 
     try {
         await msalInstance.handleRedirectPromise();
@@ -2048,13 +2166,13 @@ window.onload = async () => {
         const token = getAuthToken(); 
         const isActiveConnection = window.directLine && window.directLine.connectionStatus$.value === 2; 
         // Only request updates if subscription is active
-        if (token && isActiveConnection && subscriptionData?.active && msalInstance.getActiveAccount()) { 
+        if (token && isActiveConnection && subscriptionData?.active && msalInstance && msalInstance.getActiveAccount()) { 
             window.directLine.postActivity({ type: "event", name: "requestSidebarUpdate", from: { id: "user-client", role: "user" } })
             .subscribe( id => {}, error => {console.warn("Periodic sidebar update request failed:", error);} ); 
         } 
     }, 30000);
     console.log("Window onload finished.");
-}; 
+};
   </script>
 <!-- Loading Overlay -->
 <div id="loading-overlay" class="loading-overlay">
