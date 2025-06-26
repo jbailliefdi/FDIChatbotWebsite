@@ -26,7 +26,7 @@
     {
       "route": "/app*",
       "rewrite": "/app.html",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["anonymous"]
     },
     {
       "route": "/admin*",
