@@ -15,19 +15,43 @@ module.exports = async function (context, req) {
     }
 
     try {
+        // SECURITY: Check Azure Static Web Apps authentication
+        const clientPrincipal = req.headers['x-ms-client-principal'];
+        if (!clientPrincipal) {
+            context.res = { status: 401, body: { message: 'Authentication required' } };
+            return;
+        }
+
+        // Parse authenticated user info
+        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+        if (!user || !user.userDetails) {
+            context.res = { status: 401, body: { message: 'Invalid authentication' } };
+            return;
+        }
+
+        const authenticatedEmail = user.userDetails;
         const { email } = req.body;
         
-        if (!email) {
+        // SECURITY: Users can only check their own subscription
+        if (email && email.toLowerCase() !== authenticatedEmail.toLowerCase()) {
+            context.res = { status: 403, body: { message: 'You can only check your own subscription status' } };
+            return;
+        }
+
+        // Use authenticated email if no email provided in body
+        const targetEmail = email || authenticatedEmail;
+        
+        if (!targetEmail) {
             context.res = { status: 400, body: { message: 'Email is required' } };
             return;
         }
 
-        context.log('Checking subscription for email:', email);
+        context.log('Checking subscription for authenticated email:', targetEmail);
 
         // Find user in database
         const userQuery = {
             query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@email) AND c.status = 'active'",
-            parameters: [{ name: "@email", value: email.toLowerCase() }]
+            parameters: [{ name: "@email", value: targetEmail.toLowerCase() }]
         };
 
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();

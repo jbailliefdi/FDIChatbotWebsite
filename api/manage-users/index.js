@@ -16,9 +16,39 @@ module.exports = async function (context, req) {
     }
 
     try {
+        // SECURITY: Check Azure Static Web Apps authentication FIRST
+        const clientPrincipal = req.headers['x-ms-client-principal'];
+        if (!clientPrincipal) {
+            context.res = {
+                status: 401,
+                body: { error: 'Authentication required' }
+            };
+            return;
+        }
+
+        // Parse authenticated user info
+        const authenticatedUser = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+        if (!authenticatedUser || !authenticatedUser.userDetails) {
+            context.res = {
+                status: 401,
+                body: { error: 'Invalid authentication' }
+            };
+            return;
+        }
+
+        const authenticatedEmail = authenticatedUser.userDetails;
         const { action, adminEmail, userEmail, userData } = req.body;
 
-        // Verify admin permissions
+        // SECURITY: Verify the authenticated user matches the claimed admin email
+        if (authenticatedEmail !== adminEmail) {
+            context.res = {
+                status: 403,
+                body: { error: 'Email mismatch - you can only perform admin actions as yourself' }
+            };
+            return;
+        }
+
+        // Verify admin permissions in database (now that we know the user is authenticated)
         const adminQuery = {
             query: "SELECT * FROM c WHERE c.email = @email AND c.role = 'admin'",
             parameters: [{ name: "@email", value: adminEmail }]
@@ -29,7 +59,7 @@ module.exports = async function (context, req) {
         if (admins.length === 0) {
             context.res = {
                 status: 403,
-                body: { error: 'Unauthorized' }
+                body: { error: 'Admin privileges required' }
             };
             return;
         }

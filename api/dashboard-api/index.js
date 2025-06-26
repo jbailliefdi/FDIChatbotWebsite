@@ -28,6 +28,24 @@ module.exports = async function (context, req) {
     }
 
     try {
+        // SECURITY: Check Azure Static Web Apps authentication
+        const clientPrincipal = req.headers['x-ms-client-principal'];
+        if (!clientPrincipal) {
+            context.res.status = 401;
+            context.res.body = { error: 'Authentication required' };
+            return;
+        }
+
+        // Parse authenticated user info
+        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+        if (!user || !user.userDetails) {
+            context.res.status = 401;
+            context.res.body = { error: 'Invalid authentication' };
+            return;
+        }
+
+        const authenticatedEmail = user.userDetails;
+        context.log('Authenticated user:', authenticatedEmail);
         const method = req.method;
         const orgId = req.params.orgId;
         const segments = req.params.segments ? req.params.segments.split('/') : [];

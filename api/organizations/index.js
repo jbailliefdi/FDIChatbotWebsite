@@ -31,8 +31,47 @@ module.exports = async function (context, req) {
     }
 
     try {
+        // SECURITY: Check Azure Static Web Apps authentication
+        const clientPrincipal = req.headers['x-ms-client-principal'];
+        if (!clientPrincipal) {
+            context.res.status = 401;
+            context.res.body = { error: 'Authentication required' };
+            return;
+        }
+
+        // Parse authenticated user info
+        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+        if (!user || !user.userDetails) {
+            context.res.status = 401;
+            context.res.body = { error: 'Invalid authentication' };
+            return;
+        }
+
+        const authenticatedEmail = user.userDetails;
+        
+        // SECURITY: Only return organizations where the user is a member
+        // Find user's organization
+        const usersContainer = database.container('users');
+        
+        const userQuery = {
+            query: "SELECT c.organizationId FROM c WHERE c.email = @email",
+            parameters: [{ name: "@email", value: authenticatedEmail }]
+        };
+        
+        const { resources: userRecords } = await usersContainer.items.query(userQuery).fetchAll();
+        
+        if (userRecords.length === 0) {
+            context.res.status = 403;
+            context.res.body = { error: 'User not found in any organization' };
+            return;
+        }
+        
+        const userOrgId = userRecords[0].organizationId;
+        
+        // Only return the user's organization
         const orgQuery = {
-            query: "SELECT c.id, c.name, c.adminEmail, c.licenseCount, c.status, c.createdAt FROM c ORDER BY c.createdAt DESC"
+            query: "SELECT c.id, c.name, c.adminEmail, c.licenseCount, c.status, c.createdAt FROM c WHERE c.id = @orgId",
+            parameters: [{ name: "@orgId", value: userOrgId }]
         };
         
         const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();

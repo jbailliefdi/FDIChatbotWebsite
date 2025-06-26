@@ -8,12 +8,42 @@ const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
     try {
+        // SECURITY: Check Azure Static Web Apps authentication
+        const clientPrincipal = req.headers['x-ms-client-principal'];
+        if (!clientPrincipal) {
+            context.res = {
+                status: 401,
+                body: { error: 'Authentication required' }
+            };
+            return;
+        }
+
+        // Parse authenticated user info
+        const authenticatedUser = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+        if (!authenticatedUser || !authenticatedUser.userDetails) {
+            context.res = {
+                status: 401,
+                body: { error: 'Invalid authentication' }
+            };
+            return;
+        }
+
+        const authenticatedEmail = authenticatedUser.userDetails;
         const { customerId, returnUrl, userEmail, organizationId } = req.body;
 
         if (!customerId || !userEmail || !organizationId) {
             context.res = { 
                 status: 400, 
                 body: { error: 'Customer ID, user email, and organization ID required' } 
+            };
+            return;
+        }
+
+        // SECURITY: Verify the authenticated user matches the email in the request
+        if (authenticatedEmail !== userEmail) {
+            context.res = {
+                status: 403,
+                body: { error: 'Email mismatch - you can only access billing for your own account' }
             };
             return;
         }

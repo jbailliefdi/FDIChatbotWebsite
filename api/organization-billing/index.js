@@ -23,6 +23,25 @@ module.exports = async function (context, req) {
         return;
     }
 
+    // SECURITY: Check Azure Static Web Apps authentication
+    const clientPrincipal = req.headers['x-ms-client-principal'];
+    if (!clientPrincipal) {
+        context.res.status = 401;
+        context.res.body = { error: 'Authentication required' };
+        return;
+    }
+
+    // Parse authenticated user info
+    const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+    if (!user || !user.userDetails) {
+        context.res.status = 401;
+        context.res.body = { error: 'Invalid authentication' };
+        return;
+    }
+
+    const authenticatedEmail = user.userDetails;
+    context.log('Authenticated user:', authenticatedEmail);
+
     // Get orgId from query parameter
     const orgId = req.query.orgId;
     
@@ -32,9 +51,41 @@ module.exports = async function (context, req) {
         return;
     }
 
-    context.log('Fetching billing for org:', orgId);
-
     try {
+        // SECURITY: Verify user belongs to the requested organization
+        const usersContainer = database.container('users');
+        
+        const userQuery = {
+            query: "SELECT c.organizationId, c.role FROM c WHERE c.email = @email",
+            parameters: [{ name: "@email", value: authenticatedEmail }]
+        };
+        
+        const { resources: userRecords } = await usersContainer.items.query(userQuery).fetchAll();
+        
+        if (userRecords.length === 0) {
+            context.res.status = 403;
+            context.res.body = { error: 'User not found in any organization' };
+            return;
+        }
+        
+        const userOrgId = userRecords[0].organizationId;
+        const userRole = userRecords[0].role;
+        
+        // SECURITY: Users can only access billing info for their own organization
+        if (userOrgId !== orgId) {
+            context.res.status = 403;
+            context.res.body = { error: 'Access denied: You can only view billing information for your own organization' };
+            return;
+        }
+
+        // SECURITY: Only admins can access billing information
+        if (userRole !== 'admin') {
+            context.res.status = 403;
+            context.res.body = { error: 'Admin privileges required to view billing information' };
+            return;
+        }
+
+        context.log('Fetching billing for org:', orgId);
         // Get organization details
         const { resource: organization } = await organizationsContainer.item(orgId, orgId).read();
         
