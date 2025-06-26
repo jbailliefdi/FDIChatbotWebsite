@@ -30,7 +30,14 @@ module.exports = async function (context, req) {
 
         // Return the fixed DirectLine token
         const directLineToken = process.env.DIRECT_LINE_TOKEN;
+        
+        if (!directLineToken) {
+            context.log.error('DIRECT_LINE_TOKEN environment variable not set');
+            context.res = { status: 500, body: { message: 'DirectLine token not configured' } };
+            return;
+        }
 
+        context.log('Successfully returning DirectLine token for user:', userEmail);
         context.res = {
             status: 200,
             body: {
