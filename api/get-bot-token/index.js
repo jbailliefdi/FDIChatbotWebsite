@@ -5,10 +5,26 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // Basic auth check (add your own validation)
+        // Check Azure Static Web Apps authentication
+        const clientPrincipal = req.headers['x-ms-client-principal'];
+        if (!clientPrincipal) {
+            context.res = { status: 401, body: { message: 'Authentication required' } };
+            return;
+        }
+
+        // Parse user info from Azure SWA
+        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
+        if (!user || !user.userDetails) {
+            context.res = { status: 401, body: { message: 'Invalid authentication' } };
+            return;
+        }
+
+        const userEmail = user.userDetails;
         const { email } = req.body;
-        if (!email) {
-            context.res = { status: 401, body: { message: 'Email required' } };
+        
+        // Verify the requested email matches the authenticated user
+        if (email && email !== userEmail) {
+            context.res = { status: 403, body: { message: 'Email mismatch' } };
             return;
         }
 
