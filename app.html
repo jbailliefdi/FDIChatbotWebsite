@@ -1351,6 +1351,29 @@ let userData = null; // Global state for user's data
 <script>
 
 /**********************
+ * WebChat Helper Functions
+ **********************/
+// Helper function to wait for WebChat
+function waitForWebChat(maxRetries = 10, delay = 500) {
+    return new Promise((resolve, reject) => {
+        let retries = 0;
+        
+        const checkWebChat = () => {
+            if (window.WebChat && window.WebChat.createDirectLine) {
+                resolve(window.WebChat);
+            } else if (retries < maxRetries) {
+                retries++;
+                setTimeout(checkWebChat, delay);
+            } else {
+                reject(new Error('WebChat library failed to load'));
+            }
+        };
+        
+        checkWebChat();
+    });
+}
+
+/**********************
  * Subscription Management
  **********************/
 function showErrorOverlay() {
@@ -1824,14 +1847,37 @@ async function loadExistingChat(chatId, memoryStr) {
     }
     
     try { 
-if (!currentUser) {
-    alert("Please sign in to start a new chat.");
-    return;
-}
-const token = await getDirectLineToken(currentUser.email);
-    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
+        if (!currentUser) {
+            alert("Please sign in to start a new chat.");
+            return;
+        }
+        const token = await getDirectLineToken(currentUser.email);
+        
+        // Wait for WebChat to be available before using it
+        await waitForWebChat();
+        
+        window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); 
+        console.log("DirectLine created for existing chat:", chatId); 
+    } catch(e) { 
+        alert("Error connecting to existing chat. Please try refreshing."); 
+        console.error("Error creating DirectLine for existing chat:", e); 
+        isInjectingHistory = false; 
+        return; 
+    }
+    
     const store = createWebChatStore();
-    try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
+    try { 
+        // Ensure WebChat is still available before rendering
+        await waitForWebChat();
+        
+        window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); 
+        console.log("WebChat rendered for existing chat:", chatId); 
+    } catch(e) { 
+        alert("Error displaying chat interface. Please try refreshing."); 
+        console.error("Error rendering WebChat for existing chat:", e); 
+        isInjectingHistory = false; 
+        return; 
+    }
     currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
     
     const historyInjectionTimeout = setTimeout(() => { 
@@ -1937,14 +1983,41 @@ async function newchat() {
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${tempChatId}`); });
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
     try { 
-    if (!currentUser) {
-        alert("Please sign in to start a new chat.");
-        return;
+        if (!currentUser) {
+            alert("Please sign in to start a new chat.");
+            return;
+        }
+        const token = await getDirectLineToken(currentUser.email);
+        
+        // Wait for WebChat to be available before using it
+        await waitForWebChat();
+        
+        window.directLine = window.WebChat.createDirectLine({ token: token }); 
+    } catch(e) { 
+        alert("Error starting new chat connection."); 
+        console.error("Error creating DirectLine for new chat:", e); 
+        if (tempTabElement) tempTabElement.remove(); 
+        delete chats[tempChatId]; 
+        container.remove(); 
+        currentchat = null; 
+        return; 
     }
-    const token = await getDirectLineToken(currentUser.email);
-    window.directLine = window.WebChat.createDirectLine({ token: token }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    
     const store = createWebChatStore();
-    try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); } catch(e) { alert("Error displaying new chat interface."); console.error("Error rendering WebChat for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    try { 
+        // Ensure WebChat is still available before rendering
+        await waitForWebChat();
+        
+        window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); 
+    } catch(e) { 
+        alert("Error displaying new chat interface."); 
+        console.error("Error rendering WebChat for new chat:", e); 
+        if (tempTabElement) tempTabElement.remove(); 
+        delete chats[tempChatId]; 
+        container.remove(); 
+        currentchat = null; 
+        return; 
+    }
     applyCurrentFontSize(container);
     let connectionEstablished = false; let finalConversationId = null;
     currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => {console.error("Error in DL activity sub for new chat:", error);}, complete: () => {} });
