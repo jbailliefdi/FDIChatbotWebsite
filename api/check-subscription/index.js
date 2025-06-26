@@ -16,12 +16,18 @@ module.exports = async function (context, req) {
 
     try {
         // SECURITY: Check Azure Static Web Apps authentication
-        const clientPrincipal = req.headers['x-ms-client-principal'];
+        // Try multiple ways Azure SWA can pass authentication
+        const clientPrincipal = req.headers['x-ms-client-principal'] || req.headers['x-ms-client-principal-b64'];
+        
         if (!clientPrincipal) {
-            context.res = { status: 401, body: { 
-                message: 'Authentication required', 
-                debug: 'No x-ms-client-principal header found',
-                headers: Object.keys(req.headers)
+            // For debugging: Check if user is authenticated via /.auth/me endpoint approach
+            // Since this is called from authenticated frontend, user should be authenticated
+            // Let's temporarily bypass auth check and see if we can get user info from request
+            context.res = { status: 500, body: { 
+                message: 'Debug: No client principal header',
+                debug: 'Available headers',
+                headers: Object.keys(req.headers),
+                bodyContent: req.body
             } };
             return;
         }
@@ -34,8 +40,8 @@ module.exports = async function (context, req) {
             user = JSON.parse(decodedPrincipal);
             
             if (!user || !user.userDetails) {
-                context.res = { status: 401, body: { 
-                    message: 'Invalid authentication',
+                context.res = { status: 500, body: { 
+                    message: 'Debug: Invalid user object',
                     debug: 'Missing userDetails in principal',
                     decodedPrincipal: decodedPrincipal,
                     userObject: user
@@ -46,7 +52,7 @@ module.exports = async function (context, req) {
             authenticatedEmail = user.userDetails;
         } catch (parseError) {
             context.res = { status: 500, body: { 
-                message: 'Authentication parsing failed',
+                message: 'Debug: Authentication parsing failed',
                 debug: parseError.message,
                 rawPrincipal: clientPrincipal
             } };

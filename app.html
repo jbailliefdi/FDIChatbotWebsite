@@ -1441,7 +1441,18 @@ async function checkUserStatus(account) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Failed to check user status.' }));
+            // Log the full error response body for debugging
+            const responseText = await response.text();
+            console.log('Full error response:', responseText);
+            
+            // Try to parse as JSON, fall back to default message if parsing fails
+            let errorData;
+            try {
+                errorData = JSON.parse(responseText);
+            } catch {
+                errorData = { message: 'Failed to check user status.' };
+            }
+            
             console.error('User status check failed:', response.status, errorData.message);
             return { userExists: false, accessGranted: false, error: errorData.message };
         }
