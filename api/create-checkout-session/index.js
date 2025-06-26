@@ -120,7 +120,7 @@ module.exports = async function (context, req) {
                 context.res = {
                     status: 400,
                     body: { 
-                        message: 'Only your organization administrator can modify the subscription. Please contact your admin for assistance.',
+                        message: 'Only your organisation administrator can modify the subscription. Please contact your administrator for assistance.',
                         organizationName: existingOrg.name,
                         adminEmail: existingOrg.adminEmail
                     }

@@ -1647,15 +1647,27 @@ function updateAuthUI() {
     const dashboardBtn = document.getElementById("dashboardBtn");
     if (!authBtn || !userStatus) return;
 
+    // Check if MSAL is initialized
+    if (!msalInstance) {
+        authBtn.textContent = "Loading...";
+        authBtn.disabled = true;
+        userStatus.textContent = "Initializing...";
+        if (dashboardBtn) dashboardBtn.style.display = "none";
+        return;
+    }
+
+    // Re-enable button if it was disabled
+    authBtn.disabled = false;
+
     const account = msalInstance.getActiveAccount();
     if (account) {
         authBtn.textContent = "Sign Out";
         
         // Show/hide dashboard button based on admin role
         if (userData && userData.userRole === 'admin') {
-            dashboardBtn.style.display = "inline-flex";
+            if (dashboardBtn) dashboardBtn.style.display = "inline-flex";
         } else {
-            dashboardBtn.style.display = "none";
+            if (dashboardBtn) dashboardBtn.style.display = "none";
         }
         
         if (subscriptionData && subscriptionData.active) {
@@ -1686,7 +1698,7 @@ function updateAuthUI() {
     } else {
         authBtn.textContent = "Sign In";
         userStatus.textContent = "User not signed in";
-        dashboardBtn.style.display = "none";
+        if (dashboardBtn) dashboardBtn.style.display = "none";
     }
     
     // Add this line to update footer visibility
