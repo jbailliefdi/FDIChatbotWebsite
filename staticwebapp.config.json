@@ -11,13 +11,22 @@
   },
   "routes": [
     {
-      "route": "/pricing",
-      "rewrite": "/pricing.html"
+      "route": "/",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/index.html",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/pricing*",
+      "rewrite": "/pricing.html",
+      "allowedRoles": ["anonymous"]
     },
     {
       "route": "/app*",
       "rewrite": "/app.html",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["anonymous"]
     },
     {
       "route": "/admin*",
