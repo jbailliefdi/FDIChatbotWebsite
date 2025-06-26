@@ -75,7 +75,7 @@ module.exports = async function (context, req) {
 
         const session = await stripe.billingPortal.sessions.create({
             customer: customerId,
-            return_url: returnUrl || 'https://kind-mud-048fffa03.6.azurestaticapps.net/dashboard.html',
+            return_url: returnUrl || `${process.env.SITE_DOMAIN || 'https://kind-mud-048fffa03.6.azurestaticapps.net'}/dashboard.html`,
         });
 
         context.res = {

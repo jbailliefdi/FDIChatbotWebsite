@@ -209,22 +209,20 @@ if ((organization.status === 'trialing' || organization.isTrial) && (organizatio
                 isTrialing: isTrialing,
                 trialEnd: organization.trialEnd,
                 gracePeriodEnd: organization.gracePeriodEnd,
+                // SECURITY: Only expose necessary user data
                 user: {
-                    id: user.id,
                     email: user.email,
                     firstName: user.firstName,
                     lastName: user.lastName,
                     role: user.role,
-                    status: user.status,
-                    createdAt: user.createdAt
+                    status: user.status
                 },
+                // SECURITY: Only expose necessary organization data
                 organization: {
-                    id: organization.id,
                     name: organization.name,
                     status: organization.status,
                     totalLicenses: organization.licenseCount,
                     usedLicenses: currentUserCount,
-                    createdAt: organization.createdAt,
                     isTrial: organization.isTrial || false
                 }
             };
@@ -252,14 +250,14 @@ if ((organization.status === 'trialing' || organization.isTrial) && (organizatio
                     message: accessReason,
                     subscriptionStatus: organization.status,
                     companyName: organization.name,
+                    // SECURITY: Only expose necessary user data
                     user: {
-                        id: user.id,
                         email: user.email,
                         role: user.role,
                         status: user.status
                     },
+                    // SECURITY: Only expose necessary organization data
                     organization: {
-                        id: organization.id,
                         name: organization.name,
                         status: organization.status,
                         isTrial: organization.isTrial || false

@@ -409,7 +409,7 @@
                     </div>
                 </a>
                 <div class="logo-container">
-                    <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                    <a id="tiaLogoLink" href="/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
                         <span>TIA</span>
                     </a>
                 </div>
@@ -505,7 +505,29 @@
     </footer>
 
     <script>
-        window.addEventListener('load', loadSubscriptionDetails);
+        // Initialize domain configuration
+        async function initializeDomainConfig() {
+            try {
+                const response = await fetch('/api/get-domain-config');
+                const config = await response.json();
+                
+                if (config.siteDomain) {
+                    // Update TIA logo link
+                    const tiaLogoLink = document.getElementById('tiaLogoLink');
+                    if (tiaLogoLink) {
+                        tiaLogoLink.href = config.siteDomain + '/';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load domain configuration:', error);
+                // Fallback to current domain if API fails
+            }
+        }
+        
+        window.addEventListener('load', async () => {
+            await initializeDomainConfig();
+            loadSubscriptionDetails();
+        });
 
         async function openBillingPortal() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -610,7 +632,6 @@
 
             // Update dashboard link with customer email if available
             if (customerEmail) {
-                console.log('Payment completed for:', customerEmail);
                 const dashboardBtn = document.querySelector('a[href="/dashboard.html"]');
                 if (dashboardBtn) {
                     dashboardBtn.href = `/dashboard.html?email=${encodeURIComponent(customerEmail)}`;

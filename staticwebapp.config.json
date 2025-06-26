@@ -47,6 +47,10 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/api/get-domain-config",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/api/stripe-webhook",
       "allowedRoles": ["anonymous"]
     },

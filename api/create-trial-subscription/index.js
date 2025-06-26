@@ -5,7 +5,7 @@ module.exports = async function (context, req) {
     context.res = {
         headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || 'https://your-domain.azurestaticapps.net',
+            'Access-Control-Allow-Origin': process.env.SITE_DOMAIN || 'https://kind-mud-048fffa03.6.azurestaticapps.net',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
@@ -19,10 +19,11 @@ module.exports = async function (context, req) {
 
     try {
         if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID) {
+            context.log.error('Missing required environment variables: STRIPE_SECRET_KEY or STRIPE_PRICE_ID');
             context.res.status = 500;
             context.res.body = JSON.stringify({
                 error: 'Server configuration error',
-                message: 'A required environment variable (STRIPE_SECRET_KEY or STRIPE_PRICE_ID) is missing on the server.'
+                message: 'Service temporarily unavailable. Please try again later.'
             });
             return;
         }
@@ -30,9 +31,65 @@ module.exports = async function (context, req) {
         const { companyName, firstName, lastName, email, phone, planType } = req.body;
         const licenses = 5;
 
-        // --- All validation and customer logic remains the same ---
-        if (!email || !firstName || !lastName || !companyName) { /* return 400 error */ }
-        if (planType !== 'trial') { /* return 400 error */ }
+        // SECURITY: Input validation
+        if (!email || !firstName || !lastName || !companyName) {
+            context.res.status = 400;
+            context.res.body = JSON.stringify({
+                error: 'Validation error',
+                message: 'All required fields (email, firstName, lastName, companyName) must be provided.'
+            });
+            return;
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            context.res.status = 400;
+            context.res.body = JSON.stringify({
+                error: 'Validation error',
+                message: 'Please provide a valid email address.'
+            });
+            return;
+        }
+
+        // Name length validation
+        if (firstName.length > 50 || lastName.length > 50) {
+            context.res.status = 400;
+            context.res.body = JSON.stringify({
+                error: 'Validation error',
+                message: 'First name and last name must be 50 characters or less.'
+            });
+            return;
+        }
+
+        // Company name validation
+        if (companyName.length > 100) {
+            context.res.status = 400;
+            context.res.body = JSON.stringify({
+                error: 'Validation error',
+                message: 'Company name must be 100 characters or less.'
+            });
+            return;
+        }
+
+        // Phone validation (if provided)
+        if (phone && phone.length > 20) {
+            context.res.status = 400;
+            context.res.body = JSON.stringify({
+                error: 'Validation error',
+                message: 'Phone number must be 20 characters or less.'
+            });
+            return;
+        }
+
+        if (planType !== 'trial') {
+            context.res.status = 400;
+            context.res.body = JSON.stringify({
+                error: 'Validation error',
+                message: 'Invalid plan type. Only trial subscriptions are supported by this endpoint.'
+            });
+            return;
+        }
         let customer;
         const existingCustomers = await stripe.customers.list({ email: email, limit: 1 });
         if (existingCustomers.data.length > 0) {
@@ -62,14 +119,19 @@ module.exports = async function (context, req) {
                 metadata: { companyName, licenseCount: licenses.toString(), planType: 'trial', trialStarted: new Date().toISOString() }
             });
         } catch (stripeError) {
-            // THIS IS THE IMPORTANT PART: Send the detailed error back to the browser
-            context.log.error('Error creating subscription:', stripeError);
-            const debugInfo = { type: stripeError.type, message: stripeError.message, code: stripeError.code, param: stripeError.param };
+            // SECURITY: Log detailed error server-side but send generic message to client
+            context.log.error('Error creating subscription:', {
+                type: stripeError.type,
+                message: stripeError.message,
+                code: stripeError.code,
+                param: stripeError.param,
+                stack: stripeError.stack
+            });
+            
             context.res.status = 500;
             context.res.body = JSON.stringify({
                 error: 'Subscription creation failed',
-                message: 'Unable to create trial subscription. See debug info.',
-                debugInfo: debugInfo // This object is sent to the browser
+                message: 'Unable to create trial subscription. Please try again or contact support.'
             });
             return;
         }
@@ -78,8 +140,17 @@ module.exports = async function (context, req) {
         context.res.body = JSON.stringify({ success: true, message: 'Trial subscription created successfully' });
 
     } catch (error) {
-        context.log.error('Unexpected error:', error);
+        // SECURITY: Log detailed error server-side but send generic message to client
+        context.log.error('Unexpected error:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        
         context.res.status = 500;
-        context.res.body = JSON.stringify({ error: 'Internal server error', message: error.message, debugInfo: { stack: error.stack }});
+        context.res.body = JSON.stringify({ 
+            error: 'Internal server error',
+            message: 'An unexpected error occurred. Please try again or contact support.'
+        });
     }
 };

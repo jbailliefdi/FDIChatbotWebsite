@@ -1262,7 +1262,7 @@ footer.chat-footer.show {
 </div>
       </a>
       <div class="logo-container">
-  <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+  <a id="tiaLogoLink" href="/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
     <span>TIA</span>
   </a>
 </div>
@@ -1443,7 +1443,6 @@ async function checkUserStatus(account) {
         if (!response.ok) {
             // Log the full error response body for debugging
             const responseText = await response.text();
-            console.log('Full error response:', responseText);
             
             // Try to parse as JSON, fall back to default message if parsing fails
             let errorData;
@@ -1458,7 +1457,6 @@ async function checkUserStatus(account) {
         }
         
         const data = await response.json();
-        console.log('User status check result:', data);
         
         // Store trial data if present
         if (data.trial) {
@@ -1503,7 +1501,6 @@ async function verifyUserAndInitialize(account) {
 
     if (result.userExists) {
         if (result.accessGranted) {
-            console.log("User verified and access granted. Initializing chat.");
             hideAccountStatusOverlay();
             hideSubscriptionOverlay();
             updateAuthUI();
@@ -1514,7 +1511,6 @@ async function verifyUserAndInitialize(account) {
                 showTrialWelcomeMessage();
             }
         } else {
-            console.log("User exists but access denied:", result.message);
             
             let message = result.message;
             if (result.organization?.status === 'trial_expired') {
@@ -1531,7 +1527,6 @@ async function verifyUserAndInitialize(account) {
             updateAuthUI();
         }
     } else {
-        console.log("User not found in system. Showing subscription overlay.");
         showSubscriptionOverlay();
         updateAuthUI();
     }
@@ -1545,7 +1540,7 @@ function showTrialWelcomeMessage() {
                 text: `🎉 Welcome to your TIA Professional trial! You have full access to all features for the next 3 days. Ask me anything about tax - I'm here to help make your work easier!`,
                 timestamp: new Date().toISOString()
             }).subscribe(
-                id => console.log("Trial welcome message sent"),
+                id => {},
                 error => console.error("Error sending trial welcome message:", error)
             );
         }
@@ -1619,7 +1614,6 @@ function initializeChat() {
     // This function now centralizes the start of the chat experience
     try {
         newchat(); 
-        console.log("Initial newchat() called after subscription verification.");
     } catch (chatInitError) { 
         alert("Failed to initialize the chat interface. Please refresh the page."); 
         console.error("Error initializing chat on load:", chatInitError);
@@ -1779,7 +1773,7 @@ function postSignInEvent() {
                 firstName: currentUser.name ? currentUser.name.split(" ")[0] : "User",
                 subscription: subscriptionData // Pass subscription data to the bot
             }
-        }).subscribe(id => console.log("Generic signin/verifyState sent, client ID:", id),
+        }).subscribe(id => {},
             error => console.error("Error sending generic signin/verifyState:", error));
     }
 }
@@ -1840,7 +1834,6 @@ dispatch({ type: 'WEB_CHAT/SEND_EVENT', payload: { name: 'webchat/join', value: 
 function endCurrentDirectLine() { if (currentDirectLineSubscription) { currentDirectLineSubscription.unsubscribe(); currentDirectLineSubscription = null; } if (window.directLine) { window.directLine.end(); window.directLine = null; } }
 
 async function loadExistingChat(chatId, memoryStr) {
-    console.log("loadExistingChat called for chatId:", chatId);
     isInjectingHistory = true;
     const mainWebchatArea = document.getElementById("webchat"); 
     if (!mainWebchatArea) { console.error("Main webchat area not found in loadExistingChat"); return; }
@@ -1868,7 +1861,7 @@ async function loadExistingChat(chatId, memoryStr) {
         await waitForWebChat();
         
         window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); 
-        console.log("DirectLine created for existing chat:", chatId); 
+ 
     } catch(e) { 
         alert("Error connecting to existing chat. Please try refreshing."); 
         console.error("Error creating DirectLine for existing chat:", e); 
@@ -1882,7 +1875,7 @@ async function loadExistingChat(chatId, memoryStr) {
         await waitForWebChat();
         
         window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); 
-        console.log("WebChat rendered for existing chat:", chatId); 
+ 
     } catch(e) { 
         alert("Error displaying chat interface. Please try refreshing."); 
         console.error("Error rendering WebChat for existing chat:", e); 
@@ -1906,7 +1899,7 @@ async function loadExistingChat(chatId, memoryStr) {
         }); 
         scrollToBottom(container); 
         isInjectingHistory = false; 
-        console.log("History injected for chat:", chatId); 
+ 
     }, 250);
     
     let authSent = false;
@@ -1926,7 +1919,7 @@ async function loadExistingChat(chatId, memoryStr) {
                     }, 
                     from: { id: 'user-client', role: 'user' } 
                 }).subscribe({ 
-                    next: id => { console.log("mapOldConversation event sent", id); }, 
+                    next: id => {}, 
                     error: err => { console.error("Error sending mapOldConversation event:", err); } 
                 });
             }
@@ -1945,7 +1938,7 @@ async function loadExistingChat(chatId, memoryStr) {
                         subscription: subscriptionData 
                     } 
                 }).subscribe(
-                    id => console.log("signin/verifyState with hint sent from loadExistingChat, client ID:", id), 
+                    id => {}, 
                     error => console.error("Error sending signin/verifyState with hint from loadExistingChat:", error)
                 );
             } else { 
@@ -1982,7 +1975,6 @@ async function loadExistingChat(chatId, memoryStr) {
 }
 async function newchat() {
     if (!userData?.accessGranted) { showSubscriptionOverlay(); return; }
-    console.log("newchat called");
     isInjectingHistory = false; endCurrentDirectLine();
     const tempChatId = "new_" + Date.now();
     const tempLabel = "New Chat...";
@@ -2061,7 +2053,7 @@ function addchatTab(chatId, newLabel) {
     if (existingButton) { const currentButtonLabel = existingButton.textContent; if ((currentButtonLabel === "New Chat..." || currentButtonLabel === "Untitled Chat" || currentButtonLabel.startsWith("Chat ")) && newLabel && newLabel.trim() !== "" && newLabel !== "New Chat...") { existingButton.textContent = newLabel; existingButton.setAttribute("title", newLabel); } return existingTabElement;
     } else { const tabElement = createChatTabElement(chatId, newLabel); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); if (noChatsMsg) noChatsMsg.remove(); const headerElement = sidebar.querySelector('.sidebar-header'); if (headerElement) { headerElement.insertAdjacentElement('afterend', tabElement); } else { sidebar.insertBefore(tabElement, sidebar.firstChild); } chats[chatId] = tabElement; return tabElement; }
 }
-function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const currentTabCount = sidebar?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar?.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => console.log("deleteChat event sent for", chatId), error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); } }
+function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const currentTabCount = sidebar?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebar?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar?.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => {}, error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); } }
 
 // --- PDF Saving, Font Size, Dark Mode (Unchanged) ---
 const addPdfPage = (docInstance, topMargin) => { docInstance.addPage(); return topMargin; };
@@ -2077,9 +2069,31 @@ window.hideDeleteOverlay = hideDeleteOverlay;
 window.confirmDelete = confirmDelete;
 window.showAuthLoadingOverlay = showAuthLoadingOverlay;
 window.hideAuthLoadingOverlay = hideAuthLoadingOverlay;
+
+// Initialize domain configuration
+async function initializeDomainConfig() {
+    try {
+        const response = await fetch('/api/get-domain-config');
+        const config = await response.json();
+        
+        if (config.siteDomain) {
+            // Update TIA logo link
+            const tiaLogoLink = document.getElementById('tiaLogoLink');
+            if (tiaLogoLink) {
+                tiaLogoLink.href = config.siteDomain + '/';
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load domain configuration:', error);
+        // Fallback to current domain if API fails
+    }
+}
+
 window.onload = async () => {
-    console.log("Window onload started.");
     handleTrialUrlParams();
+    
+    // Initialize domain configuration
+    await initializeDomainConfig();
     
     // Check authentication and update UI
     await updateAuthUI();
@@ -2120,19 +2134,16 @@ window.onload = async () => {
                 roles: authData.clientPrincipal.userRoles || []
             };
             
-            console.log("User authenticated:", currentUser.email);
             
             // Get auth token for bot communication
             const token = getAuthToken();
             if (!token) {
                 // If no token, we might need to get it from the backend
-                console.log("No auth token found, proceeding with user verification");
             }
             
             // Verify user and initialize
             await verifyUserAndInitialize(currentUser);
         } else {
-            console.log("No authenticated user found. User needs to sign in.");
             currentUser = null;
             clearAuthToken();
             updateAuthUI();
@@ -2153,7 +2164,6 @@ window.onload = async () => {
             .subscribe( id => {}, error => {console.warn("Periodic sidebar update request failed:", error);} ); 
         } 
     }, 30000);
-    console.log("Window onload finished.");
 };
   </script>
 <!-- Loading Overlay -->

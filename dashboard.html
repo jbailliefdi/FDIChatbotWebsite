@@ -873,7 +873,6 @@
                 }
 
                 const data = await response.json();
-                console.log('API Response:', data);
                 
                 // Extract user name from email or use a default
                 const userName = userEmail.split('@')[0].split('.').map(part => 
