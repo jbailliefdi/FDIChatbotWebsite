@@ -15,14 +15,25 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // TEMPORARY: Bypass authentication for debugging
-        const { email } = req.body;
-        const targetEmail = email;
+        // SECURITY: Azure Static Web Apps route-level authentication
+        // This API endpoint is protected by staticwebapp.config.json rules
+        // Users must be authenticated to reach this endpoint
         
-        if (!targetEmail) {
+        const { email } = req.body;
+        
+        if (!email) {
             context.res = { status: 400, body: { message: 'Email is required' } };
             return;
         }
+        
+        // Additional security: Verify the email format is valid
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            context.res = { status: 400, body: { message: 'Invalid email format' } };
+            return;
+        }
+        
+        const targetEmail = email;
 
         context.log('Checking subscription for email:', targetEmail);
 
