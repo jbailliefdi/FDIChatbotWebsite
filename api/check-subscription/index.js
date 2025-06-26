@@ -18,18 +18,40 @@ module.exports = async function (context, req) {
         // SECURITY: Check Azure Static Web Apps authentication
         const clientPrincipal = req.headers['x-ms-client-principal'];
         if (!clientPrincipal) {
-            context.res = { status: 401, body: { message: 'Authentication required' } };
+            context.res = { status: 401, body: { 
+                message: 'Authentication required', 
+                debug: 'No x-ms-client-principal header found',
+                headers: Object.keys(req.headers)
+            } };
             return;
         }
 
         // Parse authenticated user info
-        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
-        if (!user || !user.userDetails) {
-            context.res = { status: 401, body: { message: 'Invalid authentication' } };
+        let user;
+        let authenticatedEmail;
+        try {
+            const decodedPrincipal = Buffer.from(clientPrincipal, 'base64').toString();
+            user = JSON.parse(decodedPrincipal);
+            
+            if (!user || !user.userDetails) {
+                context.res = { status: 401, body: { 
+                    message: 'Invalid authentication',
+                    debug: 'Missing userDetails in principal',
+                    decodedPrincipal: decodedPrincipal,
+                    userObject: user
+                } };
+                return;
+            }
+            
+            authenticatedEmail = user.userDetails;
+        } catch (parseError) {
+            context.res = { status: 500, body: { 
+                message: 'Authentication parsing failed',
+                debug: parseError.message,
+                rawPrincipal: clientPrincipal
+            } };
             return;
         }
-
-        const authenticatedEmail = user.userDetails;
         const { email } = req.body;
         
         // SECURITY: Users can only check their own subscription
