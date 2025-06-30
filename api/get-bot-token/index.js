@@ -1,9 +1,4 @@
-const { validateToken } = require('../utils/auth');
-const { CosmosClient } = require('@azure/cosmos');
-
-const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
-const database = cosmosClient.database('fdi-chatbot');
-const usersContainer = database.container('users');
+// Simplified bot token endpoint for demo access
 
 module.exports = async function (context, req) {
     if (req.method !== 'POST') {
