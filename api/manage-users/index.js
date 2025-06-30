@@ -1,5 +1,6 @@
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
+const { validateAdminAccess } = require('../utils/auth');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
@@ -16,35 +17,26 @@ module.exports = async function (context, req) {
     }
 
     try {
-        const { action, adminEmail, userEmail, userData } = req.body;
+        const { action, organizationId, userEmail, userData } = req.body;
 
-        // Verify admin permissions
-        const adminQuery = {
-            query: "SELECT * FROM c WHERE c.email = @email AND c.role = 'admin'",
-            parameters: [{ name: "@email", value: adminEmail }]
-        };
-
-        const { resources: admins } = await usersContainer.items.query(adminQuery).fetchAll();
-
-        if (admins.length === 0) {
-            context.res = {
-                status: 403,
-                body: { error: 'Unauthorized' }
-            };
+        // Validate authentication token and admin access
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            context.res = { status: 401, body: { error: 'Authorization header required' } };
             return;
         }
 
-        const admin = admins[0];
+        const { user: adminUser } = await validateAdminAccess(authHeader, organizationId, usersContainer);
 
         switch (action) {
             case 'add':
-                await addUser(admin.organizationId, userData);
+                await addUser(adminUser.organizationId, userData);
                 break;
             case 'remove':
-                await removeUser(admin.organizationId, userEmail);
+                await removeUser(adminUser.organizationId, userEmail);
                 break;
             case 'list':
-                const users = await listUsers(admin.organizationId);
+                const users = await listUsers(adminUser.organizationId);
                 context.res = {
                     status: 200,
                     body: { users }
@@ -64,11 +56,12 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error managing users:', error);
-        context.res = {
-            status: 500,
-            body: { error: 'Internal server error' }
-        };
+        context.log.error('Error managing users:', error.message);
+        if (error.message.includes('Access denied') || error.message.includes('Invalid token')) {
+            context.res = { status: 403, body: { error: 'Access denied' } };
+        } else {
+            context.res = { status: 500, body: { error: 'Internal server error' } };
+        }
     }
 };
 

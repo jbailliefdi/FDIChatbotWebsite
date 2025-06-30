@@ -3,6 +3,7 @@
 
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
+const { validateAdminAccess } = require('../utils/auth');
 
 // Initialize Cosmos DB client
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
@@ -10,15 +11,27 @@ const database = cosmosClient.database('fdi-chatbot');
 const organizationsContainer = database.container('organizations');
 const usersContainer = database.container('users');
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+    'https://your-domain.azurestaticapps.net',
+    'https://localhost:3000',
+    'http://localhost:3000'
+];
+
 module.exports = async function (context, req) {
     context.log('Dashboard API request received:', req.method, req.url);
 
-    // Enable CORS
+    // Get origin from request
+    const origin = req.headers.origin;
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+    // Enable CORS with proper origin validation
     context.res = {
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': allowedOrigin,
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Credentials': 'true'
         }
     };
 
@@ -27,53 +40,54 @@ module.exports = async function (context, req) {
         return;
     }
 
+    // Validate authentication for all non-OPTIONS requests
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        context.res.status = 401;
+        context.res.body = { error: 'Authorization header required' };
+        return;
+    }
+
     try {
         const method = req.method;
         const orgId = req.params.orgId;
         const segments = req.params.segments ? req.params.segments.split('/') : [];
         
-        context.log('Organization ID:', orgId);
-        context.log('Segments:', segments);
+        // Validate admin access for the requested organization
+        const { user: adminUser } = await validateAdminAccess(authHeader, orgId, usersContainer);
         
         // Route: /api/organization/{orgId}/overview
         if (method === 'GET' && segments.includes('overview')) {
-            context.log('Getting overview for org:', orgId);
-            await handleGetOrganizationOverview(context, orgId);
+            await handleGetOrganizationOverview(context, orgId, adminUser);
         }
         // Route: /api/organization/{orgId}/users/{userId} - PUT
         else if (method === 'PUT' && segments.includes('users') && segments.length >= 2) {
             const userId = segments[segments.indexOf('users') + 1];
-            context.log('Updating user:', userId, 'in org:', orgId);
-            await handleUpdateUser(context, orgId, userId, req.body);
+            await handleUpdateUser(context, orgId, userId, req.body, adminUser);
         }
         // Route: /api/organization/{orgId}/users/{userId} - DELETE
         else if (method === 'DELETE' && segments.includes('users') && segments.length >= 2) {
             const userId = segments[segments.indexOf('users') + 1];
-            context.log('Deleting user:', userId, 'in org:', orgId);
-            await handleDeleteUser(context, orgId, userId);
+            await handleDeleteUser(context, orgId, userId, adminUser);
         }
         // Route: /api/organization/{orgId}/invite - POST
         else if (method === 'POST' && segments.includes('invite')) {
-            context.log('Inviting user to org:', orgId);
-            await handleInviteUser(context, orgId, req.body);
+            await handleInviteUser(context, orgId, req.body, adminUser);
         }
         else {
-            context.log('No matching route found for:', method, 'orgId:', orgId, 'segments:', segments);
             context.res.status = 404;
-            context.res.body = { 
-                error: 'Endpoint not found',
-                debug: {
-                    method: method,
-                    orgId: orgId,
-                    segments: segments
-                }
-            };
+            context.res.body = { error: 'Endpoint not found' };
         }
 
     } catch (error) {
-        context.log.error('Dashboard API error:', error);
-        context.res.status = 500;
-        context.res.body = { error: error.message || 'Internal server error' };
+        context.log.error('Dashboard API error:', error.message);
+        if (error.message.includes('Access denied') || error.message.includes('Invalid token')) {
+            context.res.status = 403;
+            context.res.body = { error: 'Access denied' };
+        } else {
+            context.res.status = 500;
+            context.res.body = { error: 'Internal server error' };
+        }
     }
 };
 
@@ -89,7 +103,7 @@ function getUserIdFromUrl(segments) {
 }
 
 // Get organization overview with users and usage
-async function handleGetOrganizationOverview(context, orgId) {
+async function handleGetOrganizationOverview(context, orgId, adminUser) {
     try {
         if (!orgId) {
             context.res.status = 400;
@@ -97,7 +111,7 @@ async function handleGetOrganizationOverview(context, orgId) {
             return;
         }
 
-        // Get organization details
+        // Get organization details (already validated by auth)
         const orgQuery = {
             query: "SELECT * FROM c WHERE c.id = @orgId",
             parameters: [{ name: "@orgId", value: orgId }]
@@ -115,7 +129,7 @@ async function handleGetOrganizationOverview(context, orgId) {
         
         // Get all users for this organization
         const usersQuery = {
-            query: "SELECT * FROM c WHERE c.organizationId = @orgId ORDER BY c.createdAt DESC",
+            query: "SELECT c.id, c.email, c.firstName, c.lastName, c.role, c.status, c.createdAt, c.lastLogin FROM c WHERE c.organizationId = @orgId ORDER BY c.createdAt DESC",
             parameters: [{ name: "@orgId", value: orgId }]
         };
         
@@ -130,30 +144,36 @@ async function handleGetOrganizationOverview(context, orgId) {
             percentage: Math.round((activeUsers / organization.licenseCount) * 100)
         };
         
+        // Remove sensitive fields from organization response
+        const sanitizedOrg = {
+            id: organization.id,
+            name: organization.name,
+            licenseCount: organization.licenseCount,
+            status: organization.status,
+            createdAt: organization.createdAt
+        };
+        
         context.res.status = 200;
         context.res.body = {
-            organization,
+            organization: sanitizedOrg,
             users,
             usage
         };
         
-        context.log('Organization overview retrieved for:', orgId);
     } catch (error) {
-        context.log.error('Error getting organization overview:', error);
+        context.log.error('Error getting organization overview:', error.message);
         throw error;
     }
 }
 
 // Update user (status, role, etc.)
-async function handleUpdateUser(context, orgId, userId, updateData) {
+async function handleUpdateUser(context, orgId, userId, updateData, adminUser) {
     try {
         if (!orgId || !userId) {
             context.res.status = 400;
             context.res.body = { error: 'Organization ID and User ID required' };
             return;
         }
-
-        context.log('Updating user:', userId, 'in org:', orgId, 'with data:', updateData);
 
         // Get user
         const userQuery = {
@@ -167,38 +187,12 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
         
         if (users.length === 0) {
-            context.log('User not found. Searching all users for debugging...');
-            
-            // Debug: Search for any user with this ID
-            const debugQuery = {
-                query: "SELECT c.id, c.email, c.organizationId FROM c WHERE c.id = @userId",
-                parameters: [{ name: "@userId", value: userId }]
-            };
-            const { resources: debugUsers } = await usersContainer.items.query(debugQuery).fetchAll();
-            
-            context.log('Debug search results:', debugUsers);
-            
             context.res.status = 404;
-            context.res.body = { 
-                error: 'User not found',
-                debug: {
-                    searchedUserId: userId,
-                    searchedOrgId: orgId,
-                    foundUsers: debugUsers
-                }
-            };
+            context.res.body = { error: 'User not found' };
             return;
         }
         
         const user = users[0];
-        context.log('Found user:', { 
-            id: user.id, 
-            email: user.email, 
-            currentStatus: user.status,
-            organizationId: user.organizationId
-        });
-        
-        // Your container uses /organizationId as partition key
         const partitionKeyValue = user.organizationId;
         const { role, status } = updateData;
         
@@ -243,39 +237,9 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
             delete updatedUser.deactivatedAt;
         }
         
-        context.log('Attempting to replace user document with:', { 
-            id: updatedUser.id, 
-            status: updatedUser.status,
-            partitionKey: updatedUser.id,
-            allFields: Object.keys(updatedUser)
-        });
-        
-        // Log the original user for comparison
-        context.log('Original user document:', {
-            id: user.id,
-            _rid: user._rid,
-            _etag: user._etag,
-            allFields: Object.keys(user)
-        });
-        
-        // Try to read the document first to make sure it exists
-        try {
-            const readResult = await usersContainer.item(user.id, partitionKeyValue).read();
-            context.log('Document read successfully before update:', {
-                id: readResult.resource.id,
-                status: readResult.resource.status
-            });
-        } catch (readError) {
-            context.log.error('Error reading document before update:', readError);
-            throw new Error(`Cannot read user document: ${readError.message}`);
-        }
         
         // Use organizationId as partition key for the replace operation
-        const replaceResult = await usersContainer.item(user.id, partitionKeyValue).replace(updatedUser);
-        context.log('Replace operation successful:', {
-            statusCode: replaceResult.statusCode,
-            activityId: replaceResult.activityId
-        });
+        await usersContainer.item(user.id, partitionKeyValue).replace(updatedUser);
         
         context.res.status = 200;
         context.res.body = {
@@ -283,20 +247,14 @@ async function handleUpdateUser(context, orgId, userId, updateData) {
             user: updatedUser
         };
         
-        context.log('User updated successfully:', userId, 'new status:', status);
     } catch (error) {
-        context.log.error('Error updating user:', error);
-        context.log.error('Error details:', {
-            message: error.message,
-            code: error.code,
-            statusCode: error.statusCode
-        });
+        context.log.error('Error updating user:', error.message);
         throw error;
     }
 }
 
 // Delete user permanently
-async function handleDeleteUser(context, orgId, userId) {
+async function handleDeleteUser(context, orgId, userId, adminUser) {
     try {
         if (!orgId || !userId) {
             context.res.status = 400;
@@ -345,16 +303,14 @@ async function handleDeleteUser(context, orgId, userId) {
         context.res.status = 200;
         context.res.body = { message: 'User removed successfully' };
         
-        context.log('User deleted:', userId);
     } catch (error) {
-        context.log.error('Error deleting user:', error);
+        context.log.error('Error deleting user:', error.message);
         throw error;
     }
 }
 
-// Invite new user (simplified version)
-// Invite new user (updated version)
-async function handleInviteUser(context, orgId, inviteData) {
+// Invite new user
+async function handleInviteUser(context, orgId, inviteData, adminUser) {
     try {
         if (!orgId) {
             context.res.status = 400;
@@ -424,9 +380,8 @@ async function handleInviteUser(context, orgId, inviteData) {
             }
         };
         
-        context.log('User invited/created:', email, 'Name:', firstName, lastName);
     } catch (error) {
-        context.log.error('Error inviting user:', error);
+        context.log.error('Error inviting user:', error.message);
         throw error;
     }
 }

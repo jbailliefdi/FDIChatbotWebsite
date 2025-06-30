@@ -1,5 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
+const { sanitizeInput } = require('../utils/auth');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
@@ -34,9 +35,30 @@ module.exports = async function (context, req) {
             return;
         }
 
+        // Sanitize inputs
+        const sanitizedEmail = sanitizeInput(email.toLowerCase());
+        const sanitizedCompanyName = sanitizeInput(companyName);
+        const sanitizedFirstName = sanitizeInput(firstName);
+        const sanitizedLastName = sanitizeInput(lastName);
+        const sanitizedPhone = phone ? sanitizeInput(phone) : null;
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(sanitizedEmail)) {
+            context.res = { status: 400, body: { message: 'Invalid email format' } };
+            return;
+        }
+        
+        // Validate license count is numeric
+        const numLicenseCount = parseInt(licenseCount, 10);
+        if (isNaN(numLicenseCount) || numLicenseCount < 1) {
+            context.res = { status: 400, body: { message: 'Invalid license count' } };
+            return;
+        }
+
         // Server-side license validation
         if (planType === 'trial') {
-            if (licenseCount < 1 || licenseCount > 3) {
+            if (numLicenseCount < 1 || numLicenseCount > 3) {
                 context.res = { 
                     status: 400, 
                     body: { message: 'Trial plans are limited to 1-3 users only.' } 
@@ -44,7 +66,7 @@ module.exports = async function (context, req) {
                 return;
             }
         } else if (planType === 'annual' || planType === 'monthly') {
-            if (licenseCount < 1 || licenseCount > 500) {
+            if (numLicenseCount < 1 || numLicenseCount > 500) {
                 context.res = { 
                     status: 400, 
                     body: { message: 'Professional plans are limited to 1-500 users.' } 
@@ -54,7 +76,7 @@ module.exports = async function (context, req) {
         }
 
         // Extract domain for organization lookup
-        const domain = email.split('@')[1];
+        const domain = sanitizedEmail.split('@')[1];
 
         // Check if organization already exists for this domain
         const orgDomainQuery = {
@@ -98,7 +120,7 @@ module.exports = async function (context, req) {
             // Check if user already exists
             const userQuery = {
                 query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@email)",
-                parameters: [{ name: "@email", value: email }]
+                parameters: [{ name: "@email", value: sanitizedEmail }]
             };
             
             const { resources: existingUsers } = await usersContainer.items.query(userQuery).fetchAll();
@@ -116,7 +138,7 @@ module.exports = async function (context, req) {
             }
             
             // For paid plans, allow admin to upgrade/change subscription
-            if (planType !== 'trial' && existingOrg.adminEmail.toLowerCase() !== email.toLowerCase()) {
+            if (planType !== 'trial' && existingOrg.adminEmail.toLowerCase() !== sanitizedEmail) {
                 context.res = {
                     status: 400,
                     body: { 
@@ -132,7 +154,7 @@ module.exports = async function (context, req) {
         // Create or retrieve customer
         let customer;
         const existingCustomers = await stripe.customers.list({
-            email: email,
+            email: sanitizedEmail,
             limit: 1
         });
 
@@ -140,21 +162,21 @@ module.exports = async function (context, req) {
             customer = existingCustomers.data[0];
             // Update customer with latest info
             customer = await stripe.customers.update(customer.id, {
-                name: `${firstName} ${lastName}`,
-                phone: phone || undefined,
+                name: `${sanitizedFirstName} ${sanitizedLastName}`,
+                phone: sanitizedPhone || undefined,
                 metadata: {
-                    companyName: companyName,
-                    licenseCount: licenseCount.toString()
+                    companyName: sanitizedCompanyName,
+                    licenseCount: numLicenseCount.toString()
                 }
             });
         } else {
             customer = await stripe.customers.create({
-                email: email,
-                name: `${firstName} ${lastName}`,
-                phone: phone || undefined,
+                email: sanitizedEmail,
+                name: `${sanitizedFirstName} ${sanitizedLastName}`,
+                phone: sanitizedPhone || undefined,
                 metadata: {
-                    companyName: companyName,
-                    licenseCount: licenseCount.toString()
+                    companyName: sanitizedCompanyName,
+                    licenseCount: numLicenseCount.toString()
                 }
             });
         }
@@ -176,12 +198,12 @@ module.exports = async function (context, req) {
                 name: 'auto'
             },
             metadata: {
-                email: email,
-                companyName: companyName,
-                firstName: firstName,
-                lastName: lastName,
-                phone: phone || '',
-                licenseCount: licenseCount.toString(),
+                email: sanitizedEmail,
+                companyName: sanitizedCompanyName,
+                firstName: sanitizedFirstName,
+                lastName: sanitizedLastName,
+                phone: sanitizedPhone || '',
+                licenseCount: numLicenseCount.toString(),
                 pricePerLicense: pricePerLicense.toString(),
                 planType: planType
             },

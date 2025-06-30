@@ -45,6 +45,12 @@ async function validateToken(authHeader) {
     });
 }
 
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return input;
+    // Remove potential SQL injection patterns and dangerous characters
+    return input.replace(/[<>\"'%;()&+]/g, '').trim();
+}
+
 async function validateAdminAccess(authHeader, organizationId, usersContainer) {
     try {
         // Validate token and get user email
@@ -55,12 +61,22 @@ async function validateAdminAccess(authHeader, organizationId, usersContainer) {
             throw new Error('No email found in token');
         }
         
+        // Sanitize inputs
+        const sanitizedEmail = sanitizeInput(userEmail.toLowerCase());
+        const sanitizedOrgId = sanitizeInput(organizationId);
+        
+        // Validate organization ID format (UUID)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(sanitizedOrgId)) {
+            throw new Error('Invalid organization ID format');
+        }
+        
         // Verify user is admin for this organization
         const userQuery = {
             query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
             parameters: [
-                { name: "@email", value: userEmail.toLowerCase() },
-                { name: "@orgId", value: organizationId }
+                { name: "@email", value: sanitizedEmail },
+                { name: "@orgId", value: sanitizedOrgId }
             ]
         };
         
@@ -72,7 +88,7 @@ async function validateAdminAccess(authHeader, organizationId, usersContainer) {
         
         return {
             user: users[0],
-            email: userEmail
+            email: sanitizedEmail
         };
         
     } catch (error) {
@@ -80,4 +96,4 @@ async function validateAdminAccess(authHeader, organizationId, usersContainer) {
     }
 }
 
-module.exports = { validateToken, validateAdminAccess };
+module.exports = { validateToken, validateAdminAccess, sanitizeInput };
