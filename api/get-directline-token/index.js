@@ -1,4 +1,9 @@
-// Simplified DirectLine token endpoint for demo access
+const { CosmosClient } = require('@azure/cosmos');
+
+const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+const database = cosmosClient.database('fdi-chatbot');
+const usersContainer = database.container('users');
+const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
     if (req.method !== 'POST') {
@@ -7,8 +12,6 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // Temporary: Allow access during trial/demo period with basic email validation
-        // TODO: Implement full Microsoft authentication flow in frontend
         const { email } = req.body;
         
         context.log('DirectLine token request received for email:', email);
@@ -37,18 +40,34 @@ module.exports = async function (context, req) {
             return;
         }
 
-        context.log('Returning DirectLine token for email:', cleanEmail);
+        // Verify user exists and has active subscription in CosmosDB
+        const userQuery = {
+            query: "SELECT u.*, o.status as orgStatus FROM users u JOIN organizations o ON u.organizationId = o.id WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'active' AND o.status IN ('active', 'trialing')",
+            parameters: [{ name: "@email", value: cleanEmail }]
+        };
 
-        // Return the DirectLine token for demo access
-        // In production, this should require full authentication
+        const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+
+        if (users.length === 0) {
+            context.log.error('No active user found for email:', cleanEmail);
+            context.res = { status: 403, body: { message: 'Access denied - no active subscription found' } };
+            return;
+        }
+
+        const user = users[0];
+        context.log('Active user found:', user.id, 'Organization:', user.organizationId);
+
+        // Return the DirectLine token only for authenticated users with active subscriptions
         context.res = {
             status: 200,
             body: {
                 token: process.env.DIRECT_LINE_TOKEN,
-                userId: 'demo-user-' + cleanEmail.split('@')[0],
-                organizationId: 'demo-org'
+                userId: user.id,
+                organizationId: user.organizationId
             }
         };
+
+        context.log('DirectLine token returned for user:', user.id);
 
     } catch (error) {
         context.log.error('Error getting DirectLine token:', error);
