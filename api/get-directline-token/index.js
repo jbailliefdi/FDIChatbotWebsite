@@ -41,21 +41,33 @@ module.exports = async function (context, req) {
         }
 
         // Verify user exists and has active subscription in CosmosDB
-        const userQuery = {
-            query: "SELECT u.*, o.status as orgStatus FROM users u JOIN organizations o ON u.organizationId = o.id WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'active' AND o.status IN ('active', 'trialing')",
-            parameters: [{ name: "@email", value: cleanEmail }]
-        };
+        let user;
+        try {
+            const userQuery = {
+                query: "SELECT u.*, o.status as orgStatus FROM users u JOIN organizations o ON u.organizationId = o.id WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'active' AND o.status IN ('active', 'trialing')",
+                parameters: [{ name: "@email", value: cleanEmail }]
+            };
 
-        const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+            context.log('Executing user query for email:', cleanEmail);
+            const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+            context.log('Query completed. Found users:', users.length);
 
-        if (users.length === 0) {
-            context.log.error('No active user found for email:', cleanEmail);
-            context.res = { status: 403, body: { message: 'Access denied - no active subscription found' } };
+            if (users.length === 0) {
+                context.log.error('No active user found for email:', cleanEmail);
+                context.res = { status: 403, body: { message: 'Access denied - no active subscription found' } };
+                return;
+            }
+
+            user = users[0];
+            context.log('Active user found:', user.id, 'Organization:', user.organizationId);
+        } catch (dbError) {
+            context.log.error('Database query failed:', dbError);
+            context.res = { 
+                status: 503, 
+                body: { message: 'Service temporarily unavailable - database connection failed' } 
+            };
             return;
         }
-
-        const user = users[0];
-        context.log('Active user found:', user.id, 'Organization:', user.organizationId);
 
         // Return the DirectLine token only for authenticated users with active subscriptions
         context.res = {

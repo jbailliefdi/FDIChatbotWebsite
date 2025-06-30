@@ -62,13 +62,11 @@ module.exports = async function (context, req) {
             context.log('Active user found:', user.id, 'Organization:', user.organizationId);
         } catch (dbError) {
             context.log.error('Database query failed:', dbError);
-            // Temporary fallback for debugging - remove once database is working
-            context.log.warn('Using fallback access for email:', cleanEmail);
-            user = {
-                id: 'fallback-user-' + cleanEmail.split('@')[0],
-                organizationId: 'fallback-org',
-                email: cleanEmail
+            context.res = { 
+                status: 503, 
+                body: { message: 'Service temporarily unavailable - database connection failed' } 
             };
+            return;
         }
 
         // Update last login timestamp
