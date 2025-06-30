@@ -13,9 +13,11 @@ const usersContainer = database.container('users');
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
-    'https://your-domain.azurestaticapps.net',
+    'https://kind-mud-048fffa03.6.azurestaticapps.net',
     'https://localhost:3000',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'http://localhost:4280',
+    'https://localhost:4280'
 ];
 
 module.exports = async function (context, req) {
