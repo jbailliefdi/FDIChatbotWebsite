@@ -53,35 +53,14 @@ module.exports = async function (context, req) {
             }
         }
 
-        // SECURITY: Validate email format before domain extraction
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            context.res = { 
-                status: 400, 
-                body: { message: 'Invalid email format' } 
-            };
-            return;
-        }
-
-        // Extract and validate domain for organization lookup
+        // Extract domain for organization lookup
         const domain = email.split('@')[1];
-        
-        // SECURITY: Validate domain format to prevent injection
-        const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
-        if (!domainRegex.test(domain)) {
-            context.res = { 
-                status: 400, 
-                body: { message: 'Invalid email domain format' } 
-            };
-            return;
-        }
 
-        // SECURITY: Use exact match instead of LIKE to prevent injection
+        // Check if organization already exists for this domain
         const orgDomainQuery = {
-            query: "SELECT * FROM c WHERE c.adminEmail = @adminEmail OR ENDSWITH(c.adminEmail, @domainSuffix)",
+            query: "SELECT * FROM c WHERE c.adminEmail LIKE @domain",
             parameters: [
-                { name: "@adminEmail", value: email.toLowerCase() },
-                { name: "@domainSuffix", value: `@${domain.toLowerCase()}` }
+                { name: "@domain", value: `%@${domain}` }
             ]
         };
 
@@ -181,7 +160,7 @@ module.exports = async function (context, req) {
         }
 
         // Get the base URL for redirects
-        const origin = req.headers.origin || req.headers.referer || process.env.SITE_DOMAIN || 'https://kind-mud-048fffa03.6.azurestaticapps.net';
+        const origin = req.headers.origin || req.headers.referer || 'https://your-domain.com';
         
         // Create checkout session
         let sessionConfig = {

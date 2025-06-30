@@ -12,9 +12,9 @@ module.exports = async function (context, req) {
     // Enable CORS
     context.res = {
         headers: {
-            'Access-Control-Allow-Origin': process.env.SITE_DOMAIN || 'https://kind-mud-048fffa03.6.azurestaticapps.net',
+            'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-ms-client-principal'
+            'Access-Control-Allow-Headers': 'Content-Type'
         }
     };
 
@@ -24,37 +24,7 @@ module.exports = async function (context, req) {
         return;
     }
 
-    if (req.method !== 'GET') {
-        context.res.status = 405;
-        context.res.body = { error: 'Method not allowed' };
-        return;
-    }
-
-    // SECURITY: Check Azure Static Web Apps authentication
-    const clientPrincipal = req.headers['x-ms-client-principal'];
-    if (!clientPrincipal) {
-        context.res.status = 401;
-        context.res.body = { error: 'Authentication required' };
-        return;
-    }
-
-    let authenticatedUser;
-    try {
-        authenticatedUser = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
-        if (!authenticatedUser || !authenticatedUser.userDetails) {
-            context.res.status = 401;
-            context.res.body = { error: 'Invalid authentication' };
-            return;
-        }
-    } catch (error) {
-        context.res.status = 401;
-        context.res.body = { error: 'Invalid authentication token' };
-        return;
-    }
-
-    const authenticatedEmail = authenticatedUser.userDetails;
-
-    // Get orgId from query parameter
+    // Get orgId from query parameter since Azure Static Web Apps doesn't support route params
     const orgId = req.query.orgId;
     
     if (!orgId) {
@@ -63,31 +33,7 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // Input validation for organization ID
-    if (typeof orgId !== 'string' || orgId.trim().length === 0 || orgId.length > 100) {
-        context.res.status = 400;
-        context.res.body = { error: 'Invalid organization ID format' };
-        return;
-    }
-
     try {
-        // SECURITY: Verify user belongs to the requested organization
-        const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId AND c.status = 'active'",
-            parameters: [
-                { name: "@email", value: authenticatedEmail.toLowerCase() },
-                { name: "@orgId", value: orgId }
-            ]
-        };
-
-        const { resources: userAccess } = await usersContainer.items.query(userQuery).fetchAll();
-        
-        if (userAccess.length === 0) {
-            context.res.status = 403;
-            context.res.body = { error: 'Access denied. You do not have permission to view this organization.' };
-            return;
-        }
-
         // Get organization details
         const { resource: organization } = await organizationsContainer.item(orgId, orgId).read();
         

@@ -15,32 +15,19 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // SECURITY: Azure Static Web Apps route-level authentication
-        // This API endpoint is protected by staticwebapp.config.json rules
-        // Users must be authenticated to reach this endpoint
-        
         const { email } = req.body;
         
         if (!email) {
             context.res = { status: 400, body: { message: 'Email is required' } };
             return;
         }
-        
-        // Additional security: Verify the email format is valid
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            context.res = { status: 400, body: { message: 'Invalid email format' } };
-            return;
-        }
-        
-        const targetEmail = email;
 
-        context.log('Checking subscription for email:', targetEmail);
+        context.log('Checking subscription for email:', email);
 
         // Find user in database
         const userQuery = {
             query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@email) AND c.status = 'active'",
-            parameters: [{ name: "@email", value: targetEmail.toLowerCase() }]
+            parameters: [{ name: "@email", value: email.toLowerCase() }]
         };
 
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
@@ -209,20 +196,22 @@ if ((organization.status === 'trialing' || organization.isTrial) && (organizatio
                 isTrialing: isTrialing,
                 trialEnd: organization.trialEnd,
                 gracePeriodEnd: organization.gracePeriodEnd,
-                // SECURITY: Only expose necessary user data
                 user: {
+                    id: user.id,
                     email: user.email,
                     firstName: user.firstName,
                     lastName: user.lastName,
                     role: user.role,
-                    status: user.status
+                    status: user.status,
+                    createdAt: user.createdAt
                 },
-                // SECURITY: Only expose necessary organization data
                 organization: {
+                    id: organization.id,
                     name: organization.name,
                     status: organization.status,
                     totalLicenses: organization.licenseCount,
                     usedLicenses: currentUserCount,
+                    createdAt: organization.createdAt,
                     isTrial: organization.isTrial || false
                 }
             };
@@ -250,14 +239,14 @@ if ((organization.status === 'trialing' || organization.isTrial) && (organizatio
                     message: accessReason,
                     subscriptionStatus: organization.status,
                     companyName: organization.name,
-                    // SECURITY: Only expose necessary user data
                     user: {
+                        id: user.id,
                         email: user.email,
                         role: user.role,
                         status: user.status
                     },
-                    // SECURITY: Only expose necessary organization data
                     organization: {
+                        id: organization.id,
                         name: organization.name,
                         status: organization.status,
                         isTrial: organization.isTrial || false

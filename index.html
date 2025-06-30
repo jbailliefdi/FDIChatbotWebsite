@@ -618,7 +618,7 @@
                     </div>
                 </a>
                 <div class="logo-container">
-                    <a id="tiaLogoLink" href="/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                    <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
                         <span>TIA</span>
                     </a>
                 </div>
@@ -838,28 +838,6 @@
     </footer>
 
     <script>
-        // Initialize domain configuration
-        async function initializeDomainConfig() {
-            try {
-                const response = await fetch('/api/get-domain-config');
-                const config = await response.json();
-                
-                if (config.siteDomain) {
-                    // Update TIA logo link
-                    const tiaLogoLink = document.getElementById('tiaLogoLink');
-                    if (tiaLogoLink) {
-                        tiaLogoLink.href = config.siteDomain + '/';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load domain configuration:', error);
-                // Fallback to current domain if API fails
-            }
-        }
-        
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initializeDomainConfig);
-        
         // Smooth scrolling for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

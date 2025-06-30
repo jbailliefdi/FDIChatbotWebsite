@@ -5,39 +5,16 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // Check Azure Static Web Apps authentication
-        const clientPrincipal = req.headers['x-ms-client-principal'];
-        if (!clientPrincipal) {
-            context.res = { status: 401, body: { message: 'Authentication required' } };
-            return;
-        }
-
-        // Parse user info from Azure SWA
-        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
-        if (!user || !user.userDetails) {
-            context.res = { status: 401, body: { message: 'Invalid authentication' } };
-            return;
-        }
-
-        const userEmail = user.userDetails;
+        // Basic auth check (add your own validation)
         const { email } = req.body;
-        
-        // Verify the requested email matches the authenticated user
-        if (email && email !== userEmail) {
-            context.res = { status: 403, body: { message: 'Email mismatch' } };
+        if (!email) {
+            context.res = { status: 401, body: { message: 'Email required' } };
             return;
         }
 
         // Return the fixed DirectLine token
         const directLineToken = process.env.DIRECT_LINE_TOKEN;
-        
-        if (!directLineToken) {
-            context.log.error('DIRECT_LINE_TOKEN environment variable not set');
-            context.res = { status: 500, body: { message: 'DirectLine token not configured' } };
-            return;
-        }
 
-        context.log('Successfully returning DirectLine token for user:', userEmail);
         context.res = {
             status: 200,
             body: {

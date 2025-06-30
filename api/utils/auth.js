@@ -26,16 +26,8 @@ async function validateToken(authHeader) {
     const token = authHeader.substring(7);
     
     return new Promise((resolve, reject) => {
-        // SECURITY: Require MSAL_CLIENT_ID environment variable - no fallback
-        const clientId = process.env.MSAL_CLIENT_ID;
-        if (!clientId) {
-            console.error('MSAL_CLIENT_ID environment variable is required');
-            reject(new Error('Authentication configuration error'));
-            return;
-        }
-
         jwt.verify(token, getKey, {
-            audience: clientId,
+            audience: process.env.MSAL_CLIENT_ID || '2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2',
             issuer: [
                 'https://login.microsoftonline.com/common/v2.0',
                 'https://sts.windows.net/common/',

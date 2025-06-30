@@ -16,7 +16,7 @@ module.exports = async function (context, req) {
     // Enable CORS
     context.res = {
         headers: {
-            'Access-Control-Allow-Origin': process.env.SITE_DOMAIN || 'https://kind-mud-048fffa03.6.azurestaticapps.net',
+            'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
@@ -28,24 +28,6 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // SECURITY: Check Azure Static Web Apps authentication
-        const clientPrincipal = req.headers['x-ms-client-principal'];
-        if (!clientPrincipal) {
-            context.res.status = 401;
-            context.res.body = { error: 'Authentication required' };
-            return;
-        }
-
-        // Parse authenticated user info
-        const user = JSON.parse(Buffer.from(clientPrincipal, 'base64').toString());
-        if (!user || !user.userDetails) {
-            context.res.status = 401;
-            context.res.body = { error: 'Invalid authentication' };
-            return;
-        }
-
-        const authenticatedEmail = user.userDetails;
-        context.log('Authenticated user:', authenticatedEmail);
         const method = req.method;
         const orgId = req.params.orgId;
         const segments = req.params.segments ? req.params.segments.split('/') : [];

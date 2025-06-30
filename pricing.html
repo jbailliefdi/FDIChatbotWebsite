@@ -470,7 +470,7 @@
                     </div>
                 </a>
                 <div class="logo-container">
-                    <a id="tiaLogoLink" href="/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                    <a href="https://kind-mud-048fffa03.6.azurestaticapps.net/" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
                         <span>TIA</span>
                     </a>
                 </div>
@@ -622,45 +622,8 @@
     </footer>
 
     <script>
-        // SECURITY: Get Stripe publishable key from server
-        let stripe = null;
-        
-        // Initialize Stripe with key from server
-        async function initializeStripe() {
-            try {
-                const response = await fetch('/api/get-stripe-config');
-                const config = await response.json();
-                
-                if (config.publishableKey) {
-                    stripe = Stripe(config.publishableKey);
-                } else {
-                    console.error('Failed to load Stripe configuration');
-                    showError('Payment system unavailable. Please try again later.');
-                }
-            } catch (error) {
-                console.error('Failed to initialize Stripe:', error);
-                showError('Payment system unavailable. Please try again later.');
-            }
-        }
-
-        // Initialize domain configuration
-        async function initializeDomainConfig() {
-            try {
-                const response = await fetch('/api/get-domain-config');
-                const config = await response.json();
-                
-                if (config.siteDomain) {
-                    // Update TIA logo link
-                    const tiaLogoLink = document.getElementById('tiaLogoLink');
-                    if (tiaLogoLink) {
-                        tiaLogoLink.href = config.siteDomain + '/';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load domain configuration:', error);
-                // Fallback to current domain if API fails
-            }
-        }
+        // Initialize Stripe
+        const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
         
         let currentPlan = 'trial'; // Default to trial
         const pricePerLicense = 50;
@@ -672,14 +635,9 @@
         }
 
         // Initialize plan based on URL parameter
-        async function initializePlan() {
-            // Initialize both Stripe and domain configuration
-            await Promise.all([
-                initializeStripe(),
-                initializeDomainConfig()
-            ]);
-            
+        function initializePlan() {
             const planParam = getURLParameter('plan');
+            console.log('URL plan parameter:', planParam); // Debug log
             if (planParam && ['trial', 'monthly', 'annual'].includes(planParam)) {
                 currentPlan = planParam;
                 selectPlan(planParam);
@@ -689,6 +647,7 @@
         }
 
         function selectPlan(plan) {
+            console.log('Selecting plan:', plan); // Debug log
             currentPlan = plan;
             
             // Remove active class from all options
@@ -753,6 +712,7 @@
     
     let subtotal, priceText, billingNote;
             
+            console.log('Updating price for plan:', currentPlan, 'licenses:', licenseCount); // Debug log
             
             if (currentPlan === 'annual') {
                 subtotal = licenseCount * 550; // £550 per user per year
@@ -838,11 +798,6 @@
             };
 
             try {
-                // SECURITY: Check if Stripe is initialized
-                if (!stripe) {
-                    throw new Error('Payment system not ready. Please refresh the page and try again.');
-                }
-
                 // Both trial and paid plans now go through this single flow
                 const response = await fetch('/api/create-checkout-session', {
                     method: 'POST',
@@ -885,15 +840,11 @@
 
         // Initialize UI on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing...'); // Debug log
             initializePlan(); // This will read URL params and set the correct plan
             updatePrice();
             updateButtonText();
         });
-
-        // SECURITY: Helper function to show errors
-        function showError(message) {
-            showAlert(message, 'error');
-        }
           </script>
 </body>
 </html>
