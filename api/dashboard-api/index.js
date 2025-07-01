@@ -211,6 +211,156 @@ module.exports = async function (context, req) {
             return;
         }
         
+        // Route: /api/organization/{orgId}/users/{userId} - PUT (update user)
+        if (method === 'PUT' && segments.includes('users') && segments.length >= 2) {
+            const userId = segments[segments.indexOf('users') + 1];
+            context.log('UPDATE USER ROUTE MATCHED!', { userId, body: req.body });
+            
+            // Check if database is available
+            if (!usersContainer) {
+                context.res.status = 500;
+                context.res.body = { error: 'Database not available' };
+                return;
+            }
+
+            try {
+                // Get user
+                const userQuery = {
+                    query: "SELECT * FROM c WHERE c.id = @userId AND c.organizationId = @orgId",
+                    parameters: [
+                        { name: "@userId", value: userId },
+                        { name: "@orgId", value: orgId }
+                    ]
+                };
+                
+                const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+                
+                if (users.length === 0) {
+                    context.res.status = 404;
+                    context.res.body = { error: 'User not found' };
+                    return;
+                }
+                
+                const user = users[0];
+                const { role, status } = req.body || {};
+                
+                // If deactivating an admin, check admin constraints
+                if (status === 'deactivated' && user.role === 'admin') {
+                    const adminQuery = {
+                        query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
+                        parameters: [{ name: "@orgId", value: orgId }]
+                    };
+                    
+                    const { resources: adminCount } = await usersContainer.items.query(adminQuery).fetchAll();
+                    
+                    if (adminCount[0] <= 1) {
+                        context.res.status = 400;
+                        context.res.body = { error: 'Cannot deactivate the only admin user' };
+                        return;
+                    }
+                }
+                
+                // Update user
+                const updatedUser = {
+                    ...user,
+                    role: role || user.role,
+                    status: status || user.status,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                if (status === 'deactivated') {
+                    updatedUser.deactivatedAt = new Date().toISOString();
+                } else if (status === 'active' && user.status !== 'active') {
+                    updatedUser.reactivatedAt = new Date().toISOString();
+                    delete updatedUser.deactivatedAt;
+                }
+                
+                context.log('Updating user:', updatedUser);
+                await usersContainer.item(user.id, user.organizationId).replace(updatedUser);
+                
+                context.res.status = 200;
+                context.res.body = {
+                    message: 'User updated successfully',
+                    user: updatedUser
+                };
+                
+            } catch (dbError) {
+                context.log.error('Database error:', dbError);
+                context.res.status = 500;
+                context.res.body = { 
+                    error: 'Failed to update user',
+                    message: dbError.message
+                };
+            }
+            return;
+        }
+        
+        // Route: /api/organization/{orgId}/users/{userId} - DELETE (delete user)
+        if (method === 'DELETE' && segments.includes('users') && segments.length >= 2) {
+            const userId = segments[segments.indexOf('users') + 1];
+            context.log('DELETE USER ROUTE MATCHED!', { userId });
+            
+            // Check if database is available
+            if (!usersContainer) {
+                context.res.status = 500;
+                context.res.body = { error: 'Database not available' };
+                return;
+            }
+
+            try {
+                // Get user
+                const userQuery = {
+                    query: "SELECT * FROM c WHERE c.id = @userId AND c.organizationId = @orgId",
+                    parameters: [
+                        { name: "@userId", value: userId },
+                        { name: "@orgId", value: orgId }
+                    ]
+                };
+                
+                const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+                
+                if (users.length === 0) {
+                    context.res.status = 404;
+                    context.res.body = { error: 'User not found' };
+                    return;
+                }
+                
+                const user = users[0];
+                
+                // Check admin constraints
+                if (user.role === 'admin') {
+                    const adminQuery = {
+                        query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
+                        parameters: [{ name: "@orgId", value: orgId }]
+                    };
+                    
+                    const { resources: adminCount } = await usersContainer.items.query(adminQuery).fetchAll();
+                    
+                    if (adminCount[0] <= 1) {
+                        context.res.status = 400;
+                        context.res.body = { error: 'Cannot remove the only admin user' };
+                        return;
+                    }
+                }
+                
+                // Delete user
+                context.log('Deleting user:', user.id);
+                await usersContainer.item(user.id, user.organizationId).delete();
+                
+                context.res.status = 200;
+                context.res.body = { message: 'User removed successfully' };
+                
+            } catch (dbError) {
+                context.log.error('Database error:', dbError);
+                context.res.status = 500;
+                context.res.body = { 
+                    error: 'Failed to delete user',
+                    message: dbError.message
+                };
+            }
+            return;
+        }
+        
         // Default response
         context.res.status = 200;
         context.res.body = {
