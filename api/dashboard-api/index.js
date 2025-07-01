@@ -5,11 +5,21 @@ const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
 const { validateAdminAccess } = require('../utils/auth');
 
-// Initialize Cosmos DB client
-const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
-const database = cosmosClient.database('fdi-chatbot');
-const organizationsContainer = database.container('organizations');
-const usersContainer = database.container('users');
+// Initialize Cosmos DB client (with error handling)
+let cosmosClient, database, organizationsContainer, usersContainer;
+
+try {
+    if (process.env.COSMOS_DB_CONNECTION_STRING) {
+        cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+        database = cosmosClient.database('fdi-chatbot');
+        organizationsContainer = database.container('organizations');
+        usersContainer = database.container('users');
+    } else {
+        console.warn('COSMOS_DB_CONNECTION_STRING not found. Database operations will be disabled.');
+    }
+} catch (error) {
+    console.error('Failed to initialize Cosmos DB client:', error.message);
+}
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -21,32 +31,31 @@ const ALLOWED_ORIGINS = [
 ];
 
 module.exports = async function (context, req) {
-    context.log('=== DASHBOARD API START ===');
-    context.log('Method:', req.method);
-    context.log('URL:', req.url);
-    context.log('Params:', req.params);
-    context.log('Body:', req.body);
-
-    // Get origin from request
-    const origin = req.headers.origin;
-    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-
-    // Enable CORS with proper origin validation
-    context.res = {
-        headers: {
-            'Access-Control-Allow-Origin': allowedOrigin,
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            'Access-Control-Allow-Credentials': 'true'
-        }
-    };
-
-    if (req.method === 'OPTIONS') {
-        context.res.status = 200;
-        return;
-    }
-
     try {
+        context.log('=== DASHBOARD API START ===');
+        context.log('Method:', req.method);
+        context.log('URL:', req.url);
+        context.log('Params:', req.params);
+        context.log('Body:', req.body);
+
+        // Get origin from request
+        const origin = req.headers.origin;
+        const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+        // Enable CORS with proper origin validation
+        context.res = {
+            headers: {
+                'Access-Control-Allow-Origin': allowedOrigin,
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true'
+            }
+        };
+
+        if (req.method === 'OPTIONS') {
+            context.res.status = 200;
+            return;
+        }
         const method = req.method;
         const orgId = req.params.orgId;
         const segments = req.params.segments ? req.params.segments.split('/') : [];
@@ -88,12 +97,27 @@ module.exports = async function (context, req) {
         }
 
     } catch (error) {
-        context.log.error('Dashboard API error:', error);
-        context.log.error('Error details:', {
-            message: error.message,
-            stack: error.stack,
-            name: error.name
-        });
+        context.log.error('=== DASHBOARD API ERROR ===');
+        context.log.error('Error message:', error.message);
+        context.log.error('Error stack:', error.stack);
+        context.log.error('Error name:', error.name);
+        context.log.error('Request method:', req.method);
+        context.log.error('Request URL:', req.url);
+        context.log.error('Request params:', req.params);
+        
+        // Ensure headers are set for CORS even in error case
+        if (!context.res.headers) {
+            const origin = req.headers.origin;
+            const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+            context.res = {
+                headers: {
+                    'Access-Control-Allow-Origin': allowedOrigin,
+                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                    'Access-Control-Allow-Credentials': 'true'
+                }
+            };
+        }
         
         if (error.message.includes('Access denied') || error.message.includes('Invalid token')) {
             context.res.status = 403;
@@ -102,10 +126,7 @@ module.exports = async function (context, req) {
             context.res.status = 500;
             context.res.body = { 
                 error: 'Internal server error', 
-                details: error.message,
-                method: req.method,
-                orgId: req.params.orgId,
-                segments: req.params.segments
+                message: error.message
             };
         }
     }
@@ -332,11 +353,33 @@ async function handleDeleteUser(context, orgId, userId, adminUser) {
 // Invite new user
 async function handleInviteUser(context, orgId, inviteData, adminUser) {
     try {
+        context.log('=== HANDLE INVITE USER START ===');
+        context.log('OrgId:', orgId);
+        context.log('InviteData:', inviteData);
+        
         const { firstName, lastName, email, role = 'user' } = inviteData;
         
         if (!email || !firstName || !lastName) {
             context.res.status = 400;
             context.res.body = { error: 'First name, last name, and email are required' };
+            return;
+        }
+
+        // Check if database is available
+        if (!usersContainer || !organizationsContainer) {
+            context.log('Database not available, returning demo response');
+            const userId = uuidv4();
+            context.res.status = 200;
+            context.res.body = {
+                message: 'User invited successfully (demo mode - database not available)',
+                user: {
+                    id: userId,
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName,
+                    role: role
+                }
+            };
             return;
         }
 
