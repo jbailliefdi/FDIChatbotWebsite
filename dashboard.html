@@ -1543,19 +1543,23 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: 'deactivated' })
                 });
                 
-                const result = await response.json();
-                
                 if (response.ok) {
+                    const result = await response.json();
                     showSuccess('User deactivated successfully');
                     loadDashboardData();
                 } else {
-                    showError(result.error || 'Failed to deactivate user');
+                    try {
+                        const result = await response.json();
+                        showError(result.error || 'Failed to deactivate user');
+                    } catch (jsonError) {
+                        showError(`Failed to deactivate user (${response.status})`);
+                    }
                 }
             } catch (error) {
                 console.error('Deactivate error:', error);
@@ -1570,19 +1574,24 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: 'active' })
                 });
                 
-                const result = await response.json();
-                
                 if (response.ok) {
+                    const result = await response.json();
                     showSuccess('User reactivated successfully');
                     loadDashboardData();
                 } else {
-                    showError(result.error || 'Failed to reactivate user');
+                    // Handle error response
+                    try {
+                        const result = await response.json();
+                        showError(result.error || 'Failed to reactivate user');
+                    } catch (jsonError) {
+                        showError(`Failed to reactivate user (${response.status})`);
+                    }
                 }
             } catch (error) {
                 console.error('Reactivate error:', error);
@@ -1601,7 +1610,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'DELETE'
                 });
                 
@@ -1631,7 +1640,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'admin' })
@@ -1662,7 +1671,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'user' })
@@ -1952,7 +1961,7 @@ async function openBillingPortal() {
             const role = document.getElementById('inviteRole').value;
             
             try {
-                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/invite`, {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/invite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ firstName, lastName, email, role })
