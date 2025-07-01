@@ -62,11 +62,22 @@ module.exports = async function (context, req) {
             context.log('Active user found:', user.id, 'Organization:', user.organizationId);
         } catch (dbError) {
             context.log.error('Database query failed:', dbError);
-            context.res = { 
-                status: 503, 
-                body: { message: 'Service temporarily unavailable - database connection failed' } 
-            };
-            return;
+            
+            // Temporary: Only allow specific known admin email during debugging
+            if (cleanEmail === 'j.baillie@fdintelligence.co.uk') {
+                context.log.warn('Using temporary admin access for:', cleanEmail);
+                user = {
+                    id: 'temp-admin-' + cleanEmail.split('@')[0],
+                    organizationId: 'temp-admin-org',
+                    email: cleanEmail
+                };
+            } else {
+                context.res = { 
+                    status: 503, 
+                    body: { message: 'Service temporarily unavailable - database connection failed' } 
+                };
+                return;
+            }
         }
 
         // Update last login timestamp
@@ -92,26 +103,10 @@ module.exports = async function (context, req) {
         context.log('DirectLine token returned for user:', user.id);
 
     } catch (error) {
-        context.log.error('Error getting bot token:', error);
-        context.log.error('Error details:', {
-            message: error.message,
-            stack: error.stack,
-            code: error.code
-        });
-        
-        // Provide more specific error messages for debugging
-        let errorMessage = 'Failed to get token';
-        if (error.message.includes('CosmosDB') || error.code === 'ENOTFOUND') {
-            errorMessage = 'Database connection error';
-        } else if (error.message.includes('query')) {
-            errorMessage = 'Database query error';
-        } else {
-            errorMessage = `Failed to get token: ${error.message}`;
-        }
-        
+        context.log.error('Outer error getting bot token:', error);
         context.res = {
             status: 500,
-            body: { message: errorMessage }
+            body: { message: 'Internal server error: ' + error.message }
         };
     }
 };
