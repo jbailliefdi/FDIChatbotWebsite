@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(rm:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
