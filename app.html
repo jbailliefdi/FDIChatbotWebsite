@@ -1867,7 +1867,7 @@ function goToHomepage() {
 let currentchat = null; const chats = {}; let fontSize = 16; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
 async function getDirectLineToken(email) {
     try {
-        const response = await fetch('/api/get-bot-token', {
+        const response = await fetch('/api/get-directline-token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email })
