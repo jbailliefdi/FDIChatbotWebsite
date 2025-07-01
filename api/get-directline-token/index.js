@@ -43,8 +43,9 @@ module.exports = async function (context, req) {
         // Verify user exists and has active subscription in CosmosDB
         let user;
         try {
+            // First, find the user by email
             const userQuery = {
-                query: "SELECT u.*, o.status as orgStatus FROM users u JOIN organizations o ON u.organizationId = o.id WHERE LOWER(u.email) = LOWER(@email) AND u.status = 'active' AND o.status IN ('active', 'trialing')",
+                query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@email) AND c.status = 'active'",
                 parameters: [{ name: "@email", value: cleanEmail }]
             };
 
@@ -60,11 +61,21 @@ module.exports = async function (context, req) {
 
             user = users[0];
             context.log('Active user found:', user.id, 'Organization:', user.organizationId);
+
+            // Now verify the organization is active or trialing
+            const { resource: organization } = await organizationsContainer.item(user.organizationId, user.organizationId).read();
+            if (!organization || !['active', 'trialing'].includes(organization.status)) {
+                context.log.error('Organization not active/trialing for user:', cleanEmail, 'Org status:', organization?.status);
+                context.res = { status: 403, body: { message: 'Access denied - organization subscription not active' } };
+                return;
+            }
+            
+            context.log('Organization verified as active/trialing:', organization.status);
         } catch (dbError) {
             context.log.error('Database query failed:', dbError);
             context.res = { 
-                status: 503, 
-                body: { message: 'Service temporarily unavailable - database connection failed' } 
+                status: 500, 
+                body: { message: 'Database error: ' + dbError.message } 
             };
             return;
         }
