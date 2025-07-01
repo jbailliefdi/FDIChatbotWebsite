@@ -304,6 +304,26 @@
             color: white;
         }
 
+        .action-btn.primary {
+            color: #007bff;
+            border-color: #007bff;
+        }
+
+        .action-btn.primary:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        .action-btn.secondary {
+            color: #6c757d;
+            border-color: #6c757d;
+        }
+
+        .action-btn.secondary:hover {
+            background: #6c757d;
+            color: white;
+        }
+
         /* Billing Page Styles */
         .billing-overview {
             display: grid;
@@ -1470,6 +1490,15 @@ async function cancelPendingDowngrade() {
             let actions = '';
             
             if (user.status === 'active') {
+                // Role management buttons (only for active users and if current user is admin)
+                if (!isCurrentUser && currentUser.role === 'admin') {
+                    if (user.role === 'user') {
+                        actions += `<button class="action-btn primary" onclick="promoteToAdmin('${user.id}')">Make Admin</button>`;
+                    } else if (user.role === 'admin' && !isOnlyAdmin) {
+                        actions += `<button class="action-btn secondary" onclick="demoteFromAdmin('${user.id}')">Remove Admin</button>`;
+                    }
+                }
+                
                 if (!isCurrentUser && !isOnlyAdmin) {
                     actions += `<button class="action-btn danger" onclick="deactivateUser('${user.id}')">Deactivate</button>`;
                 }
@@ -1586,6 +1615,69 @@ async function cancelPendingDowngrade() {
             } catch (error) {
                 console.error('Remove error:', error);
                 showError('Failed to remove user');
+            }
+        }
+
+        // Role management functions
+        async function promoteToAdmin(userId) {
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to make this user an admin? They will have full access to manage the organization.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: 'admin' })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('User promoted to admin successfully');
+                    loadDashboardData();
+                } else {
+                    showError(result.error || 'Failed to promote user');
+                }
+            } catch (error) {
+                console.error('Promote error:', error);
+                showError('Failed to promote user');
+            }
+        }
+
+        async function demoteFromAdmin(userId) {
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to remove admin privileges from this user? They will become a regular user.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: 'user' })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Admin privileges removed successfully');
+                    loadDashboardData();
+                } else {
+                    showError(result.error || 'Failed to update user role');
+                }
+            } catch (error) {
+                console.error('Demote error:', error);
+                showError('Failed to update user role');
             }
         }
 
