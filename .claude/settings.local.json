@@ -5,7 +5,8 @@
       "Bash(node:*)",
       "Bash(find:*)",
       "Bash(npm install:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npm test)"
     ],
     "deny": []
   }

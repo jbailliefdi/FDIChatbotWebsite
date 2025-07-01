@@ -1494,9 +1494,8 @@ async function cancelPendingDowngrade() {
                 if (!isCurrentUser && currentUser.role === 'admin') {
                     if (user.role === 'user') {
                         actions += `<button class="action-btn primary" onclick="promoteToAdmin('${user.id}')">Make Admin</button>`;
-                    } else if (user.role === 'admin' && !isOnlyAdmin) {
-                        actions += `<button class="action-btn secondary" onclick="demoteFromAdmin('${user.id}')">Remove Admin</button>`;
                     }
+                    // Note: Admins cannot demote other admins for security reasons
                 }
                 
                 if (!isCurrentUser && !isOnlyAdmin) {
