@@ -1494,8 +1494,10 @@ async function cancelPendingDowngrade() {
                 if (!isCurrentUser && currentUser.role === 'admin') {
                     if (user.role === 'user') {
                         actions += `<button class="action-btn primary" onclick="promoteToAdmin('${user.id}')">Make Admin</button>`;
+                    } else if (user.role === 'admin' && !isOnlyAdmin) {
+                        // Allow demoting other admins (but not if they're the only admin)
+                        actions += `<button class="action-btn secondary" onclick="demoteFromAdmin('${user.id}')">Remove Admin</button>`;
                     }
-                    // Note: Admins cannot demote other admins for security reasons
                 }
                 
                 if (!isCurrentUser && !isOnlyAdmin) {
@@ -1541,7 +1543,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: 'deactivated' })
@@ -1568,7 +1570,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: 'active' })
@@ -1599,7 +1601,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
                     method: 'DELETE'
                 });
                 
@@ -1629,7 +1631,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'admin' })
@@ -1660,7 +1662,7 @@ async function cancelPendingDowngrade() {
             }
             
             try {
-                const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
+                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'user' })
@@ -1950,7 +1952,7 @@ async function openBillingPortal() {
             const role = document.getElementById('inviteRole').value;
             
             try {
-                const response = await fetch(`/api/organization/${currentOrganization.id}/invite`, {
+                const response = await fetch(`/api/dashboard-api/${currentOrganization.id}/invite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ firstName, lastName, email, role })
