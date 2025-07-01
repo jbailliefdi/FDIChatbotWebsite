@@ -75,22 +75,7 @@ module.exports = async function (context, req) {
         }
         // Route: /api/organization/{orgId}/invite - POST
         else if (method === 'POST' && segments.includes('invite')) {
-            context.log('INVITE ROUTE MATCHED!');
-            context.log('Segments:', segments);
-            context.log('Request body:', req.body);
-            
-            // Just return immediate success without any processing
-            context.res.status = 200;
-            context.res.body = {
-                success: true,
-                message: 'Invite processed successfully',
-                debug: {
-                    orgId: orgId,
-                    segments: segments,
-                    body: req.body
-                }
-            };
-            context.log('SUCCESS RESPONSE SET');
+            await handleInviteUser(context, orgId, req.body, adminUser);
         }
         else {
             context.res.status = 404;
@@ -339,12 +324,9 @@ async function handleDeleteUser(context, orgId, userId, adminUser) {
     }
 }
 
-// Invite new user - simplified for debugging
+// Invite new user
 async function handleInviteUser(context, orgId, inviteData, adminUser) {
     try {
-        context.log('handleInviteUser called with:', { orgId, inviteData, adminUser });
-        
-        // Simple validation
         const { firstName, lastName, email, role = 'user' } = inviteData;
         
         if (!email || !firstName || !lastName) {
@@ -353,14 +335,52 @@ async function handleInviteUser(context, orgId, inviteData, adminUser) {
             return;
         }
 
-        context.log('Basic validation passed, creating success response');
+        // Check if user already exists
+        const existingUserQuery = {
+            query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId",
+            parameters: [
+                { name: "@email", value: email },
+                { name: "@orgId", value: orgId }
+            ]
+        };
         
-        // Skip all database operations for now and just return success
+        const { resources: existingUsers } = await usersContainer.items.query(existingUserQuery).fetchAll();
+        
+        if (existingUsers.length > 0) {
+            context.res.status = 400;
+            context.res.body = { error: 'User with this email already exists in the organization' };
+            return;
+        }
+
+        // Check license availability
+        const usage = await getOrganizationUsage(orgId);
+        if (usage.available <= 0) {
+            context.res.status = 400;
+            context.res.body = { error: 'No available licenses. Please upgrade your plan.' };
+            return;
+        }
+        
+        // Create new user
         const userId = uuidv4();
+        const newUser = {
+            id: userId,
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            phone: null,
+            organizationId: orgId,
+            role: role,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            lastLogin: null,
+            invitedUser: true
+        };
+        
+        await usersContainer.items.create(newUser);
         
         context.res.status = 200;
         context.res.body = {
-            message: 'User invitation sent successfully (demo mode)',
+            message: 'User invited successfully',
             user: {
                 id: userId,
                 email: email,
@@ -369,8 +389,6 @@ async function handleInviteUser(context, orgId, inviteData, adminUser) {
                 role: role
             }
         };
-        
-        context.log('Success response created');
         
     } catch (error) {
         context.log.error('Error in handleInviteUser:', error);
