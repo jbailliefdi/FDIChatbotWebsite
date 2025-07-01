@@ -3,7 +3,9 @@
     "allow": [
       "Bash(rm:*)",
       "Bash(node:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

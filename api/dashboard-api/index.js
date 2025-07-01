@@ -24,11 +24,8 @@ module.exports = async function (context, req) {
     context.log('=== DASHBOARD API START ===');
     context.log('Method:', req.method);
     context.log('URL:', req.url);
-    context.log('Original URL:', req.originalUrl);
     context.log('Params:', req.params);
-    context.log('Query:', req.query);
     context.log('Body:', req.body);
-    context.log('Headers:', req.headers);
 
     // Get origin from request
     const origin = req.headers.origin;
@@ -85,19 +82,9 @@ module.exports = async function (context, req) {
             context.log('Method:', method);
             context.log('OrgId:', orgId);
             context.log('Segments:', segments);
-            context.log('Segments includes invite:', segments.includes('invite'));
             
             context.res.status = 404;
-            context.res.body = { 
-                error: 'Endpoint not found',
-                debug: {
-                    method: method,
-                    orgId: orgId,
-                    segments: segments,
-                    url: req.url,
-                    originalUrl: req.originalUrl
-                }
-            };
+            context.res.body = { error: 'Endpoint not found' };
         }
 
     } catch (error) {
