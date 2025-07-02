@@ -221,7 +221,7 @@ module.exports = async function (context, req) {
                 trial_period_days: 3,
                 metadata: {
                     planType: 'trial',
-                    trialUsers: licenseCount.toString()
+                    trialUsers: numLicenseCount.toString()
                 }
             };
             sessionConfig.line_items = [
@@ -230,10 +230,10 @@ module.exports = async function (context, req) {
                         currency: 'gbp',
                         product_data: {
                             name: 'TIA Professional - Trial',
-                            description: `AI Tax Assistant - 3-day trial for ${licenseCount} user${licenseCount > 1 ? 's' : ''}, then £${licenseCount * pricePerLicense}/month`,
+                            description: `AI Tax Assistant - 3-day trial for ${numLicenseCount} user${numLicenseCount > 1 ? 's' : ''}, then £${numLicenseCount * pricePerLicense}/month`,
                             metadata: {
-                                licenseCount: licenseCount.toString(),
-                                companyName: companyName,
+                                licenseCount: numLicenseCount.toString(),
+                                companyName: sanitizedCompanyName,
                                 planType: 'trial'
                             }
                         },
@@ -243,7 +243,7 @@ module.exports = async function (context, req) {
                         unit_amount: pricePerLicense * 100, // £50 per license
                         tax_behavior: 'exclusive'
                     },
-                    quantity: licenseCount, // Use actual license count, not fixed 1
+                    quantity: numLicenseCount, // Use actual license count, not fixed 1
                 }
             ];
         } else if (planType === 'annual') {
@@ -255,10 +255,10 @@ module.exports = async function (context, req) {
                         currency: 'gbp',
                         product_data: {
                             name: 'TIA Professional - Annual',
-                            description: `AI Tax Assistant for ${licenseCount} user${licenseCount > 1 ? 's' : ''} - Annual billing`,
+                            description: `AI Tax Assistant for ${numLicenseCount} user${numLicenseCount > 1 ? 's' : ''} - Annual billing`,
                             metadata: {
-                                licenseCount: licenseCount.toString(),
-                                companyName: companyName,
+                                licenseCount: numLicenseCount.toString(),
+                                companyName: sanitizedCompanyName,
                                 planType: 'annual'
                             }
                         },
@@ -268,7 +268,7 @@ module.exports = async function (context, req) {
                         unit_amount: 55000, // £550 per user per year
                         tax_behavior: 'exclusive'
                     },
-                    quantity: licenseCount,
+                    quantity: numLicenseCount,
                 }
             ];
         } else {
@@ -280,10 +280,10 @@ module.exports = async function (context, req) {
                         currency: 'gbp',
                         product_data: {
                             name: 'TIA Professional - Monthly',
-                            description: `AI Tax Assistant for ${licenseCount} user${licenseCount > 1 ? 's' : ''} - Monthly billing`,
+                            description: `AI Tax Assistant for ${numLicenseCount} user${numLicenseCount > 1 ? 's' : ''} - Monthly billing`,
                             metadata: {
-                                licenseCount: licenseCount.toString(),
-                                companyName: companyName,
+                                licenseCount: numLicenseCount.toString(),
+                                companyName: sanitizedCompanyName,
                                 planType: 'monthly'
                             }
                         },
@@ -293,7 +293,7 @@ module.exports = async function (context, req) {
                         unit_amount: pricePerLicense * 100,
                         tax_behavior: 'exclusive'
                     },
-                    quantity: licenseCount,
+                    quantity: numLicenseCount,
                 }
             ];
         }

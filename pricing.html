@@ -805,7 +805,13 @@
                     body: JSON.stringify(formData)
                 });
                 
-                const result = await response.json();
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    console.error("Failed to parse response as JSON:", jsonError);
+                    throw new Error("Server returned invalid response. Please try again.");
+                }
 
                 if (!response.ok) {
                     const err = new Error(result.message || 'An error occurred on the server.');
