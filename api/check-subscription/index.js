@@ -1,6 +1,5 @@
 // Enhanced api/check-subscription/index.js with trial support
 const { CosmosClient } = require('@azure/cosmos');
-const { validateToken } = require('../utils/auth');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
@@ -16,18 +15,10 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // Validate authentication token
-        const authHeader = req.headers.authorization;
-        if (!authHeader) {
-            context.res = { status: 401, body: { message: 'Authorization required' } };
-            return;
-        }
-
-        const decoded = await validateToken(authHeader);
-        const email = decoded.preferred_username || decoded.email || decoded.unique_name;
+        const { email } = req.body;
         
         if (!email) {
-            context.res = { status: 400, body: { message: 'Email not found in token' } };
+            context.res = { status: 400, body: { message: 'Email is required' } };
             return;
         }
 
