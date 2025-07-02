@@ -11,7 +11,11 @@ module.exports = async function (context, req) {
     context.log('Creating Stripe checkout session');
 
     if (req.method !== 'POST') {
-        context.res = { status: 405, body: { message: 'Method not allowed' } };
+        context.res = { 
+            status: 405, 
+            headers: { 'Content-Type': 'application/json' },
+            body: { message: 'Method not allowed' } 
+        };
         return;
     }
 
@@ -29,7 +33,8 @@ module.exports = async function (context, req) {
 
         if (!email || !companyName || !firstName || !lastName) {
             context.res = { 
-                status: 400, 
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
                 body: { message: 'Missing required fields: email, companyName, firstName, lastName' } 
             };
             return;
@@ -45,14 +50,22 @@ module.exports = async function (context, req) {
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(sanitizedEmail)) {
-            context.res = { status: 400, body: { message: 'Invalid email format' } };
+            context.res = { 
+                status: 400, 
+                headers: { 'Content-Type': 'application/json' },
+                body: { message: 'Invalid email format' } 
+            };
             return;
         }
         
         // Validate license count is numeric
         const numLicenseCount = parseInt(licenseCount, 10);
         if (isNaN(numLicenseCount) || numLicenseCount < 1) {
-            context.res = { status: 400, body: { message: 'Invalid license count' } };
+            context.res = { 
+                status: 400, 
+                headers: { 'Content-Type': 'application/json' },
+                body: { message: 'Invalid license count' } 
+            };
             return;
         }
 
@@ -60,7 +73,8 @@ module.exports = async function (context, req) {
         if (planType === 'trial') {
             if (numLicenseCount < 1 || numLicenseCount > 3) {
                 context.res = { 
-                    status: 400, 
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
                     body: { message: 'Trial plans are limited to 1-3 users only.' } 
                 };
                 return;
@@ -68,7 +82,8 @@ module.exports = async function (context, req) {
         } else if (planType === 'annual' || planType === 'monthly') {
             if (numLicenseCount < 1 || numLicenseCount > 500) {
                 context.res = { 
-                    status: 400, 
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
                     body: { message: 'Professional plans are limited to 1-500 users.' } 
                 };
                 return;
@@ -95,6 +110,7 @@ module.exports = async function (context, req) {
             if (existingOrg.status === 'trial_expired' && planType === 'trial') {
                 context.res = {
                     status: 400,
+                    headers: { 'Content-Type': 'application/json' },
                     body: { 
                         message: 'Your organization\'s trial has already expired. Please contact your administrator or subscribe to a paid plan.',
                         organizationName: existingOrg.name,
@@ -108,6 +124,7 @@ module.exports = async function (context, req) {
             if ((existingOrg.status === 'trialing' || existingOrg.status === 'active') && planType === 'trial') {
                 context.res = {
                     status: 400,
+                    headers: { 'Content-Type': 'application/json' },
                     body: { 
                         message: 'Your organization already has an active account. Please contact your administrator for access.',
                         organizationName: existingOrg.name,
@@ -128,6 +145,7 @@ module.exports = async function (context, req) {
             if (existingUsers.length > 0) {
                 context.res = {
                     status: 400,
+                    headers: { 'Content-Type': 'application/json' },
                     body: { 
                         message: 'You already have an account. Please sign in or contact your administrator if you need assistance.',
                         organizationName: existingOrg.name,
@@ -141,6 +159,7 @@ module.exports = async function (context, req) {
             if (planType !== 'trial' && existingOrg.adminEmail.toLowerCase() !== sanitizedEmail) {
                 context.res = {
                     status: 400,
+                    headers: { 'Content-Type': 'application/json' },
                     body: { 
                         message: 'Only your organisation administrator can modify the subscription. Please contact your administrator for assistance.',
                         organizationName: existingOrg.name,
@@ -308,6 +327,7 @@ module.exports = async function (context, req) {
 
         context.res = {
             status: 200,
+            headers: { 'Content-Type': 'application/json' },
             body: {
                 sessionId: session.id,
                 url: session.url,
@@ -317,11 +337,17 @@ module.exports = async function (context, req) {
 
     } catch (error) {
         context.log.error('Error creating checkout session:', error);
+        context.log.error('Error stack:', error.stack);
+        
+        // Ensure we always return a valid JSON response
         context.res = {
             status: 500,
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: { 
                 message: 'Failed to create checkout session',
-                error: error.message 
+                error: error.message || 'Unknown error occurred'
             }
         };
     }
