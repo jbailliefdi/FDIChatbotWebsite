@@ -44,6 +44,6 @@ module.exports = async function (context, req) {
     } catch (error) {
         context.log.error('Error listing organizations:', error);
         context.res.status = 500;
-        context.res.body = { error: error.message || 'Internal server error' };
+        context.res.body = { error: 'Service temporarily unavailable' };
     }
 };

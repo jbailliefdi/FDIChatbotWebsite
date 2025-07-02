@@ -17,7 +17,7 @@ module.exports = async function (context, req) {
         event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
     } catch (err) {
         context.log.error('Webhook signature verification failed:', err.message);
-        context.res = { status: 400, body: `Webhook Error: ${err.message}` };
+        context.res = { status: 400, body: 'Invalid webhook signature' };
         return;
     }
 
@@ -88,7 +88,7 @@ async function handleCheckoutCompleted(context, session) {
 
     } catch (error) {
         context.log.error('Error handling checkout completion:', error);
-        throw error;
+        throw new Error('Checkout processing failed');
     }
 }
 
@@ -131,7 +131,7 @@ async function handleSubscriptionUpdated(context, subscription) {
 
     } catch (error) {
         context.log.error('Error handling subscription update:', error);
-        throw error;
+        throw new Error('Subscription update failed');
     }
 }
 
@@ -160,7 +160,7 @@ async function handleSubscriptionDeleted(context, subscription) {
 
     } catch (error) {
         context.log.error('Error handling subscription deletion:', error);
-        throw error;
+        throw new Error('Subscription deletion failed');
     }
 }
 
@@ -189,7 +189,7 @@ async function handlePaymentFailed(context, invoice) {
 
     } catch (error) {
         context.log.error('Error handling payment failure:', error);
-        throw error;
+        throw new Error('Payment failure processing failed');
     }
 }
 

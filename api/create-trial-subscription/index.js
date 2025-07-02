@@ -68,8 +68,7 @@ module.exports = async function (context, req) {
             context.res.status = 500;
             context.res.body = JSON.stringify({
                 error: 'Subscription creation failed',
-                message: 'Unable to create trial subscription. See debug info.',
-                debugInfo: debugInfo // This object is sent to the browser
+                message: 'Service temporarily unavailable'
             });
             return;
         }
@@ -80,6 +79,6 @@ module.exports = async function (context, req) {
     } catch (error) {
         context.log.error('Unexpected error:', error);
         context.res.status = 500;
-        context.res.body = JSON.stringify({ error: 'Internal server error', message: error.message, debugInfo: { stack: error.stack }});
+        context.res.body = JSON.stringify({ error: 'Internal server error', message: 'Service temporarily unavailable' });
     }
 };

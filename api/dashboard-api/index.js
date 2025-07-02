@@ -131,7 +131,7 @@ module.exports = async function (context, req) {
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to create user',
-                    message: dbError.message
+                    message: 'Service temporarily unavailable'
                 };
             }
             return;
@@ -205,7 +205,7 @@ module.exports = async function (context, req) {
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to get organization overview',
-                    message: dbError.message
+                    message: 'Service temporarily unavailable'
                 };
             }
             return;
@@ -289,7 +289,7 @@ module.exports = async function (context, req) {
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to update user',
-                    message: dbError.message
+                    message: 'Service temporarily unavailable'
                 };
             }
             return;
@@ -355,7 +355,7 @@ module.exports = async function (context, req) {
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to delete user',
-                    message: dbError.message
+                    message: 'Service temporarily unavailable'
                 };
             }
             return;
@@ -376,7 +376,7 @@ module.exports = async function (context, req) {
         context.res.status = 500;
         context.res.body = { 
             error: 'Internal server error',
-            message: error.message
+            message: 'Service temporarily unavailable'
         };
     }
 };

@@ -75,7 +75,7 @@ module.exports = async function (context, req) {
             context.log.error('Database query failed:', dbError);
             context.res = { 
                 status: 500, 
-                body: { message: 'Database error: ' + dbError.message } 
+                body: { message: 'Service temporarily unavailable' } 
             };
             return;
         }
@@ -96,7 +96,7 @@ module.exports = async function (context, req) {
         context.log.error('Error getting DirectLine token:', error);
         context.res = {
             status: 500,
-            body: { message: 'Failed to get token: ' + error.message }
+            body: { message: 'Service temporarily unavailable' }
         };
     }
 };

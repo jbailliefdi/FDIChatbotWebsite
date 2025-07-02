@@ -346,8 +346,7 @@ module.exports = async function (context, req) {
                 'Content-Type': 'application/json'
             },
             body: { 
-                message: 'Failed to create checkout session',
-                error: error.message || 'Unknown error occurred'
+                message: 'Service temporarily unavailable'
             }
         };
     }

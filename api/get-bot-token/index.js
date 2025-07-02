@@ -75,7 +75,7 @@ module.exports = async function (context, req) {
             context.log.error('Database query failed:', dbError);
             context.res = { 
                 status: 500, 
-                body: { message: 'Database error: ' + dbError.message } 
+                body: { message: 'Service temporarily unavailable' } 
             };
             return;
         }
@@ -106,7 +106,7 @@ module.exports = async function (context, req) {
         context.log.error('Outer error getting bot token:', error);
         context.res = {
             status: 500,
-            body: { message: 'Internal server error: ' + error.message }
+            body: { message: 'Service temporarily unavailable' }
         };
     }
 };

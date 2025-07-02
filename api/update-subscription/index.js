@@ -211,7 +211,7 @@ module.exports = async function (context, req) {
             } catch (stripeError) {
                 context.log.error('Stripe checkout creation error:', stripeError);
                 context.res.status = 500;
-                context.res.body = { error: 'Failed to create checkout session: ' + stripeError.message };
+                context.res.body = { error: 'Payment processing temporarily unavailable' };
                 return;
             }
         }
@@ -273,7 +273,7 @@ module.exports = async function (context, req) {
                 } catch (stripeError) {
                     context.log.error('Stripe downgrade scheduling error:', stripeError);
                     context.res.status = 500;
-                    context.res.body = { error: 'Failed to schedule downgrade: ' + stripeError.message };
+                    context.res.body = { error: 'Subscription change temporarily unavailable' };
                     return;
                 }
             }

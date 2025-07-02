@@ -60,7 +60,7 @@ module.exports = async function (context, req) {
         if (error.message.includes('Access denied') || error.message.includes('Invalid token')) {
             context.res = { status: 403, body: { error: 'Access denied' } };
         } else {
-            context.res = { status: 500, body: { error: 'Internal server error' } };
+            context.res = { status: 500, body: { error: 'Service temporarily unavailable' } };
         }
     }
 };
