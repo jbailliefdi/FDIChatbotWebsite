@@ -13,8 +13,24 @@
       "rewrite": "/admin.html"
     },
     {
-      "route": "/api/*",
+      "route": "/api/stripe-webhook",
       "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/get-auth-config",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/create-checkout-session",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/test",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"]
     }
   ],
   "responseOverrides": {
