@@ -53,6 +53,8 @@ module.exports = async function (context, req) {
 
         const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
         
+        context.log('Organization query result:', organizations.length, 'organizations found');
+        
         if (organizations.length === 0) {
             context.res = {
                 status: 404,
@@ -62,6 +64,7 @@ module.exports = async function (context, req) {
         }
 
         const organization = organizations[0];
+        context.log('Found organization:', organization.name);
 
         // Generate unique token
         const token = crypto.randomBytes(32).toString('hex');
@@ -79,9 +82,17 @@ module.exports = async function (context, req) {
         };
 
         // Update organization with new invite link
-        await organizationsContainer.item(organizationId, organizationId).patch([
-            { op: 'replace', path: '/inviteLink', value: inviteLinkData }
-        ]);
+        try {
+            await organizationsContainer.item(organizationId, organizationId).patch([
+                { op: 'replace', path: '/inviteLink', value: inviteLinkData }
+            ]);
+        } catch (patchError) {
+            // If replace fails (property doesn't exist), try add instead
+            context.log('Replace failed, trying add operation:', patchError.message);
+            await organizationsContainer.item(organizationId, organizationId).patch([
+                { op: 'add', path: '/inviteLink', value: inviteLinkData }
+            ]);
+        }
 
         context.res = {
             status: 200,
