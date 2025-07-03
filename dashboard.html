@@ -789,7 +789,7 @@
                 </div>
                 <div style="text-align: right;">
                     <strong>Active Licenses:</strong> <span id="currentLicenseCount">0</span>
-                    <div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
+                    <div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;" id="currentPricePerLicense">
                         £50 per license/month
                     </div>
                 </div>
@@ -1066,6 +1066,7 @@ function showManagePlanModal() {
     
     document.getElementById('currentLicenseCount').textContent = currentLicenses;
     document.getElementById('currentMonthlyPrice').textContent = currentPrice;
+    document.getElementById('currentPricePerLicense').textContent = `£${pricePerLicense} per license/${billingPeriod}`;
     document.getElementById('newLicenseCount').value = currentLicenses;
     updatePlanPreview();
     
@@ -1114,7 +1115,7 @@ function updatePlanPreview() {
     
     // Handle price difference display and button text
     if (difference > 0) {
-        diffElement.innerHTML = `<span style="color: #e74c3c;">+£${difference}/${billingPeriod} (immediate charge: £${difference})</span>`;
+        diffElement.innerHTML = `<span style="color: #e74c3c;">+£${difference}/${billingPeriod} (immediate charge will be pro-rated`;
         updateBtn.textContent = 'Upgrade Plan (Pay Now)';
         updateBtn.className = 'btn btn-primary';
     } else if (difference < 0) {
