@@ -114,7 +114,7 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error retrieving checkout session:', error);
+        context.log.error('Error retrieving checkout session:', error.message);
         
         // Don't expose internal error details to client
         if (error.type === 'StripeInvalidRequestError') {

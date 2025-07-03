@@ -256,7 +256,7 @@ if ((organization.status === 'trialing' || organization.isTrial) && (organizatio
         }
 
     } catch (error) {
-        context.log.error('Error checking subscription:', error);
+        context.log.error('Error checking subscription:', error.message);
         
       
         context.res = {

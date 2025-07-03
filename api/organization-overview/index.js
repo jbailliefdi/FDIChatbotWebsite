@@ -131,7 +131,7 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error fetching organization overview:', error);
+        context.log.error('Error fetching organization overview:', error.message);
         context.res.status = 500;
         context.res.body = { error: 'Internal server error' };
     }

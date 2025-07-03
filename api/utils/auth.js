@@ -36,7 +36,7 @@ async function validateToken(authHeader) {
             algorithms: ['RS256']
         }, (err, decoded) => {
             if (err) {
-                console.error('Token validation error:', err);
+                console.error('Token validation error:', err.message);
                 reject(new Error('Invalid token'));
             } else {
                 resolve(decoded);

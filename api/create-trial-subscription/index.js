@@ -63,7 +63,7 @@ module.exports = async function (context, req) {
             });
         } catch (stripeError) {
             // THIS IS THE IMPORTANT PART: Send the detailed error back to the browser
-            context.log.error('Error creating subscription:', stripeError);
+            context.log.error('Error creating subscription:', stripeError.message);
             const debugInfo = { type: stripeError.type, message: stripeError.message, code: stripeError.code, param: stripeError.param };
             context.res.status = 500;
             context.res.body = JSON.stringify({
@@ -77,7 +77,7 @@ module.exports = async function (context, req) {
         context.res.body = JSON.stringify({ success: true, message: 'Trial subscription created successfully' });
 
     } catch (error) {
-        context.log.error('Unexpected error:', error);
+        context.log.error('Unexpected error:', error.message);
         context.res.status = 500;
         context.res.body = JSON.stringify({ error: 'Internal server error', message: 'Service temporarily unavailable' });
     }

@@ -99,7 +99,7 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error processing webhook:', error);
+        context.log.error('Error processing webhook:', error.message);
         context.res = {
             status: 500,
             body: { message: error.message || 'Internal server error' }
@@ -122,7 +122,7 @@ async function handleCheckoutCompleted(context, session) {
         }
 
     } catch (error) {
-        context.log.error('Error in handleCheckoutCompleted:', error);
+        context.log.error('Error in handleCheckoutCompleted:', error.message);
         throw error;
     }
 }
@@ -148,7 +148,7 @@ async function processLicenseUpgrade(context, metadata, session) {
 
                 context.log(`Updated Stripe subscription ${stripeSubscriptionId} quantity to ${newLicenseCount}`);
             } catch (stripeError) {
-                context.log.error('Error updating Stripe subscription quantity:', stripeError);
+                context.log.error('Error updating Stripe subscription quantity:', stripeError.message);
                 // Continue with database update even if Stripe update fails
             }
         }
@@ -175,7 +175,7 @@ async function processLicenseUpgrade(context, metadata, session) {
         }
 
     } catch (error) {
-        context.log.error('Error processing license upgrade:', error);
+        context.log.error('Error processing license upgrade:', error.message);
         throw error;
     }
 }
@@ -256,7 +256,7 @@ async function handleInvoicePaymentSucceeded(context, invoice) {
         }
 
     } catch (error) {
-        context.log.error('Error in handleInvoicePaymentSucceeded:', error);
+        context.log.error('Error in handleInvoicePaymentSucceeded:', error.message);
         throw error;
     }
 }
@@ -476,7 +476,7 @@ async function handleSubscriptionUpdated(context, subscription) {
         context.log('Organization updated with status:', newStatus, 'and license count:', updatedOrg.licenseCount);
 
     } catch (error) {
-        context.log.error('Error in handleSubscriptionUpdated:', error);
+        context.log.error('Error in handleSubscriptionUpdated:', error.message);
         throw error;
     }
 }
@@ -509,7 +509,7 @@ async function handleSubscriptionDeleted(context, subscription) {
         context.log('Organization status set to cancelled');
 
     } catch (error) {
-        context.log.error('Error in handleSubscriptionDeleted:', error);
+        context.log.error('Error in handleSubscriptionDeleted:', error.message);
         throw error;
     }
 }
@@ -548,7 +548,7 @@ async function handlePaymentFailed(context, invoice) {
         context.log('Organization status set to past_due with grace period');
 
     } catch (error) {
-        context.log.error('Error in handlePaymentFailed:', error);
+        context.log.error('Error in handlePaymentFailed:', error.message);
         throw error;
     }
 }
@@ -589,7 +589,7 @@ async function handlePaymentSucceeded(context, invoice) {
         context.log('Organization status restored to active');
 
     } catch (error) {
-        context.log.error('Error in handlePaymentSucceeded:', error);
+        context.log.error('Error in handlePaymentSucceeded:', error.message);
         throw error;
     }
 }
@@ -644,7 +644,7 @@ async function handleMockSubscriptionUpdated(context, email, status = 'active') 
         context.log('Organization status updated to:', status);
 
     } catch (error) {
-        context.log.error('Error in handleMockSubscriptionUpdated:', error);
+        context.log.error('Error in handleMockSubscriptionUpdated:', error.message);
         throw error;
     }
 }

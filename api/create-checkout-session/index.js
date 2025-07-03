@@ -336,8 +336,7 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error creating checkout session:', error);
-        context.log.error('Error stack:', error.stack);
+        context.log.error('Error creating checkout session:', error.message);
         
         // Ensure we always return a valid JSON response
         context.res = {

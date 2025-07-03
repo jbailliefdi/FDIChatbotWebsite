@@ -107,7 +107,7 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error cancelling downgrade:', error);
+        context.log.error('Error cancelling downgrade:', error.message);
         context.res.status = 500;
         context.res.body = { error: 'Internal server error' };
     }

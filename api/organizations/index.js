@@ -42,7 +42,7 @@ module.exports = async function (context, req) {
         
         context.log('Organizations listed:', organizations.length);
     } catch (error) {
-        context.log.error('Error listing organizations:', error);
+        context.log.error('Error listing organizations:', error.message);
         context.res.status = 500;
         context.res.body = { error: 'Service temporarily unavailable' };
     }

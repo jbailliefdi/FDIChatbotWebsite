@@ -152,7 +152,7 @@ billingData.subscription = {
         context.res.body = billingData;
         
     } catch (error) {
-        context.log.error('Error fetching billing data:', error);
+        context.log.error('Error fetching billing data:', error.message);
         context.res.status = 500;
         context.res.body = { error: 'Internal server error' };
     }

@@ -209,7 +209,7 @@ module.exports = async function (context, req) {
                 return;
 
             } catch (stripeError) {
-                context.log.error('Stripe checkout creation error:', stripeError);
+                context.log.error('Stripe checkout creation error:', stripeError.message);
                 context.res.status = 500;
                 context.res.body = { error: 'Payment processing temporarily unavailable' };
                 return;
@@ -271,7 +271,7 @@ module.exports = async function (context, req) {
                     return;
 
                 } catch (stripeError) {
-                    context.log.error('Stripe downgrade scheduling error:', stripeError);
+                    context.log.error('Stripe downgrade scheduling error:', stripeError.message);
                     context.res.status = 500;
                     context.res.body = { error: 'Subscription change temporarily unavailable' };
                     return;
@@ -293,7 +293,7 @@ module.exports = async function (context, req) {
         context.res.body = { error: 'Invalid operation' };
 
     } catch (error) {
-        context.log.error('Error updating subscription:', error);
+        context.log.error('Error updating subscription:', error.message);
         context.res.status = 500;
         context.res.body = { error: 'Internal server error' };
     }

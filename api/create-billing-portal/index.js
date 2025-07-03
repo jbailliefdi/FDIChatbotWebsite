@@ -54,7 +54,7 @@ module.exports = async function (context, req) {
         };
 
     } catch (error) {
-        context.log.error('Error:', error);
+        context.log.error('Error:', error.message);
         context.res = {
             status: 500,
             body: { error: 'Service temporarily unavailable' }

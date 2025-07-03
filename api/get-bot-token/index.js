@@ -72,7 +72,7 @@ module.exports = async function (context, req) {
             
             context.log('Organization verified as active/trialing:', organization.status);
         } catch (dbError) {
-            context.log.error('Database query failed:', dbError);
+            context.log.error('Database query failed:', dbError.message);
             context.res = { 
                 status: 500, 
                 body: { message: 'Service temporarily unavailable' } 
@@ -103,7 +103,7 @@ module.exports = async function (context, req) {
         context.log('DirectLine token returned for user:', user.id);
 
     } catch (error) {
-        context.log.error('Outer error getting bot token:', error);
+        context.log.error('Outer error getting bot token:', error.message);
         context.res = {
             status: 500,
             body: { message: 'Service temporarily unavailable' }

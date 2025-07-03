@@ -127,7 +127,7 @@ module.exports = async function (context, req) {
                 };
                 
             } catch (dbError) {
-                context.log.error('Database error:', dbError);
+                context.log.error('Database error:', dbError.message);
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to create user',
@@ -201,7 +201,7 @@ module.exports = async function (context, req) {
                 };
                 
             } catch (dbError) {
-                context.log.error('Database error:', dbError);
+                context.log.error('Database error:', dbError.message);
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to get organization overview',
@@ -285,7 +285,7 @@ module.exports = async function (context, req) {
                 };
                 
             } catch (dbError) {
-                context.log.error('Database error:', dbError);
+                context.log.error('Database error:', dbError.message);
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to update user',
@@ -351,7 +351,7 @@ module.exports = async function (context, req) {
                 context.res.body = { message: 'User removed successfully' };
                 
             } catch (dbError) {
-                context.log.error('Database error:', dbError);
+                context.log.error('Database error:', dbError.message);
                 context.res.status = 500;
                 context.res.body = { 
                     error: 'Failed to delete user',
@@ -372,7 +372,7 @@ module.exports = async function (context, req) {
         };
         
     } catch (error) {
-        context.log.error('Error:', error);
+        context.log.error('Error:', error.message);
         context.res.status = 500;
         context.res.body = { 
             error: 'Internal server error',

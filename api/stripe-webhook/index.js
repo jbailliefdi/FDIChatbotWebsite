@@ -87,7 +87,7 @@ async function handleCheckoutCompleted(context, session) {
         context.log('Organization and admin user created successfully');
 
     } catch (error) {
-        context.log.error('Error handling checkout completion:', error);
+        context.log.error('Error handling checkout completion:', error.message);
         throw new Error('Checkout processing failed');
     }
 }
@@ -130,7 +130,7 @@ async function handleSubscriptionUpdated(context, subscription) {
         context.log('Organization updated successfully');
 
     } catch (error) {
-        context.log.error('Error handling subscription update:', error);
+        context.log.error('Error handling subscription update:', error.message);
         throw new Error('Subscription update failed');
     }
 }
@@ -159,7 +159,7 @@ async function handleSubscriptionDeleted(context, subscription) {
         }
 
     } catch (error) {
-        context.log.error('Error handling subscription deletion:', error);
+        context.log.error('Error handling subscription deletion:', error.message);
         throw new Error('Subscription deletion failed');
     }
 }
@@ -188,7 +188,7 @@ async function handlePaymentFailed(context, invoice) {
         }
 
     } catch (error) {
-        context.log.error('Error handling payment failure:', error);
+        context.log.error('Error handling payment failure:', error.message);
         throw new Error('Payment failure processing failed');
     }
 }
