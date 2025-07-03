@@ -324,6 +324,22 @@
             color: white;
         }
 
+        .action-btn.disabled,
+        .action-btn:disabled {
+            background: #e9ecef !important;
+            color: #6c757d !important;
+            border-color: #e9ecef !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+        }
+
+        .action-btn.disabled:hover,
+        .action-btn:disabled:hover {
+            background: #e9ecef !important;
+            color: #6c757d !important;
+            transform: none !important;
+        }
+
         /* Billing Page Styles */
         .billing-overview {
             display: grid;
@@ -1558,7 +1574,12 @@ async function cancelPendingDowngrade() {
                 }
             } else {
                 const buttonText = user.status === 'pending' ? 'Activate' : 'Reactivate';
-                actions += `<button class="action-btn success" onclick="reactivateUser('${user.id}')">${buttonText}</button>`;
+                const hasAvailableLicenses = currentOrganization.usage && currentOrganization.usage.available > 0;
+                const disabledClass = hasAvailableLicenses ? '' : ' disabled';
+                const disabledAttr = hasAvailableLicenses ? '' : ' disabled';
+                const title = hasAvailableLicenses ? '' : ' title="No available licenses"';
+                
+                actions += `<button class="action-btn success${disabledClass}" onclick="reactivateUser('${user.id}')" ${disabledAttr}${title}>${buttonText}</button>`;
                 if (!isOnlyAdmin) {
                     actions += `<button class="action-btn danger" onclick="removeUser('${user.id}')">Remove</button>`;
                 }
@@ -1627,6 +1648,26 @@ async function cancelPendingDowngrade() {
                 return;
             }
             
+            // Check if we have available licenses
+            if (currentOrganization.usage && currentOrganization.usage.available <= 0) {
+                showError('Cannot activate user: No available licenses. Please upgrade your plan or deactivate other users first.');
+                return;
+            }
+            
+            // Find the user to get their details for confirmation
+            const userToActivate = organizationUsers.find(u => u.id === userId);
+            if (!userToActivate) {
+                showError('User not found');
+                return;
+            }
+            
+            const actionText = userToActivate.status === 'pending' ? 'activate' : 'reactivate';
+            const confirmMessage = `Are you sure you want to ${actionText} ${userToActivate.firstName} ${userToActivate.lastName}? This will use 1 license.`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
             try {
                 const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
@@ -1636,20 +1677,21 @@ async function cancelPendingDowngrade() {
                 
                 if (response.ok) {
                     const result = await response.json();
-                    showSuccess('User reactivated successfully');
+                    const successText = userToActivate.status === 'pending' ? 'activated' : 'reactivated';
+                    showSuccess(`User ${successText} successfully`);
                     loadDashboardData();
                 } else {
                     // Handle error response
                     try {
                         const result = await response.json();
-                        showError(result.error || 'Failed to reactivate user');
+                        showError(result.error || `Failed to ${actionText} user`);
                     } catch (jsonError) {
-                        showError(`Failed to reactivate user (${response.status})`);
+                        showError(`Failed to ${actionText} user (${response.status})`);
                     }
                 }
             } catch (error) {
                 console.error('Reactivate error:', error);
-                showError('Failed to reactivate user');
+                showError(`Failed to ${actionText} user`);
             }
         }
 
