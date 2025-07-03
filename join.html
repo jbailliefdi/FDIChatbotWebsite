@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Organization - TIA</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .join-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .logo-section {
+            margin-bottom: 30px;
+        }
+
+        .logo-section h1 {
+            color: #3498db;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .logo-section img {
+            height: 40px;
+            width: auto;
+        }
+
+        .org-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3498db;
+        }
+
+        .org-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .org-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .join-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .join-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .join-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .back-link {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e8ed;
+        }
+
+        .back-link a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .join-container {
+                padding: 30px 20px;
+            }
+            
+            .logo-section h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="join-container">
+        <div class="logo-section">
+            <h1>
+                TIA
+                <img src="/FDi_Logo_Device_Transparent_Outer.png" alt="FDI Logo">
+            </h1>
+            <p style="color: #666; font-size: 1.1rem;">Join Organization</p>
+        </div>
+
+        <div id="loadingSection" class="loading">
+            <div class="spinner"></div>
+            <p>Loading organization details...</p>
+        </div>
+
+        <div id="joinForm" style="display: none;">
+            <div class="org-info">
+                <h3 id="orgName">Loading...</h3>
+                <p>You've been invited to join this organization. Please enter your details below to request access.</p>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <form id="signupForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="company">Company (Optional)</label>
+                    <input type="text" id="company" name="company">
+                </div>
+
+                <button type="submit" class="join-btn">
+                    <i class="fas fa-user-plus"></i> Request Access
+                </button>
+            </form>
+
+            <div class="back-link">
+                <a href="/app">← Back to TIA</a>
+            </div>
+        </div>
+
+        <div id="errorSection" style="display: none;">
+            <div class="message error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="errorMessage">This invitation link is invalid or has expired.</span>
+            </div>
+            <div class="back-link">
+                <a href="/app">← Back to TIA</a>
+            </div>
+        </div>
+
+        <div id="successSection" style="display: none;">
+            <div class="message success">
+                <i class="fas fa-check-circle"></i>
+                <strong>Request Submitted!</strong>
+                <p style="margin-top: 10px;">Your request to join the organization has been submitted. An administrator will review your request and send you an invitation if approved.</p>
+            </div>
+            <div class="back-link">
+                <a href="/app">← Back to TIA</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let inviteToken = null;
+        let organizationData = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Get token from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            inviteToken = urlParams.get('token');
+            
+            if (!inviteToken) {
+                showError('No invitation token provided');
+                return;
+            }
+            
+            // Load organization data
+            await loadOrganizationData();
+        });
+
+        async function loadOrganizationData() {
+            try {
+                const response = await fetch('/api/validate-invite-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: inviteToken })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    organizationData = data;
+                    showJoinForm();
+                } else {
+                    showError(data.error || 'Invalid invitation link');
+                }
+            } catch (error) {
+                console.error('Error loading organization data:', error);
+                showError('Failed to load organization data');
+            }
+        }
+
+        function showJoinForm() {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('orgName').textContent = organizationData.organizationName;
+            document.getElementById('joinForm').style.display = 'block';
+        }
+
+        function showError(message) {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorSection').style.display = 'block';
+        }
+
+        function showSuccess() {
+            document.getElementById('joinForm').style.display = 'none';
+            document.getElementById('successSection').style.display = 'block';
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}"></i> ${message}`;
+            
+            container.innerHTML = '';
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        // Handle form submission
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            
+            // Show loading state
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            
+            try {
+                const response = await fetch('/api/public-signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: inviteToken,
+                        firstName: formData.get('firstName'),
+                        lastName: formData.get('lastName'),
+                        email: formData.get('email'),
+                        company: formData.get('company')
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess();
+                } else {
+                    showMessage(result.error || 'Failed to submit request', 'error');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                showMessage('Failed to submit request. Please try again.', 'error');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            }
+        });
+    </script>
+</body>
+</html>

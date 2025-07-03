@@ -641,10 +641,16 @@
                 <div class="users-section">
                     <div class="section-header">
                         <h3><i class="fas fa-users"></i> Team Members</h3>
-                        <button class="invite-btn" onclick="showInviteModal()">
-                            <i class="fas fa-plus"></i>
-                            Invite User
-                        </button>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="invite-btn" onclick="showInviteModal()">
+                                <i class="fas fa-plus"></i>
+                                Invite User
+                            </button>
+                            <button class="invite-btn" onclick="showShareableLinkModal()" style="background: #27ae60;">
+                                <i class="fas fa-link"></i>
+                                Share Invite Link
+                            </button>
+                        </div>
                     </div>
 
                     <div id="usersTableContainer">
@@ -829,6 +835,50 @@
         </form>
     </div>
 </div>
+
+    <!-- Shareable Link Modal -->
+    <div id="shareableLinkModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Share Invite Link</h2>
+                <button class="close-btn" onclick="hideShareableLinkModal()">×</button>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <p style="color: #666; margin-bottom: 1rem;">
+                    Share this link with people you want to invite to your organization. 
+                    They'll be able to enter their details and request access.
+                </p>
+                
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="text" id="shareableLinkInput" readonly 
+                               style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; font-size: 0.9rem;">
+                        <button onclick="copyShareableLink()" class="btn btn-primary">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="background: #e3f2fd; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span><strong>Available Licenses:</strong></span>
+                        <span id="shareableLinkLicenseInfo">Loading...</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: #666;">
+                        People who use this link will be added as pending users and will need admin approval to activate their licenses.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideShareableLinkModal()">Close</button>
+                <button type="button" class="btn btn-success" onclick="generateNewLink()">
+                    <i class="fas fa-refresh"></i> Generate New Link
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // MSAL Configuration
@@ -1303,6 +1353,9 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
         // Update dashboard UI with real data
         function updateDashboardUI(data) {
             const { organization, users, usage } = data;
+            
+            // Store usage data in organization object for modal access
+            currentOrganization.usage = usage;
             
             document.getElementById('orgName').textContent = organization.name;
             
@@ -1946,6 +1999,86 @@ async function openBillingPortal() {
             document.getElementById('inviteForm').reset();
         }
 
+        // Shareable Link Modal Functions
+        async function showShareableLinkModal() {
+            if (!currentOrganization) {
+                showError('Unable to generate invite link');
+                return;
+            }
+            
+            // Update license info
+            if (currentOrganization.usage) {
+                document.getElementById('shareableLinkLicenseInfo').textContent = 
+                    `${currentOrganization.usage.available} available (${currentOrganization.usage.used}/${currentOrganization.usage.total} used)`;
+            }
+            
+            // Generate or get existing link
+            await generateShareableLink();
+            
+            document.getElementById('shareableLinkModal').classList.add('show');
+        }
+
+        function hideShareableLinkModal() {
+            document.getElementById('shareableLinkModal').classList.remove('show');
+        }
+
+        async function generateShareableLink() {
+            if (!currentOrganization || !currentUser) {
+                showError("Authentication required");
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/generate-invite-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        organizationId: currentOrganization.id,
+                        userEmail: currentUser.email
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const shareableUrl = `${window.location.origin}/join?token=${result.token}`;
+                    document.getElementById('shareableLinkInput').value = shareableUrl;
+                } else {
+                    showError(result.error || 'Failed to generate invite link');
+                }
+            } catch (error) {
+                console.error('Generate link error:', error);
+                showError('Failed to generate invite link');
+            }
+        }
+
+        function copyShareableLink() {
+            const input = document.getElementById('shareableLinkInput');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            
+            try {
+                document.execCommand('copy');
+                showSuccess('Invite link copied to clipboard!');
+            } catch (err) {
+                // Fallback for modern browsers
+                navigator.clipboard.writeText(input.value).then(() => {
+                    showSuccess('Invite link copied to clipboard!');
+                }).catch(() => {
+                    showError('Failed to copy link. Please copy manually.');
+                });
+            }
+        }
+
+        async function generateNewLink() {
+            if (!confirm('Are you sure you want to generate a new invite link? The old link will stop working.')) {
+                return;
+            }
+            
+            await generateShareableLink();
+            showSuccess('New invite link generated!');
+        }
+
         // Invite form submission
         document.getElementById('inviteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -2007,6 +2140,12 @@ async function openBillingPortal() {
         document.getElementById('inviteModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 hideInviteModal();
+            }
+        });
+
+        document.getElementById('shareableLinkModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideShareableLinkModal();
             }
         });
     </script>
