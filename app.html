@@ -1425,7 +1425,6 @@ async function checkUserStatus(account) {
         }
         
         const data = await response.json();
-        console.log('User status check result:', data);
         
         // Store trial data if present
         if (data.trial) {
@@ -1470,7 +1469,6 @@ async function verifyUserAndInitialize(account) {
 
     if (result.userExists) {
         if (result.accessGranted) {
-            console.log("User verified and access granted. Initializing chat.");
             hideAccountStatusOverlay();
             hideSubscriptionOverlay();
             updateAuthUI();
@@ -1586,7 +1584,6 @@ function initializeChat() {
     // This function now centralizes the start of the chat experience
     try {
         newchat(); 
-        console.log("Initial newchat() called after subscription verification.");
     } catch (chatInitError) { 
         alert("Failed to initialize the chat interface. Please refresh the page."); 
         console.error("Error initializing chat on load:", chatInitError);
@@ -1832,7 +1829,7 @@ function postSignInEvent() {
                 firstName: account.name ? account.name.split(" ")[0] : "User",
                 subscription: subscriptionData // Pass subscription data to the bot
             }
-        }).subscribe(id => console.log("Generic signin/verifyState sent, client ID:", id),
+        }).subscribe(id => {},
             error => console.error("Error sending generic signin/verifyState:", error));
     }
 }
@@ -2014,7 +2011,6 @@ const token = await getDirectLineToken(account.username);
 }
 async function newchat() {
     if (!userData?.accessGranted) { showSubscriptionOverlay(); return; }
-    console.log("newchat called");
     isInjectingHistory = false; endCurrentDirectLine();
     const tempChatId = "new_" + Date.now();
     const tempLabel = "New Chat...";
@@ -2084,7 +2080,6 @@ window.confirmDelete = confirmDelete;
 window.showAuthLoadingOverlay = showAuthLoadingOverlay;
 window.hideAuthLoadingOverlay = hideAuthLoadingOverlay;
 window.onload = async () => {
-    console.log("Window onload started.");
     handleTrialUrlParams();
     
     // Set initial loading state for auth UI
@@ -2133,12 +2128,10 @@ window.onload = async () => {
         }
 
         if (account) {
-            console.log("MSAL Account found:", account.username);
             const tokenRequest = { scopes: ["openid", "profile", "User.Read"], account: account };
             try {
                 const tokenResponse = await msalInstance.acquireTokenSilent(tokenRequest);
                 saveAuthToken(tokenResponse.accessToken);
-                console.log("MSAL token acquired silently.");
                 // Token is ready, now check subscription
                 await verifyUserAndInitialize(account);
             } catch (error) {
@@ -2171,7 +2164,6 @@ window.onload = async () => {
             .subscribe( id => {}, error => {console.warn("Periodic sidebar update request failed:", error);} ); 
         } 
     }, 30000);
-    console.log("Window onload finished.");
 };
   </script>
 <!-- Loading Overlay -->

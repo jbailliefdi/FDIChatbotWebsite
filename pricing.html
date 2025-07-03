@@ -637,7 +637,6 @@
         // Initialize plan based on URL parameter
         function initializePlan() {
             const planParam = getURLParameter('plan');
-            console.log('URL plan parameter:', planParam); // Debug log
             if (planParam && ['trial', 'monthly', 'annual'].includes(planParam)) {
                 currentPlan = planParam;
                 selectPlan(planParam);
@@ -647,7 +646,6 @@
         }
 
         function selectPlan(plan) {
-            console.log('Selecting plan:', plan); // Debug log
             currentPlan = plan;
             
             // Remove active class from all options
@@ -712,7 +710,6 @@
     
     let subtotal, priceText, billingNote;
             
-            console.log('Updating price for plan:', currentPlan, 'licenses:', licenseCount); // Debug log
             
             if (currentPlan === 'annual') {
                 subtotal = licenseCount * 550; // £550 per user per year
@@ -846,7 +843,6 @@
 
         // Initialize UI on page load
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing...'); // Debug log
             initializePlan(); // This will read URL params and set the correct plan
             updatePrice();
             updateButtonText();
