@@ -12,6 +12,8 @@ module.exports = async function (context, req) {
     try {
         const { organizationId, userEmail } = req.body;
 
+        context.log('Request data:', { organizationId, userEmail });
+
         if (!organizationId || !userEmail) {
             context.res = {
                 status: 400,
@@ -22,14 +24,16 @@ module.exports = async function (context, req) {
 
         // Verify user is admin of the organization
         const userQuery = {
-            query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
+            query: "SELECT * FROM c WHERE LOWER(c.email) = LOWER(@email) AND c.organizationId = @orgId AND c.role = 'admin' AND c.status = 'active'",
             parameters: [
-                { name: "@email", value: userEmail },
+                { name: "@email", value: userEmail.toLowerCase() },
                 { name: "@orgId", value: organizationId }
             ]
         };
 
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+        
+        context.log('User query result:', users.length, 'users found');
         
         if (users.length === 0) {
             context.res = {
