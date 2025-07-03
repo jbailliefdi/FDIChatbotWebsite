@@ -1,16 +1,10 @@
 const { CosmosClient } = require('@azure/cosmos');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const cosmosClient = new CosmosClient({
-    endpoint: process.env.COSMOS_DB_ENDPOINT,
-    key: process.env.COSMOS_DB_KEY,
-});
-
-const database = cosmosClient.database('TIA');
+const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+const database = cosmosClient.database('fdi-chatbot');
 const usersContainer = database.container('users');
 const organizationsContainer = database.container('organizations');
-const inviteLinksContainer = database.container('inviteLinks');
 
 module.exports = async function (context, req) {
     context.log('Generate invite link function processed a request.');
@@ -70,28 +64,8 @@ module.exports = async function (context, req) {
         const expirationDate = new Date();
         expirationDate.setDate(expirationDate.getDate() + 30); // 30 days expiration
 
-        // Check if an existing invite link exists for this organization
-        const existingLinkQuery = {
-            query: "SELECT * FROM c WHERE c.organizationId = @orgId AND c.active = true",
-            parameters: [
-                { name: "@orgId", value: organizationId }
-            ]
-        };
-
-        const { resources: existingLinks } = await inviteLinksContainer.items.query(existingLinkQuery).fetchAll();
-        
-        // Deactivate existing links
-        for (const link of existingLinks) {
-            await inviteLinksContainer.item(link.id, link.organizationId).patch([
-                { op: 'replace', path: '/active', value: false }
-            ]);
-        }
-
-        // Create new invite link record
-        const inviteLink = {
-            id: token,
-            organizationId: organizationId,
-            organizationName: organization.name,
+        // Store invite link data in the organization document
+        const inviteLinkData = {
             token: token,
             createdBy: userEmail,
             createdAt: new Date().toISOString(),
@@ -100,7 +74,10 @@ module.exports = async function (context, req) {
             usageCount: 0
         };
 
-        await inviteLinksContainer.items.create(inviteLink);
+        // Update organization with new invite link
+        await organizationsContainer.item(organizationId, organizationId).patch([
+            { op: 'replace', path: '/inviteLink', value: inviteLinkData }
+        ]);
 
         context.res = {
             status: 200,

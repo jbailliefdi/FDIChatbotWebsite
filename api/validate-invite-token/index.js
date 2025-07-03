@@ -1,12 +1,8 @@
 const { CosmosClient } = require('@azure/cosmos');
 
-const cosmosClient = new CosmosClient({
-    endpoint: process.env.COSMOS_DB_ENDPOINT,
-    key: process.env.COSMOS_DB_KEY,
-});
-
-const database = cosmosClient.database('TIA');
-const inviteLinksContainer = database.container('inviteLinks');
+const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+const database = cosmosClient.database('fdi-chatbot');
+const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
     context.log('Validate invite token function processed a request.');
@@ -22,17 +18,17 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Find invite link by token
-        const linkQuery = {
-            query: "SELECT * FROM c WHERE c.token = @token AND c.active = true",
+        // Find organization with matching invite token
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.inviteLink.token = @token AND c.inviteLink.active = true",
             parameters: [
                 { name: "@token", value: token }
             ]
         };
 
-        const { resources: inviteLinks } = await inviteLinksContainer.items.query(linkQuery).fetchAll();
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
         
-        if (inviteLinks.length === 0) {
+        if (organizations.length === 0) {
             context.res = {
                 status: 404,
                 body: { error: 'Invalid or expired invitation link' }
@@ -40,7 +36,8 @@ module.exports = async function (context, req) {
             return;
         }
 
-        const inviteLink = inviteLinks[0];
+        const organization = organizations[0];
+        const inviteLink = organization.inviteLink;
 
         // Check if token is expired
         const now = new Date();
@@ -48,8 +45,8 @@ module.exports = async function (context, req) {
         
         if (now > expirationDate) {
             // Deactivate expired link
-            await inviteLinksContainer.item(inviteLink.id, inviteLink.organizationId).patch([
-                { op: 'replace', path: '/active', value: false }
+            await organizationsContainer.item(organization.id, organization.id).patch([
+                { op: 'replace', path: '/inviteLink/active', value: false }
             ]);
 
             context.res = {
@@ -62,8 +59,8 @@ module.exports = async function (context, req) {
         context.res = {
             status: 200,
             body: {
-                organizationId: inviteLink.organizationId,
-                organizationName: inviteLink.organizationName,
+                organizationId: organization.id,
+                organizationName: organization.name,
                 expiresAt: inviteLink.expiresAt
             }
         };

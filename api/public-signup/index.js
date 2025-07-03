@@ -1,14 +1,9 @@
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
 
-const cosmosClient = new CosmosClient({
-    endpoint: process.env.COSMOS_DB_ENDPOINT,
-    key: process.env.COSMOS_DB_KEY,
-});
-
-const database = cosmosClient.database('TIA');
+const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+const database = cosmosClient.database('fdi-chatbot');
 const usersContainer = database.container('users');
-const inviteLinksContainer = database.container('inviteLinks');
 const organizationsContainer = database.container('organizations');
 
 module.exports = async function (context, req) {
@@ -36,16 +31,16 @@ module.exports = async function (context, req) {
         }
 
         // Validate invite token
-        const linkQuery = {
-            query: "SELECT * FROM c WHERE c.token = @token AND c.active = true",
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.inviteLink.token = @token AND c.inviteLink.active = true",
             parameters: [
                 { name: "@token", value: token }
             ]
         };
 
-        const { resources: inviteLinks } = await inviteLinksContainer.items.query(linkQuery).fetchAll();
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
         
-        if (inviteLinks.length === 0) {
+        if (organizations.length === 0) {
             context.res = {
                 status: 404,
                 body: { error: 'Invalid or expired invitation link' }
@@ -53,7 +48,8 @@ module.exports = async function (context, req) {
             return;
         }
 
-        const inviteLink = inviteLinks[0];
+        const organization = organizations[0];
+        const inviteLink = organization.inviteLink;
 
         // Check if token is expired
         const now = new Date();
@@ -61,8 +57,8 @@ module.exports = async function (context, req) {
         
         if (now > expirationDate) {
             // Deactivate expired link
-            await inviteLinksContainer.item(inviteLink.id, inviteLink.organizationId).patch([
-                { op: 'replace', path: '/active', value: false }
+            await organizationsContainer.item(organization.id, organization.id).patch([
+                { op: 'replace', path: '/inviteLink/active', value: false }
             ]);
 
             context.res = {
@@ -77,7 +73,7 @@ module.exports = async function (context, req) {
             query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId",
             parameters: [
                 { name: "@email", value: email },
-                { name: "@orgId", value: inviteLink.organizationId }
+                { name: "@orgId", value: organization.id }
             ]
         };
 
@@ -100,31 +96,13 @@ module.exports = async function (context, req) {
             }
         }
 
-        // Get organization details to check license availability
-        const orgQuery = {
-            query: "SELECT * FROM c WHERE c.id = @orgId",
-            parameters: [
-                { name: "@orgId", value: inviteLink.organizationId }
-            ]
-        };
-
-        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
-        
-        if (organizations.length === 0) {
-            context.res = {
-                status: 404,
-                body: { error: 'Organization not found' }
-            };
-            return;
-        }
-
-        const organization = organizations[0];
+        // Organization is already loaded from the token validation above
 
         // Count current active users
         const activeUsersQuery = {
             query: "SELECT VALUE COUNT(1) FROM c WHERE c.organizationId = @orgId AND c.status = 'active'",
             parameters: [
-                { name: "@orgId", value: inviteLink.organizationId }
+                { name: "@orgId", value: organization.id }
             ]
         };
 
@@ -140,8 +118,8 @@ module.exports = async function (context, req) {
             company: company?.trim() || '',
             role: 'user',
             status: 'pending', // Pending admin approval
-            organizationId: inviteLink.organizationId,
-            organizationName: inviteLink.organizationName,
+            organizationId: organization.id,
+            organizationName: organization.name,
             inviteToken: token,
             requestedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
@@ -152,15 +130,15 @@ module.exports = async function (context, req) {
         await usersContainer.items.create(newUser);
 
         // Update invite link usage count
-        await inviteLinksContainer.item(inviteLink.id, inviteLink.organizationId).patch([
-            { op: 'replace', path: '/usageCount', value: (inviteLink.usageCount || 0) + 1 }
+        await organizationsContainer.item(organization.id, organization.id).patch([
+            { op: 'replace', path: '/inviteLink/usageCount', value: (inviteLink.usageCount || 0) + 1 }
         ]);
 
         context.res = {
             status: 200,
             body: {
                 message: 'Request submitted successfully',
-                organizationName: inviteLink.organizationName,
+                organizationName: organization.name,
                 status: 'pending',
                 requiresApproval: true
             }
