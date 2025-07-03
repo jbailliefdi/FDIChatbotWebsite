@@ -10,7 +10,7 @@ module.exports = async function (context, req) {
     context.log('Public signup function processed a request.');
 
     try {
-        const { token, firstName, lastName, email, company } = req.body;
+        const { token, firstName, lastName, email } = req.body;
 
         if (!token || !firstName || !lastName || !email) {
             context.res = {
@@ -115,7 +115,6 @@ module.exports = async function (context, req) {
             email: email.toLowerCase(),
             firstName: firstName.trim(),
             lastName: lastName.trim(),
-            company: company?.trim() || '',
             role: 'user',
             status: 'pending', // Pending admin approval
             organizationId: organization.id,

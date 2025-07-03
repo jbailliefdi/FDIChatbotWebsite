@@ -240,11 +240,6 @@
                     <input type="email" id="email" name="email" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="company">Company (Optional)</label>
-                    <input type="text" id="company" name="company">
-                </div>
-
                 <button type="submit" class="join-btn">
                     <i class="fas fa-user-plus"></i> Request Access
                 </button>
@@ -369,8 +364,7 @@
                         token: inviteToken,
                         firstName: formData.get('firstName'),
                         lastName: formData.get('lastName'),
-                        email: formData.get('email'),
-                        company: formData.get('company')
+                        email: formData.get('email')
                     })
                 });
                 

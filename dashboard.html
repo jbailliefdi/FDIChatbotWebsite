@@ -1557,7 +1557,8 @@ async function cancelPendingDowngrade() {
                     actions += `<button class="action-btn danger" onclick="deactivateUser('${user.id}')">Deactivate</button>`;
                 }
             } else {
-                actions += `<button class="action-btn success" onclick="reactivateUser('${user.id}')">Reactivate</button>`;
+                const buttonText = user.status === 'pending' ? 'Activate' : 'Reactivate';
+                actions += `<button class="action-btn success" onclick="reactivateUser('${user.id}')">${buttonText}</button>`;
                 if (!isOnlyAdmin) {
                     actions += `<button class="action-btn danger" onclick="removeUser('${user.id}')">Remove</button>`;
                 }
