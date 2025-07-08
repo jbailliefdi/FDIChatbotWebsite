@@ -34,13 +34,14 @@ module.exports = async function (context, req) {
             // Create new question log
             const { conversationid, userid, submitTimestamp, modelChoices } = req.body;
             
-            if (!conversationid || !userid || !submitTimestamp) {
+            if (!conversationid || !userid) {
                 context.res.status = 400;
-                context.res.body = { error: 'Missing required fields: conversationid, userid, submitTimestamp' };
+                context.res.body = { error: 'Missing required fields: conversationid, userid' };
                 return;
             }
 
-            const questionId = await createQuestionLog(conversationid, userid, submitTimestamp, modelChoices);
+            const currentTimestamp = submitTimestamp || new Date().toISOString();
+            const questionId = await createQuestionLog(conversationid, userid, currentTimestamp, modelChoices);
             
             if (questionId) {
                 context.res.status = 200;
