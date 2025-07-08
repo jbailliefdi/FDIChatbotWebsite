@@ -1,5 +1,6 @@
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
+const { sendInviteEmail } = require('../utils/emailService');
 
 // Initialize Cosmos DB client
 let cosmosClient, database, organizationsContainer, usersContainer;
@@ -77,6 +78,22 @@ module.exports = async function (context, req) {
             }
 
             try {
+                // Get organization details first
+                const orgQuery = {
+                    query: "SELECT * FROM c WHERE c.id = @orgId",
+                    parameters: [{ name: "@orgId", value: orgId }]
+                };
+                
+                const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+                
+                if (organizations.length === 0) {
+                    context.res.status = 404;
+                    context.res.body = { error: 'Organization not found' };
+                    return;
+                }
+                
+                const organization = organizations[0];
+                
                 // Check if user already exists
                 const existingUserQuery = {
                     query: "SELECT * FROM c WHERE c.email = @email AND c.organizationId = @orgId",
@@ -94,6 +111,12 @@ module.exports = async function (context, req) {
                     return;
                 }
 
+                // Generate invite token
+                const crypto = require('crypto');
+                const inviteToken = crypto.randomBytes(32).toString('hex');
+                const expirationDate = new Date();
+                expirationDate.setDate(expirationDate.getDate() + 30); // 30 days expiration
+
                 // Create new user
                 const userId = uuidv4();
                 const newUser = {
@@ -104,19 +127,35 @@ module.exports = async function (context, req) {
                     phone: null,
                     organizationId: orgId,
                     role: role,
-                    status: 'active',
+                    status: 'pending',
                     createdAt: new Date().toISOString(),
                     lastLogin: null,
-                    invitedUser: true
+                    invitedUser: true,
+                    inviteToken: inviteToken,
+                    inviteExpires: expirationDate.toISOString()
                 };
                 
                 context.log('Creating user:', newUser);
                 await usersContainer.items.create(newUser);
                 context.log('User created successfully');
                 
+                // Send invitation email
+                try {
+                    const emailResult = await sendInviteEmail(email, inviteToken, organization.name);
+                    context.log('Email result:', emailResult);
+                    
+                    if (emailResult.success) {
+                        context.log('Invitation email sent successfully');
+                    } else {
+                        context.log('Failed to send invitation email:', emailResult.error);
+                    }
+                } catch (emailError) {
+                    context.log('Email sending error:', emailError.message);
+                }
+                
                 context.res.status = 200;
                 context.res.body = {
-                    message: 'User invited successfully',
+                    message: 'User invited successfully and email sent',
                     user: {
                         id: userId,
                         email: email,

@@ -30,7 +30,86 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Validate invite token
+        // First check if this is a user-specific invitation token
+        const userQuery = {
+            query: "SELECT * FROM c WHERE c.inviteToken = @token AND c.status = 'pending'",
+            parameters: [
+                { name: "@token", value: token }
+            ]
+        };
+
+        const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
+        
+        if (users.length > 0) {
+            // This is a user-specific invitation - activate the user account
+            const user = users[0];
+            
+            // Check if user invite token is expired
+            const now = new Date();
+            const expirationDate = new Date(user.inviteExpires);
+            
+            if (now > expirationDate) {
+                context.res = {
+                    status: 404,
+                    body: { error: 'User invitation has expired' }
+                };
+                return;
+            }
+            
+            // Verify the email matches
+            if (user.email.toLowerCase() !== email.toLowerCase()) {
+                context.res = {
+                    status: 400,
+                    body: { error: 'Email does not match the invited user' }
+                };
+                return;
+            }
+            
+            // Update the user to active status
+            const updatedUser = {
+                ...user,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                status: 'active',
+                activatedAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString(),
+                inviteToken: null, // Clear the invite token
+                inviteExpires: null
+            };
+            
+            await usersContainer.item(user.id, user.organizationId).replace(updatedUser);
+            
+            // Get organization details
+            const orgQuery = {
+                query: "SELECT * FROM c WHERE c.id = @orgId",
+                parameters: [
+                    { name: "@orgId", value: user.organizationId }
+                ]
+            };
+
+            const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+            const organization = organizations[0];
+            
+            context.res = {
+                status: 200,
+                body: {
+                    message: 'Account activated successfully',
+                    organizationName: organization.name,
+                    status: 'active',
+                    requiresApproval: false,
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        firstName: firstName,
+                        lastName: lastName,
+                        role: user.role
+                    }
+                }
+            };
+            return;
+        }
+
+        // If not a user token, check for organization invite link
         const orgQuery = {
             query: "SELECT * FROM c WHERE c.inviteLink.token = @token AND c.inviteLink.active = true",
             parameters: [

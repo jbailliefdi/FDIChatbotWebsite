@@ -316,6 +316,23 @@
         function showJoinForm() {
             document.getElementById('loadingSection').style.display = 'none';
             document.getElementById('orgName').textContent = organizationData.organizationName;
+            
+            // Handle user-specific invitations
+            if (organizationData.inviteType === 'user') {
+                // Pre-populate user data
+                document.getElementById('firstName').value = organizationData.firstName || '';
+                document.getElementById('lastName').value = organizationData.lastName || '';
+                document.getElementById('email').value = organizationData.userEmail || '';
+                
+                // Make email field readonly for user-specific invitations
+                document.getElementById('email').readOnly = true;
+                document.getElementById('email').style.backgroundColor = '#f8f9fa';
+                
+                // Update button text
+                document.querySelector('#signupForm button[type="submit"]').innerHTML = 
+                    '<i class="fas fa-user-check"></i> Complete Registration';
+            }
+            
             document.getElementById('joinForm').style.display = 'block';
         }
 

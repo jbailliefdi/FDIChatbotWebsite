@@ -8,7 +8,8 @@
       "Bash(python3:*)",
       "Bash(npm test)",
       "Bash(grep:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
