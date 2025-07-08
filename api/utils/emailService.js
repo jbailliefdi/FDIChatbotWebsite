@@ -1,12 +1,12 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.office365.com',
-    port: 587,
+    host: process.env.SMTP_HOST || 'smtp.office365.com',
+    port: process.env.SMTP_PORT || 587,
     secure: false,
     auth: {
-        user: 'noreply@fdintelligence.co.uk',
-        pass: 'TrainsCrowdsFilms25!'
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
     },
     tls: {
         ciphers: 'SSLv3'
@@ -17,7 +17,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName) {
     const inviteUrl = `https://kind-mud-048fffa03.4.azurestaticapps.net/join.html?token=${inviteToken}`;
     
     const mailOptions = {
-        from: 'noreply@fdintelligence.co.uk',
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
         subject: `You've been invited to join ${organizationName} on FDI Chatbot`,
         html: `
