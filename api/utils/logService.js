@@ -42,7 +42,9 @@ async function createQuestionLog(conversationId, userId, submitTimestamp, modelC
             submitTimestamp: submitTimestamp,
             responseTimestamp: null,
             modelChoices: modelChoices,
-            errorCodes: []
+            errorCodes: [],
+            userQueryTokens: null,
+            botResponseTokens: null
         };
 
         await logsContainer.items.create(logEntry);
@@ -129,9 +131,37 @@ async function updateQuestionLogModels(questionId, modelChoices) {
     }
 }
 
+/**
+ * Updates a question log with token counts
+ * @param {string} questionId - The question ID to update
+ * @param {number} userQueryTokens - Token count for user query
+ * @param {number} botResponseTokens - Token count for bot response
+ */
+async function updateQuestionLogTokens(questionId, userQueryTokens, botResponseTokens) {
+    if (!logsContainer || !questionId) {
+        console.warn('Logs container not available or questionId missing, skipping token update');
+        return;
+    }
+
+    try {
+        // Get the existing log entry
+        const { resource: logEntry } = await logsContainer.item(questionId, questionId).read();
+        
+        if (logEntry) {
+            if (userQueryTokens !== null) logEntry.userQueryTokens = userQueryTokens;
+            if (botResponseTokens !== null) logEntry.botResponseTokens = botResponseTokens;
+            await logsContainer.item(questionId, questionId).replace(logEntry);
+            console.log(`Question log ${questionId} updated with token counts - Query: ${userQueryTokens}, Response: ${botResponseTokens}`);
+        }
+    } catch (error) {
+        console.error('Error updating question log tokens:', error.message);
+    }
+}
+
 module.exports = {
     createQuestionLog,
     updateQuestionLogResponse,
     updateQuestionLogErrors,
-    updateQuestionLogModels
+    updateQuestionLogModels,
+    updateQuestionLogTokens
 };

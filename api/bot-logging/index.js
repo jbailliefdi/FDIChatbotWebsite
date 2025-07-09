@@ -2,7 +2,8 @@ const {
     createQuestionLog, 
     updateQuestionLogResponse, 
     updateQuestionLogErrors, 
-    updateQuestionLogModels 
+    updateQuestionLogModels,
+    updateQuestionLogTokens
 } = require('../utils/logService');
 
 module.exports = async function (context, req) {
@@ -117,9 +118,29 @@ module.exports = async function (context, req) {
             return;
         }
 
+        if (method === 'PUT' && action === 'update-tokens') {
+            // Update token counts
+            const { questionid, userQueryTokens, botResponseTokens } = req.body;
+            
+            if (!questionid || (userQueryTokens === undefined && botResponseTokens === undefined)) {
+                context.res.status = 400;
+                context.res.body = { error: 'Missing required fields: questionid and at least one of userQueryTokens, botResponseTokens' };
+                return;
+            }
+
+            await updateQuestionLogTokens(questionid, userQueryTokens, botResponseTokens);
+            
+            context.res.status = 200;
+            context.res.body = { 
+                success: true, 
+                message: 'Question log tokens updated successfully' 
+            };
+            return;
+        }
+
         // Invalid action
         context.res.status = 400;
-        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models' };
+        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens' };
         
     } catch (error) {
         context.log.error('Error in bot logging API:', error.message);
