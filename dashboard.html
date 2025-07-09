@@ -915,8 +915,8 @@
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="hideShareableLinkModal()">Close</button>
-                <button type="button" class="btn btn-success" onclick="generateNewLink()">
-                    <i class="fas fa-refresh"></i> Generate New Link
+                <button type="button" class="btn btn-warning" onclick="generateNewLink()">
+                    <i class="fas fa-refresh"></i> Regenerate Link
                 </button>
             </div>
         </div>
@@ -2071,7 +2071,7 @@ async function openBillingPortal() {
         // Shareable Link Modal Functions
         async function showShareableLinkModal() {
             if (!currentOrganization) {
-                showError('Unable to generate invite link');
+                showError('Unable to load invite link');
                 return;
             }
             
@@ -2081,8 +2081,8 @@ async function openBillingPortal() {
                     `${currentOrganization.usage.available} available (${currentOrganization.usage.used}/${currentOrganization.usage.total} used)`;
             }
             
-            // Generate or get existing link
-            await generateShareableLink();
+            // Load existing link (don't regenerate)
+            await loadShareableLink();
             
             document.getElementById('shareableLinkModal').classList.add('show');
         }
@@ -2091,7 +2091,15 @@ async function openBillingPortal() {
             document.getElementById('shareableLinkModal').classList.remove('show');
         }
 
-        async function generateShareableLink() {
+        async function loadShareableLink() {
+            await fetchInviteLink(false);
+        }
+        
+        async function regenerateShareableLink() {
+            await fetchInviteLink(true);
+        }
+        
+        async function fetchInviteLink(regenerate = false) {
             if (!currentOrganization || !currentUser) {
                 showError("Authentication required");
                 return;
@@ -2103,7 +2111,8 @@ async function openBillingPortal() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         organizationId: currentOrganization.id,
-                        userEmail: currentUser.email
+                        userEmail: currentUser.email,
+                        regenerate: regenerate
                     })
                 });
                 
@@ -2126,12 +2135,17 @@ async function openBillingPortal() {
                     
                     // Try to generate short link
                     await generateShortLink(shareableUrl);
+                    
+                    // Show success message if regenerated
+                    if (regenerate) {
+                        showSuccess('New invite link generated successfully!');
+                    }
                 } else {
-                    showError(result.error || 'Failed to generate invite link');
+                    showError(result.error || 'Failed to load invite link');
                 }
             } catch (error) {
-                console.error('Generate link error:', error);
-                showError('Failed to generate invite link');
+                console.error('Invite link error:', error);
+                showError('Failed to load invite link');
             }
         }
         
@@ -2196,8 +2210,7 @@ async function openBillingPortal() {
                 return;
             }
             
-            await generateShareableLink();
-            showSuccess('New invite link generated!');
+            await regenerateShareableLink();
         }
 
         // Invite form submission

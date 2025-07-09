@@ -1,6 +1,6 @@
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
-const { sendInviteEmail } = require('../utils/emailService');
+const { sendInviteEmail, sendAccountActivatedEmail, sendAccountDeactivatedEmail, sendAdminPromotedEmail, sendAdminDemotedEmail } = require('../utils/emailService');
 
 // Initialize Cosmos DB client
 let cosmosClient, database, organizationsContainer, usersContainer;
@@ -317,6 +317,9 @@ module.exports = async function (context, req) {
                 context.log('Updating user:', updatedUser);
                 await usersContainer.item(user.id, user.organizationId).replace(updatedUser);
                 
+                // Send email notifications for status/role changes
+                await sendUserChangeNotifications(user, updatedUser, orgId, context);
+                
                 context.res.status = 200;
                 context.res.body = {
                     message: 'User updated successfully',
@@ -419,3 +422,82 @@ module.exports = async function (context, req) {
         };
     }
 };
+
+async function sendUserChangeNotifications(originalUser, updatedUser, orgId, context) {
+    try {
+        // Get organization details for email
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.id = @orgId",
+            parameters: [{ name: "@orgId", value: orgId }]
+        };
+        
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+        
+        if (organizations.length === 0) {
+            context.log('Organization not found for email notifications');
+            return;
+        }
+        
+        const organization = organizations[0];
+        const adminEmail = organization.adminEmail;
+        
+        // Check for status changes
+        if (originalUser.status !== updatedUser.status) {
+            if (originalUser.status === 'pending' && updatedUser.status === 'active') {
+                // Account activated
+                context.log('Sending account activated email to:', updatedUser.email);
+                const emailResult = await sendAccountActivatedEmail(updatedUser.email, organization.name, adminEmail);
+                if (emailResult.success) {
+                    context.log('Account activated email sent successfully');
+                } else {
+                    context.log('Failed to send account activated email:', emailResult.error);
+                }
+            } else if (originalUser.status === 'deactivated' && updatedUser.status === 'active') {
+                // Account reactivated
+                context.log('Sending account activated email to:', updatedUser.email);
+                const emailResult = await sendAccountActivatedEmail(updatedUser.email, organization.name, adminEmail);
+                if (emailResult.success) {
+                    context.log('Account reactivated email sent successfully');
+                } else {
+                    context.log('Failed to send account reactivated email:', emailResult.error);
+                }
+            } else if (updatedUser.status === 'deactivated') {
+                // Account deactivated
+                context.log('Sending account deactivated email to:', updatedUser.email);
+                const emailResult = await sendAccountDeactivatedEmail(updatedUser.email, organization.name, adminEmail);
+                if (emailResult.success) {
+                    context.log('Account deactivated email sent successfully');
+                } else {
+                    context.log('Failed to send account deactivated email:', emailResult.error);
+                }
+            }
+        }
+        
+        // Check for role changes
+        if (originalUser.role !== updatedUser.role) {
+            if (originalUser.role === 'user' && updatedUser.role === 'admin') {
+                // Promoted to admin
+                context.log('Sending admin promoted email to:', updatedUser.email);
+                const emailResult = await sendAdminPromotedEmail(updatedUser.email, organization.name, adminEmail);
+                if (emailResult.success) {
+                    context.log('Admin promoted email sent successfully');
+                } else {
+                    context.log('Failed to send admin promoted email:', emailResult.error);
+                }
+            } else if (originalUser.role === 'admin' && updatedUser.role === 'user') {
+                // Demoted from admin
+                context.log('Sending admin demoted email to:', updatedUser.email);
+                const emailResult = await sendAdminDemotedEmail(updatedUser.email, organization.name, adminEmail);
+                if (emailResult.success) {
+                    context.log('Admin demoted email sent successfully');
+                } else {
+                    context.log('Failed to send admin demoted email:', emailResult.error);
+                }
+            }
+        }
+        
+    } catch (error) {
+        context.log.error('Error sending user change notifications:', error.message);
+        // Don't fail the main operation if email fails
+    }
+}

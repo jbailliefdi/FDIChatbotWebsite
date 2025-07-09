@@ -82,38 +82,61 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Generate unique token
-        const token = crypto.randomBytes(32).toString('hex');
-        const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + 30); // 30 days expiration
+        // Check if we should regenerate (force new link) or reuse existing
+        const { regenerate } = req.body;
+        
+        let inviteLinkData;
+        let shouldGenerateNew = true;
+        
+        // If not forcing regeneration, check for existing valid link
+        if (!regenerate && organization.inviteLink) {
+            const existingLink = organization.inviteLink;
+            const expiryDate = new Date(existingLink.expiresAt);
+            const now = new Date();
+            
+            // If existing link is active and not expired, reuse it
+            if (existingLink.active && expiryDate > now) {
+                inviteLinkData = existingLink;
+                shouldGenerateNew = false;
+                context.log('Reusing existing valid invite link');
+            }
+        }
+        
+        // Generate new link if needed
+        if (shouldGenerateNew) {
+            const token = crypto.randomBytes(32).toString('hex');
+            const expirationDate = new Date();
+            expirationDate.setDate(expirationDate.getDate() + 30); // 30 days expiration
 
-        // Store invite link data in the organization document
-        const inviteLinkData = {
-            token: token,
-            createdBy: userEmail,
-            createdAt: new Date().toISOString(),
-            expiresAt: expirationDate.toISOString(),
-            active: true,
-            usageCount: 0
-        };
+            inviteLinkData = {
+                token: token,
+                createdBy: userEmail,
+                createdAt: new Date().toISOString(),
+                expiresAt: expirationDate.toISOString(),
+                active: true,
+                usageCount: 0
+            };
 
-        // Update organization with new invite link
-        try {
-            await organizationsContainer.item(organizationId, organizationId).patch([
-                { op: 'replace', path: '/inviteLink', value: inviteLinkData }
-            ]);
-        } catch (patchError) {
-            // If replace fails (property doesn't exist), try add instead
-            context.log('Replace failed, trying add operation:', patchError.message);
-            await organizationsContainer.item(organizationId, organizationId).patch([
-                { op: 'add', path: '/inviteLink', value: inviteLinkData }
-            ]);
+            // Update organization with new invite link
+            try {
+                await organizationsContainer.item(organizationId, organizationId).patch([
+                    { op: 'replace', path: '/inviteLink', value: inviteLinkData }
+                ]);
+            } catch (patchError) {
+                // If replace fails (property doesn't exist), try add instead
+                context.log('Replace failed, trying add operation:', patchError.message);
+                await organizationsContainer.item(organizationId, organizationId).patch([
+                    { op: 'add', path: '/inviteLink', value: inviteLinkData }
+                ]);
+            }
+            
+            context.log('Generated new invite link');
         }
 
         // Send invitation email only if recipientEmail is provided
         let emailResult = { success: false };
         if (recipientEmail) {
-            emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
+            emailResult = await sendInviteEmail(recipientEmail, inviteLinkData.token, organization.name, adminEmail);
             
             if (!emailResult.success) {
                 context.log.error('Failed to send invitation email:', emailResult.error);
@@ -125,10 +148,11 @@ module.exports = async function (context, req) {
         context.res = {
             status: 200,
             body: {
-                token: token,
-                expiresAt: expirationDate.toISOString(),
+                token: inviteLinkData.token,
+                expiresAt: inviteLinkData.expiresAt,
                 organizationName: organization.name,
-                emailSent: emailResult.success
+                emailSent: emailResult.success,
+                isExisting: !shouldGenerateNew
             }
         };
 
