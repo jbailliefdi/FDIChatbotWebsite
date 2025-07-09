@@ -44,6 +44,9 @@ module.exports = async function (context, req) {
             return;
         }
 
+        const adminUser = users[0];
+        const adminEmail = adminUser.email;
+
         // Get organization details
         const orgQuery = {
             query: "SELECT * FROM c WHERE c.id = @orgId",
@@ -97,8 +100,8 @@ module.exports = async function (context, req) {
 
         // Send invitation email
         context.log('Sending invitation email to:', recipientEmail);
-        context.log('Admin email (userEmail):', userEmail);
-        const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, userEmail);
+        context.log('Admin email from DB:', adminEmail);
+        const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
         
         if (!emailResult.success) {
             context.log.error('Failed to send invitation email:', emailResult.error);
