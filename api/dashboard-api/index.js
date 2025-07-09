@@ -1,6 +1,6 @@
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
-const { sendInviteEmail, sendAccountActivatedEmail, sendAccountDeactivatedEmail, sendAdminPromotedEmail, sendAdminDemotedEmail } = require('../utils/emailService');
+const { sendInviteEmail, sendAccountActivatedEmail, sendAccountDeactivatedEmail, sendAdminPromotedEmail, sendAdminDemotedEmail, sendAccountRemovedEmail } = require('../utils/emailService');
 
 // Initialize Cosmos DB client
 let cosmosClient, database, organizationsContainer, usersContainer;
@@ -385,6 +385,9 @@ module.exports = async function (context, req) {
                     }
                 }
                 
+                // Send removal email before deleting
+                await sendUserRemovalNotification(user, orgId, context);
+                
                 // Delete user
                 context.log('Deleting user:', user.id);
                 await usersContainer.item(user.id, user.organizationId).delete();
@@ -498,6 +501,39 @@ async function sendUserChangeNotifications(originalUser, updatedUser, orgId, con
         
     } catch (error) {
         context.log.error('Error sending user change notifications:', error.message);
+        // Don't fail the main operation if email fails
+    }
+}
+
+async function sendUserRemovalNotification(user, orgId, context) {
+    try {
+        // Get organization details for email
+        const orgQuery = {
+            query: "SELECT * FROM c WHERE c.id = @orgId",
+            parameters: [{ name: "@orgId", value: orgId }]
+        };
+        
+        const { resources: organizations } = await organizationsContainer.items.query(orgQuery).fetchAll();
+        
+        if (organizations.length === 0) {
+            context.log('Organization not found for removal email notification');
+            return;
+        }
+        
+        const organization = organizations[0];
+        const adminEmail = organization.adminEmail;
+        
+        // Send account removal email
+        context.log('Sending account removal email to:', user.email);
+        const emailResult = await sendAccountRemovedEmail(user.email, organization.name, adminEmail);
+        if (emailResult.success) {
+            context.log('Account removal email sent successfully');
+        } else {
+            context.log('Failed to send account removal email:', emailResult.error);
+        }
+        
+    } catch (error) {
+        context.log.error('Error sending user removal notification:', error.message);
         // Don't fail the main operation if email fails
     }
 }

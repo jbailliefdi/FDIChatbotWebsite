@@ -33,7 +33,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
                 </p>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Your account is currently <strong>pending activation</strong>. Once your administrator <strong>${adminEmail || 'your organization admin'}</strong> has activated your account in their dashboard, you'll be able to access TIA.
+                    Your account is currently <strong>pending activation</strong>. Once your administrator has activated your account in their dashboard, you'll be able to access TIA.
                 </p>
                 
                 <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 20px 0;">
@@ -278,10 +278,58 @@ async function sendAdminDemotedEmail(recipientEmail, organizationName, adminEmai
     }
 }
 
+async function sendAccountRemovedEmail(recipientEmail, organizationName, adminEmail) {
+    const mailOptions = {
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: recipientEmail,
+        subject: `You've been removed from ${organizationName}'s TIA subscription`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <img src="https://fdichatbot.com/FDi_Logo_Final.png" alt="FD Intelligence Logo" style="max-width: 200px; height: auto;">
+                </div>
+                <h2 style="color: #dc3545; text-align: center;">You've been removed from the organization</h2>
+                
+                <p style="color: #666; font-size: 16px;">
+                    You have been removed from <strong>${organizationName}</strong>'s TIA (Tax Intelligence Assistant) subscription and no longer have access to the system.
+                </p>
+                
+                <div style="background: #f8d7da; padding: 1rem; border-radius: 6px; margin: 20px 0; border: 1px solid #f5c6cb;">
+                    <p style="color: #721c24; font-size: 16px; margin: 0;">
+                        <strong>Access Removed:</strong> Your account has been permanently removed and you can no longer sign in to TIA.
+                    </p>
+                </div>
+                
+                <p style="color: #666; font-size: 16px;">
+                    If you believe this is an error or have questions about your account removal, please contact your administrator.
+                </p>
+                
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                
+                <p style="color: #666; font-size: 14px; text-align: center;">
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
+                </p>
+                
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                    © FD Intelligence - TIA (Tax Intelligence Assistant)
+                </p>
+            </div>
+        `
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
 module.exports = {
     sendInviteEmail,
     sendAccountActivatedEmail,
     sendAccountDeactivatedEmail,
     sendAdminPromotedEmail,
-    sendAdminDemotedEmail
+    sendAdminDemotedEmail,
+    sendAccountRemovedEmail
 };
