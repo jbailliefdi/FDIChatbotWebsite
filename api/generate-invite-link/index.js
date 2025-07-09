@@ -1,5 +1,6 @@
 const { CosmosClient } = require('@azure/cosmos');
 const crypto = require('crypto');
+const { sendInviteEmail } = require('../utils/emailService');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
@@ -10,14 +11,14 @@ module.exports = async function (context, req) {
     context.log('Generate invite link function processed a request.');
 
     try {
-        const { organizationId, userEmail } = req.body;
+        const { organizationId, userEmail, recipientEmail } = req.body;
 
-        context.log('Request data:', { organizationId, userEmail });
+        context.log('Request data:', { organizationId, userEmail, recipientEmail });
 
-        if (!organizationId || !userEmail) {
+        if (!organizationId || !userEmail || !recipientEmail) {
             context.res = {
                 status: 400,
-                body: { error: 'Organization ID and user email are required' }
+                body: { error: 'Organization ID, user email, and recipient email are required' }
             };
             return;
         }
@@ -94,12 +95,24 @@ module.exports = async function (context, req) {
             ]);
         }
 
+        // Send invitation email
+        context.log('Sending invitation email to:', recipientEmail);
+        const emailResult = await sendInviteEmail(recipientEmail, token, organization.name);
+        
+        if (!emailResult.success) {
+            context.log.error('Failed to send invitation email:', emailResult.error);
+            // Still return success for the invite link creation, but log the email failure
+        } else {
+            context.log('Invitation email sent successfully:', emailResult.messageId);
+        }
+
         context.res = {
             status: 200,
             body: {
                 token: token,
                 expiresAt: expirationDate.toISOString(),
-                organizationName: organization.name
+                organizationName: organization.name,
+                emailSent: emailResult.success
             }
         };
 

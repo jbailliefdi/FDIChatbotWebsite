@@ -9,12 +9,13 @@ const transporter = nodemailer.createTransport({
         pass: process.env.SMTP_PASS
     },
     tls: {
-        ciphers: 'SSLv3'
-    }
+        rejectUnauthorized: false
+    },
+    requireTLS: true
 });
 
 async function sendInviteEmail(recipientEmail, inviteToken, organizationName) {
-    const inviteUrl = `https://kind-mud-048fffa03.4.azurestaticapps.net/join.html?token=${inviteToken}`;
+    const inviteUrl = `http://www.fdichatbot.com/join.html?token=${inviteToken}`;
     
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
@@ -47,6 +48,16 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName) {
                 
                 <p style="color: #007bff; font-size: 14px; word-break: break-all;">
                     ${inviteUrl}
+                </p>
+                
+                <p style="color: #666; font-size: 16px;">
+                    Once you've created your account, you can access the chatbot at:
+                </p>
+                
+                <p style="color: #007bff; font-size: 16px; font-weight: bold; text-align: center;">
+                    <a href="http://www.fdichatbot.com/app" style="color: #007bff; text-decoration: none;">
+                        http://www.fdichatbot.com/app
+                    </a>
                 </p>
                 
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
