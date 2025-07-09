@@ -54,6 +54,11 @@ module.exports = async function (context, req) {
         
         if (!adminEmail) {
             console.log('ERROR: No admin email found in user object or userEmail parameter');
+            context.res = {
+                status: 500,
+                body: { error: 'Unable to determine admin email for invitation' }
+            };
+            return;
         }
         
         console.log('Final admin email to use:', adminEmail);

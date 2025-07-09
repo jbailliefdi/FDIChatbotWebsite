@@ -33,7 +33,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
                 </p>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Your account is currently <strong>pending activation</strong>. Once your administrator <strong>${adminEmail}</strong> has activated your account in their dashboard, you'll be able to access TIA.
+                    Your account is currently <strong>pending activation</strong>. Once your administrator <strong>${adminEmail || 'your organization admin'}</strong> has activated your account in their dashboard, you'll be able to access TIA.
                 </p>
                 
                 <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 20px 0;">
@@ -48,6 +48,10 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
                 </div>
                 
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                
+                <p style="color: #666; font-size: 14px; text-align: center;">
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong> or` : ''} our support team at <strong>support@fdichatbot.com</strong>
+                </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
                     © FD Intelligence - TIA (Tax Intelligence Assistant)
