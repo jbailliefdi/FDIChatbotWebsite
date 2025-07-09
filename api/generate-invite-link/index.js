@@ -31,10 +31,12 @@ module.exports = async function (context, req) {
                 { name: "@orgId", value: organizationId }
             ]
         };
+        
+        console.log('User query:', JSON.stringify(userQuery, null, 2));
 
         const { resources: users } = await usersContainer.items.query(userQuery).fetchAll();
         
-        context.log('User query result:', users.length, 'users found');
+        console.log('User query result:', users.length, 'users found');
         
         if (users.length === 0) {
             context.res = {
@@ -45,7 +47,16 @@ module.exports = async function (context, req) {
         }
 
         const adminUser = users[0];
-        const adminEmail = adminUser.email;
+        console.log('Admin user from DB:', JSON.stringify(adminUser, null, 2));
+        
+        // Try multiple possible email properties and fallback to userEmail parameter
+        const adminEmail = adminUser.email || adminUser.userEmail || adminUser.emailAddress || userEmail;
+        
+        if (!adminEmail) {
+            console.log('ERROR: No admin email found in user object or userEmail parameter');
+        }
+        
+        console.log('Final admin email to use:', adminEmail);
 
         // Get organization details
         const orgQuery = {
@@ -99,8 +110,8 @@ module.exports = async function (context, req) {
         }
 
         // Send invitation email
-        context.log('Sending invitation email to:', recipientEmail);
-        context.log('Admin email from DB:', adminEmail);
+        console.log('Sending invitation email to:', recipientEmail);
+        console.log('Admin email from DB:', adminEmail);
         const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
         
         if (!emailResult.success) {
