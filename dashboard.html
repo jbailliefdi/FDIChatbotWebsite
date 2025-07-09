@@ -879,6 +879,27 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <div id="shortLinkContainer" style="display: none; margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">
+                            Short Link:
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <input type="text" id="shortLinkInput" readonly 
+                                   style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; font-size: 0.9rem;">
+                            <button onclick="copyShortLink()" class="btn btn-success">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; border: 1px solid #ffeaa7;">
+                        <i class="fas fa-clock" style="color: #f39c12; margin-right: 0.5rem;"></i>
+                        <strong>Important:</strong> This invite link will expire after 30 days from creation.
+                        <div style="font-size: 0.9rem; color: #666; margin-top: 0.25rem;">
+                            Expires on: <span id="linkExpiryDate">Loading...</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div style="background: #e3f2fd; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
@@ -2091,12 +2112,45 @@ async function openBillingPortal() {
                 if (response.ok) {
                     const shareableUrl = `${window.location.origin}/join.html?token=${result.token}`;
                     document.getElementById('shareableLinkInput').value = shareableUrl;
+                    
+                    // Display expiration date
+                    const expiryDate = new Date(result.expiresAt);
+                    const formattedDate = expiryDate.toLocaleDateString('en-GB', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    document.getElementById('linkExpiryDate').textContent = formattedDate;
+                    
+                    // Try to generate short link
+                    await generateShortLink(shareableUrl);
                 } else {
                     showError(result.error || 'Failed to generate invite link');
                 }
             } catch (error) {
                 console.error('Generate link error:', error);
                 showError('Failed to generate invite link');
+            }
+        }
+        
+        async function generateShortLink(longUrl) {
+            try {
+                // Use TinyURL as a free alternative to bit.ly
+                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                const shortUrl = await response.text();
+                
+                if (shortUrl && shortUrl.startsWith('https://tinyurl.com/')) {
+                    document.getElementById('shortLinkInput').value = shortUrl;
+                    document.getElementById('shortLinkContainer').style.display = 'block';
+                } else {
+                    // If TinyURL fails, hide the short link container
+                    document.getElementById('shortLinkContainer').style.display = 'none';
+                }
+            } catch (error) {
+                console.log('Short link generation failed:', error);
+                document.getElementById('shortLinkContainer').style.display = 'none';
             }
         }
 
@@ -2113,6 +2167,24 @@ async function openBillingPortal() {
                 // Fallback for modern browsers
                 navigator.clipboard.writeText(input.value).then(() => {
                     showSuccess('Invite link copied to clipboard!');
+                }).catch(() => {
+                    showError('Failed to copy link. Please copy manually.');
+                });
+            }
+        }
+        
+        function copyShortLink() {
+            const input = document.getElementById('shortLinkInput');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            
+            try {
+                document.execCommand('copy');
+                showSuccess('Short link copied to clipboard!');
+            } catch (err) {
+                // Fallback for modern browsers
+                navigator.clipboard.writeText(input.value).then(() => {
+                    showSuccess('Short link copied to clipboard!');
                 }).catch(() => {
                     showError('Failed to copy link. Please copy manually.');
                 });
