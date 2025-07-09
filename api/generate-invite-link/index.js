@@ -48,20 +48,6 @@ module.exports = async function (context, req) {
 
         const adminUser = users[0];
         console.log('Admin user from DB:', JSON.stringify(adminUser, null, 2));
-        
-        // Try multiple possible email properties and fallback to userEmail parameter
-        const adminEmail = adminUser.email || adminUser.userEmail || adminUser.emailAddress || userEmail;
-        
-        if (!adminEmail) {
-            console.log('ERROR: No admin email found in user object or userEmail parameter');
-            context.res = {
-                status: 500,
-                body: { error: 'Unable to determine admin email for invitation' }
-            };
-            return;
-        }
-        
-        console.log('Final admin email to use:', adminEmail);
 
         // Get organization details
         const orgQuery = {
@@ -85,6 +71,20 @@ module.exports = async function (context, req) {
 
         const organization = organizations[0];
         context.log('Found organization:', organization.name);
+        
+        // Get admin email from organization data
+        const adminEmail = organization.adminEmail;
+        
+        if (!adminEmail) {
+            console.log('ERROR: No admin email found in organization data');
+            context.res = {
+                status: 500,
+                body: { error: 'Organization admin email not configured' }
+            };
+            return;
+        }
+        
+        console.log('Admin email from organization:', adminEmail);
 
         // Generate unique token
         const token = crypto.randomBytes(32).toString('hex');
@@ -116,7 +116,7 @@ module.exports = async function (context, req) {
 
         // Send invitation email
         console.log('Sending invitation email to:', recipientEmail);
-        console.log('Admin email from DB:', adminEmail);
+        console.log('Admin email from organization:', adminEmail);
         const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
         
         if (!emailResult.success) {
