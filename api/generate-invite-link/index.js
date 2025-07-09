@@ -47,7 +47,6 @@ module.exports = async function (context, req) {
         }
 
         const adminUser = users[0];
-        console.log('Admin user from DB:', JSON.stringify(adminUser, null, 2));
 
         // Get organization details
         const orgQuery = {
@@ -76,15 +75,12 @@ module.exports = async function (context, req) {
         const adminEmail = organization.adminEmail;
         
         if (!adminEmail) {
-            console.log('ERROR: No admin email found in organization data');
             context.res = {
                 status: 500,
                 body: { error: 'Organization admin email not configured' }
             };
             return;
         }
-        
-        console.log('Admin email from organization:', adminEmail);
 
         // Generate unique token
         const token = crypto.randomBytes(32).toString('hex');
@@ -115,8 +111,6 @@ module.exports = async function (context, req) {
         }
 
         // Send invitation email
-        console.log('Sending invitation email to:', recipientEmail);
-        console.log('Admin email from organization:', adminEmail);
         const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
         
         if (!emailResult.success) {
