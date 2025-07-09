@@ -47,11 +47,11 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
                     </p>
                 </div>
                 
-                <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-                
-                <p style="color: #666; font-size: 14px; text-align: center;">
-                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong> or` : ''} our support team at <strong>support@fdichatbot.com</strong>
+                <p style="color: #666; font-size: 16px;">
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
                 </p>
+                
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
                     © FD Intelligence - TIA (Tax Intelligence Assistant)
