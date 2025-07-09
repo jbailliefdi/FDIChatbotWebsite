@@ -97,6 +97,7 @@ module.exports = async function (context, req) {
 
         // Send invitation email
         context.log('Sending invitation email to:', recipientEmail);
+        context.log('Admin email (userEmail):', userEmail);
         const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, userEmail);
         
         if (!emailResult.success) {
