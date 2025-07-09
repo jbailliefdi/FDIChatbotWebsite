@@ -14,31 +14,34 @@ const transporter = nodemailer.createTransport({
     requireTLS: true
 });
 
-async function sendInviteEmail(recipientEmail, inviteToken, organizationName) {
-    const inviteUrl = `http://www.fdichatbot.com/join.html?token=${inviteToken}`;
+async function sendInviteEmail(recipientEmail, inviteToken, organizationName, adminEmail) {
+    const inviteUrl = `fdichatbot.com/join.html?token=${inviteToken}`;
     
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `You've been invited to join ${organizationName} on FDI Chatbot`,
+        subject: `You've been added to ${organizationName} on TIA (Tax Intelligence Assistant)`,
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #333; text-align: center;">You're Invited!</h2>
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <img src="https://fdichatbot.com/FDi_Logo_Final.png" alt="FD Intelligence Logo" style="max-width: 200px; height: auto;">
+                </div>
+                <h2 style="color: #333; text-align: center;">You've been added to an organization!</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    You've been invited to join <strong>${organizationName}</strong> on FDI Chatbot.
+                    You've been added to <strong>${organizationName}</strong> on TIA (Tax Intelligence Assistant).
                 </p>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Click the button below to accept your invitation and create your account:
+                    Your account is currently <strong>pending activation</strong>. Once your admin <strong>${adminEmail}</strong> has activated your account, you'll be able to access TIA.
                 </p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="${inviteUrl}" 
+                    <a href="https://${inviteUrl}" 
                        style="background-color: #007bff; color: white; padding: 12px 30px; 
                               text-decoration: none; border-radius: 5px; font-weight: bold;
                               display: inline-block;">
-                        Accept Invitation
+                        Complete Registration
                     </a>
                 </div>
                 
@@ -47,18 +50,19 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName) {
                 </p>
                 
                 <p style="color: #007bff; font-size: 14px; word-break: break-all;">
-                    ${inviteUrl}
+                    https://${inviteUrl}
                 </p>
                 
-                <p style="color: #666; font-size: 16px;">
-                    Once you've created your account, you can access the chatbot at:
-                </p>
-                
-                <p style="color: #007bff; font-size: 16px; font-weight: bold; text-align: center;">
-                    <a href="http://www.fdichatbot.com/app" style="color: #007bff; text-decoration: none;">
-                        http://www.fdichatbot.com/app
-                    </a>
-                </p>
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #666; font-size: 16px; margin: 0;">
+                        <strong>Once activated by your admin, you can access TIA at:</strong>
+                    </p>
+                    <p style="color: #007bff; font-size: 16px; font-weight: bold; text-align: center; margin: 10px 0 0 0;">
+                        <a href="https://fdichatbot.com/app" style="color: #007bff; text-decoration: none;">
+                            fdichatbot.com/app
+                        </a>
+                    </p>
+                </div>
                 
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
@@ -68,7 +72,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName) {
                 </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
-                    © FD Intelligence - FDI Chatbot Platform
+                    © FD Intelligence - TIA (Tax Intelligence Assistant)
                 </p>
             </div>
         `
