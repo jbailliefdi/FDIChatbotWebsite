@@ -15,10 +15,10 @@ module.exports = async function (context, req) {
 
         context.log('Request data:', { organizationId, userEmail, recipientEmail });
 
-        if (!organizationId || !userEmail || !recipientEmail) {
+        if (!organizationId || !userEmail) {
             context.res = {
                 status: 400,
-                body: { error: 'Organization ID, user email, and recipient email are required' }
+                body: { error: 'Organization ID and user email are required' }
             };
             return;
         }
@@ -110,14 +110,16 @@ module.exports = async function (context, req) {
             ]);
         }
 
-        // Send invitation email
-        const emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
-        
-        if (!emailResult.success) {
-            context.log.error('Failed to send invitation email:', emailResult.error);
-            // Still return success for the invite link creation, but log the email failure
-        } else {
-            context.log('Invitation email sent successfully:', emailResult.messageId);
+        // Send invitation email only if recipientEmail is provided
+        let emailResult = { success: false };
+        if (recipientEmail) {
+            emailResult = await sendInviteEmail(recipientEmail, token, organization.name, adminEmail);
+            
+            if (!emailResult.success) {
+                context.log.error('Failed to send invitation email:', emailResult.error);
+            } else {
+                context.log('Invitation email sent successfully:', emailResult.messageId);
+            }
         }
 
         context.res = {
