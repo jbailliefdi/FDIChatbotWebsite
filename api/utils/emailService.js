@@ -33,7 +33,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
                 </p>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Your account is currently <strong>pending activation</strong>. Once your administrator <strong>${adminEmail || 'your organization admin'}</strong> has activated your account in their dashboard, you'll be able to access TIA.
+                    Your account is currently <strong>pending activation</strong>. Once your administrator <strong>${adminEmail}</strong> has activated your account in their dashboard, you'll be able to access TIA.
                 </p>
                 
                 <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 20px 0;">
