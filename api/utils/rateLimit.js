@@ -32,9 +32,10 @@ async function checkAndUpdateRateLimit(userId) {
         // If user doesn't have rate limiting fields, initialize them
         if (user.questionsAsked === undefined || user.questionsResetDate === undefined) {
             console.log(`Initializing rate limit fields for user: ${user.email || user.id}`);
+            const currentDate = new Date();
             await usersContainer.item(user.id, user.organizationId).patch([
                 { op: 'add', path: '/questionsAsked', value: 0 },
-                { op: 'add', path: '/questionsResetDate', value: new Date().toISOString() }
+                { op: 'add', path: '/questionsResetDate', value: new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString() }
             ]);
         }
         

@@ -100,7 +100,7 @@ async function addUser(organizationId, userData) {
         createdAt: new Date().toISOString(),
         lastLogin: null,
         questionsAsked: 0,
-        questionsResetDate: new Date().toISOString()
+        questionsResetDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
     };
 
     await usersContainer.items.create(newUser);

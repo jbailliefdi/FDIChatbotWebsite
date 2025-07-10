@@ -44,7 +44,11 @@ module.exports = async function (context, req) {
 
             // Check and update rate limit
             try {
+                context.log('=== RATE LIMIT CHECK ===');
+                context.log('User ID for rate limit:', userid);
                 const rateLimitResult = await checkAndUpdateRateLimit(userid);
+                context.log('Rate limit result:', rateLimitResult);
+                
                 if (!rateLimitResult.allowed) {
                     context.log.warn('Rate limit exceeded for user:', userid, 'Questions asked:', rateLimitResult.questionsAsked);
                     context.res.status = 429;

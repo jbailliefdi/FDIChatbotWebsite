@@ -76,7 +76,7 @@ module.exports = async function (context, req) {
                 inviteToken: null, // Clear the invite token
                 inviteExpires: null,
                 questionsAsked: user.questionsAsked || 0,
-                questionsResetDate: user.questionsResetDate || new Date().toISOString()
+                questionsResetDate: user.questionsResetDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
             };
             
             await usersContainer.item(user.id, user.organizationId).replace(updatedUser);
@@ -206,7 +206,7 @@ module.exports = async function (context, req) {
             updatedAt: new Date().toISOString(),
             source: 'public_signup',
             questionsAsked: 0,
-            questionsResetDate: new Date().toISOString()
+            questionsResetDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
         };
 
         await usersContainer.items.create(newUser);
