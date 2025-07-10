@@ -98,7 +98,9 @@ async function addUser(organizationId, userData) {
         role: 'user',
         status: 'active',
         createdAt: new Date().toISOString(),
-        lastLogin: null
+        lastLogin: null,
+        questionsAsked: 0,
+        questionsResetDate: new Date().toISOString()
     };
 
     await usersContainer.items.create(newUser);

@@ -1,4 +1,5 @@
 const { CosmosClient } = require('@azure/cosmos');
+const { getRateLimitStatus } = require('../utils/rateLimit');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
@@ -78,6 +79,29 @@ module.exports = async function (context, req) {
                 body: { message: 'Service temporarily unavailable' } 
             };
             return;
+        }
+
+        // Check rate limit before returning token
+        try {
+            const rateLimitStatus = await getRateLimitStatus(user.id);
+            if (rateLimitStatus.remaining <= 0) {
+                context.log.warn('Rate limit exceeded for user:', user.id, 'Questions asked:', rateLimitStatus.questionsAsked);
+                context.res = { 
+                    status: 429, 
+                    body: { 
+                        message: 'Monthly query limit exceeded',
+                        questionsAsked: rateLimitStatus.questionsAsked,
+                        limit: rateLimitStatus.limit,
+                        resetDate: rateLimitStatus.resetDate
+                    } 
+                };
+                return;
+            }
+            
+            context.log('Rate limit check passed. Remaining queries:', rateLimitStatus.remaining);
+        } catch (rateLimitError) {
+            context.log.error('Rate limit check failed:', rateLimitError.message);
+            // Continue with token generation - don't block on rate limit errors
         }
 
         // Return the DirectLine token only for authenticated users with active subscriptions

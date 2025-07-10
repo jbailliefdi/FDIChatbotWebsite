@@ -5,6 +5,7 @@ const {
     updateQuestionLogModels,
     updateQuestionLogTokens
 } = require('../utils/logService');
+const { checkAndUpdateRateLimit } = require('../utils/rateLimit');
 
 module.exports = async function (context, req) {
     context.log('=== BOT LOGGING API CALLED ===');
@@ -38,6 +39,29 @@ module.exports = async function (context, req) {
             if (!conversationid || !userid) {
                 context.res.status = 400;
                 context.res.body = { error: 'Missing required fields: conversationid, userid' };
+                return;
+            }
+
+            // Check and update rate limit
+            try {
+                const rateLimitResult = await checkAndUpdateRateLimit(userid);
+                if (!rateLimitResult.allowed) {
+                    context.log.warn('Rate limit exceeded for user:', userid, 'Questions asked:', rateLimitResult.questionsAsked);
+                    context.res.status = 429;
+                    context.res.body = { 
+                        error: 'Monthly query limit exceeded',
+                        questionsAsked: rateLimitResult.questionsAsked,
+                        limit: rateLimitResult.limit,
+                        resetDate: rateLimitResult.resetDate
+                    };
+                    return;
+                }
+                
+                context.log('Rate limit check passed. Questions asked:', rateLimitResult.questionsAsked, 'of', rateLimitResult.limit);
+            } catch (rateLimitError) {
+                context.log.error('Rate limit check failed:', rateLimitError.message);
+                context.res.status = 500;
+                context.res.body = { error: 'Rate limit check failed' };
                 return;
             }
 
