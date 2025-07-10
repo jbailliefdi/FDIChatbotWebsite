@@ -121,7 +121,7 @@ async function removeUser(organizationId, userEmail) {
 
     if (users.length > 0) {
         const user = users[0];
-        await usersContainer.item(user.id, user.id).patch([
+        await usersContainer.item(user.id, user.organizationId).patch([
             { op: 'replace', path: '/status', value: 'inactive' }
         ]);
     }

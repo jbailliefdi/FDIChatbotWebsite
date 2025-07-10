@@ -29,6 +29,15 @@ async function checkAndUpdateRateLimit(userId) {
         let resetDate = new Date(user.questionsResetDate || user.createdAt);
         let questionsAsked = user.questionsAsked || 0;
         
+        // If user doesn't have rate limiting fields, initialize them
+        if (user.questionsAsked === undefined || user.questionsResetDate === undefined) {
+            console.log(`Initializing rate limit fields for user: ${user.email || user.id}`);
+            await usersContainer.item(user.id, user.organizationId).patch([
+                { op: 'add', path: '/questionsAsked', value: 0 },
+                { op: 'add', path: '/questionsResetDate', value: new Date().toISOString() }
+            ]);
+        }
+        
         // If it's a new month, reset the counter
         if (resetDate.getMonth() !== currentMonth || resetDate.getFullYear() !== currentYear) {
             questionsAsked = 0;
@@ -49,7 +58,7 @@ async function checkAndUpdateRateLimit(userId) {
         const newQuestionsAsked = questionsAsked + 1;
         
         // Update user document
-        await usersContainer.item(user.id, user.id).patch([
+        await usersContainer.item(user.id, user.organizationId).patch([
             { op: 'replace', path: '/questionsAsked', value: newQuestionsAsked },
             { op: 'replace', path: '/questionsResetDate', value: resetDate.toISOString() }
         ]);
