@@ -35,14 +35,14 @@ async function checkAndUpdateRateLimit(userId) {
             const currentDate = new Date();
             await usersContainer.item(user.id, user.organizationId).patch([
                 { op: 'add', path: '/questionsAsked', value: 0 },
-                { op: 'add', path: '/questionsResetDate', value: new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString() }
+                { op: 'add', path: '/questionsResetDate', value: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1).toISOString() }
             ]);
         }
         
-        // If it's a new month, reset the counter
-        if (resetDate.getMonth() !== currentMonth || resetDate.getFullYear() !== currentYear) {
+        // If it's past the reset date, reset the counter
+        if (now >= resetDate) {
             questionsAsked = 0;
-            resetDate = new Date(currentYear, currentMonth, 1);
+            resetDate = new Date(currentYear, currentMonth + 1, 1);
         }
 
         // Check if user has exceeded the limit
@@ -98,8 +98,8 @@ async function getRateLimitStatus(userId) {
         let resetDate = new Date(user.questionsResetDate || user.createdAt);
         let questionsAsked = user.questionsAsked || 0;
         
-        // If it's a new month, the counter would be reset
-        if (resetDate.getMonth() !== currentMonth || resetDate.getFullYear() !== currentYear) {
+        // If it's past the reset date, the counter would be reset
+        if (now >= resetDate) {
             questionsAsked = 0;
         }
 
