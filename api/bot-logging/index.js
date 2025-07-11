@@ -218,6 +218,10 @@ module.exports = async function (context, req) {
             // Query for recent logs by conversation only
             const { conversationid, minutesBack = 5 } = req.query;
             
+            context.log('=== QUERY-RECENT CALLED ===');
+            context.log('conversationid:', conversationid);
+            context.log('minutesBack:', minutesBack);
+            
             if (!conversationid) {
                 context.res.status = 400;
                 context.res.body = { error: 'Missing required query parameter: conversationid' };
@@ -227,6 +231,9 @@ module.exports = async function (context, req) {
             try {
                 const { queryRecentLogsByConversation } = require('../utils/logService');
                 const logs = await queryRecentLogsByConversation(conversationid, parseInt(minutesBack));
+                
+                context.log('Found logs:', logs ? logs.length : 0);
+                context.log('Logs data:', logs);
                 
                 context.res.status = 200;
                 context.res.body = { 
