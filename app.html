@@ -1875,7 +1875,7 @@ async function getDirectLineToken(email) {
         }
         
         const data = await response.json();
-        return data.token;
+        return { token: data.token, userId: data.userId };
     } catch (error) {
         console.error('Error getting DirectLine token:', error);
         throw error;
@@ -1963,8 +1963,8 @@ if (!account) {
     alert("Please sign in to start a new chat.");
     return;
 }
-const token = await getDirectLineToken(account.username);
-    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
+const tokenData = await getDirectLineToken(account.username);
+    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: tokenData.token, userId: tokenData.userId }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
     currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
@@ -2076,8 +2076,8 @@ async function newchat() {
         alert("Please sign in to start a new chat.");
         return;
     }
-    const token = await getDirectLineToken(account.username);
-    window.directLine = window.WebChat.createDirectLine({ token: token }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    const tokenData = await getDirectLineToken(account.username);
+    window.directLine = window.WebChat.createDirectLine({ token: tokenData.token, userId: tokenData.userId }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); } catch(e) { alert("Error displaying new chat interface."); console.error("Error rendering WebChat for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     applyCurrentFontSize(container);
