@@ -1920,8 +1920,8 @@ async function logUserQuestion(conversationId, userId) {
 function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatch, getState }) => next => action => { if ((action.type === "WEB_CHAT/SEND_MESSAGE" || action.type === "DIRECT_LINE/POST_ACTIVITY") && action.payload?.activity?.type === "message") { const token = getAuthToken(); if (token) { if (!action.payload.activity.channelData) action.payload.activity.channelData = {}; action.payload.activity.channelData.token = token; action.payload.activity.channelData.subscription = subscriptionData; } if (!action.payload.activity.from) action.payload.activity.from = {}; if (!action.payload.activity.from.role) action.payload.activity.from.role = 'user'; 
   
   // Rate limiting check for user messages
-  if (action.payload.activity.from.role === 'user' && subscriptionData?.userId) {
-    logUserQuestion(action.payload.activity.conversation?.id || currentchat, subscriptionData.userId).then(allowed => {
+  if (action.payload.activity.from.role === 'user' && subscriptionData?.user?.id) {
+    logUserQuestion(action.payload.activity.conversation?.id || currentchat, subscriptionData.user.id).then(allowed => {
       if (!allowed) {
         console.log('Message blocked due to rate limit');
         return; // Don't continue processing
