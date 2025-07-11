@@ -64,9 +64,8 @@ module.exports = async function (context, req) {
                 context.log('Rate limit check passed. Questions asked:', rateLimitResult.questionsAsked, 'of', rateLimitResult.limit);
             } catch (rateLimitError) {
                 context.log.error('Rate limit check failed:', rateLimitError.message);
-                context.res.status = 500;
-                context.res.body = { error: 'Rate limit check failed' };
-                return;
+                context.log.warn('Continuing with log creation despite rate limit failure');
+                // Continue with log creation even if rate limit check fails
             }
 
             const currentTimestamp = submitTimestamp || new Date().toISOString();
@@ -166,9 +165,37 @@ module.exports = async function (context, req) {
             return;
         }
 
+        if (method === 'GET' && action === 'query') {
+            // Query for recent logs
+            const { conversationid, userid, limit = 10 } = req.query;
+            
+            if (!conversationid || !userid) {
+                context.res.status = 400;
+                context.res.body = { error: 'Missing required query parameters: conversationid, userid' };
+                return;
+            }
+
+            try {
+                const { queryLogs } = require('../utils/logService');
+                const logs = await queryLogs(conversationid, userid, parseInt(limit));
+                
+                context.res.status = 200;
+                context.res.body = { 
+                    success: true, 
+                    logs: logs || [],
+                    message: 'Logs queried successfully' 
+                };
+            } catch (queryError) {
+                context.log.error('Error querying logs:', queryError.message);
+                context.res.status = 500;
+                context.res.body = { error: 'Failed to query logs' };
+            }
+            return;
+        }
+
         // Invalid action
         context.res.status = 400;
-        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens' };
+        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, query' };
         
     } catch (error) {
         context.log.error('Error in bot logging API:', error.message);

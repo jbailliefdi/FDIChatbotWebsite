@@ -158,10 +158,52 @@ async function updateQuestionLogTokens(questionId, userQueryTokens, botResponseT
     }
 }
 
+/**
+ * Query logs for a specific conversation and user
+ * @param {string} conversationId - The conversation ID
+ * @param {string} userId - The user ID
+ * @param {number} limit - Maximum number of logs to return
+ * @returns {Array} Array of log entries
+ */
+async function queryLogs(conversationId, userId, limit = 10) {
+    if (!logsContainer) {
+        console.warn('Logs container not available, cannot query logs');
+        return [];
+    }
+
+    try {
+        const querySpec = {
+            query: "SELECT * FROM c WHERE c.conversationid = @conversationId AND c.userid = @userId ORDER BY c.submitTimestamp DESC OFFSET 0 LIMIT @limit",
+            parameters: [
+                {
+                    name: "@conversationId",
+                    value: conversationId
+                },
+                {
+                    name: "@userId", 
+                    value: userId
+                },
+                {
+                    name: "@limit",
+                    value: limit
+                }
+            ]
+        };
+
+        const { resources: logs } = await logsContainer.items.query(querySpec).fetchAll();
+        console.log(`Found ${logs.length} logs for conversation ${conversationId} and user ${userId}`);
+        return logs;
+    } catch (error) {
+        console.error('Error querying logs:', error.message);
+        return [];
+    }
+}
+
 module.exports = {
     createQuestionLog,
     updateQuestionLogResponse,
     updateQuestionLogErrors,
     updateQuestionLogModels,
-    updateQuestionLogTokens
+    updateQuestionLogTokens,
+    queryLogs
 };
