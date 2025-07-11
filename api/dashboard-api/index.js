@@ -134,7 +134,7 @@ module.exports = async function (context, req) {
                     inviteToken: inviteToken,
                     inviteExpires: expirationDate.toISOString(),
                     questionsAsked: 0,
-                    questionsResetDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+                    questionsResetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
                 };
                 
                 context.log('Creating user:', newUser);
