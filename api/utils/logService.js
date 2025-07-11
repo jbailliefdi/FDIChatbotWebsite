@@ -199,79 +199,11 @@ async function queryLogs(conversationId, userId, limit = 10) {
     }
 }
 
-/**
- * Query recent logs for a conversation regardless of user ID
- * Used to find logs created by frontend when backend has different user ID
- * @param {string} conversationId - The conversation ID
- * @param {number} minutesBack - How many minutes back to look for logs
- * @returns {Array} Array of log entries
- */
-async function queryRecentLogsByConversation(conversationId, minutesBack = 5) {
-    if (!logsContainer) {
-        console.warn('Logs container not available, cannot query logs');
-        return [];
-    }
-
-    try {
-        // Calculate timestamp for X minutes ago
-        const cutoffTime = new Date(Date.now() - minutesBack * 60 * 1000).toISOString();
-        
-        const querySpec = {
-            query: "SELECT * FROM c WHERE c.conversationid = @conversationId AND c.submitTimestamp > @cutoffTime ORDER BY c.submitTimestamp DESC OFFSET 0 LIMIT 10",
-            parameters: [
-                {
-                    name: "@conversationId",
-                    value: conversationId
-                },
-                {
-                    name: "@cutoffTime",
-                    value: cutoffTime
-                }
-            ]
-        };
-
-        const { resources: logs } = await logsContainer.items.query(querySpec).fetchAll();
-        console.log(`Found ${logs.length} recent logs for conversation ${conversationId} in last ${minutesBack} minutes`);
-        return logs;
-    } catch (error) {
-        console.error('Error querying recent logs by conversation:', error.message);
-        return [];
-    }
-}
-
-/**
- * Updates a question log with correct user ID
- * @param {string} questionId - The question ID to update
- * @param {string} userId - The correct user ID to set
- */
-async function updateQuestionLogUserId(questionId, userId) {
-    if (!logsContainer || !questionId) {
-        console.warn('Logs container not available or questionId missing, skipping user ID update');
-        return;
-    }
-
-    try {
-        // Get the existing log entry
-        const { resource: logEntry } = await logsContainer.item(questionId, questionId).read();
-        
-        if (logEntry) {
-            const oldUserId = logEntry.userid;
-            logEntry.userid = userId;
-            await logsContainer.item(questionId, questionId).replace(logEntry);
-            console.log(`Question log ${questionId} updated user ID from ${oldUserId} to ${userId}`);
-        }
-    } catch (error) {
-        console.error('Error updating question log user ID:', error.message);
-    }
-}
-
 module.exports = {
     createQuestionLog,
     updateQuestionLogResponse,
     updateQuestionLogErrors,
     updateQuestionLogModels,
     updateQuestionLogTokens,
-    updateQuestionLogUserId,
-    queryLogs,
-    queryRecentLogsByConversation
+    queryLogs
 };
