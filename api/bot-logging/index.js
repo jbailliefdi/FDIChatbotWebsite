@@ -3,7 +3,8 @@ const {
     updateQuestionLogResponse, 
     updateQuestionLogErrors, 
     updateQuestionLogModels,
-    updateQuestionLogTokens
+    updateQuestionLogTokens,
+    updateQuestionLogUserId
 } = require('../utils/logService');
 const { checkAndUpdateRateLimit } = require('../utils/rateLimit');
 
@@ -193,9 +194,57 @@ module.exports = async function (context, req) {
             return;
         }
 
+        if (method === 'PUT' && action === 'update-userid') {
+            // Update user ID
+            const { questionid, userid } = req.body;
+            
+            if (!questionid || !userid) {
+                context.res.status = 400;
+                context.res.body = { error: 'Missing required fields: questionid, userid' };
+                return;
+            }
+
+            await updateQuestionLogUserId(questionid, userid);
+            
+            context.res.status = 200;
+            context.res.body = { 
+                success: true, 
+                message: 'Question log user ID updated successfully' 
+            };
+            return;
+        }
+
+        if (method === 'GET' && action === 'query-recent') {
+            // Query for recent logs by conversation only
+            const { conversationid, minutesBack = 5 } = req.query;
+            
+            if (!conversationid) {
+                context.res.status = 400;
+                context.res.body = { error: 'Missing required query parameter: conversationid' };
+                return;
+            }
+
+            try {
+                const { queryRecentLogsByConversation } = require('../utils/logService');
+                const logs = await queryRecentLogsByConversation(conversationid, parseInt(minutesBack));
+                
+                context.res.status = 200;
+                context.res.body = { 
+                    success: true, 
+                    logs: logs || [],
+                    message: 'Recent logs queried successfully' 
+                };
+            } catch (queryError) {
+                context.log.error('Error querying recent logs:', queryError.message);
+                context.res.status = 500;
+                context.res.body = { error: 'Failed to query recent logs' };
+            }
+            return;
+        }
+
         // Invalid action
         context.res.status = 400;
-        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, query' };
+        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, update-userid, query, query-recent' };
         
     } catch (error) {
         context.log.error('Error in bot logging API:', error.message);
