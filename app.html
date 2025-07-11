@@ -1875,7 +1875,7 @@ async function getDirectLineToken(email) {
         }
         
         const data = await response.json();
-        return { token: data.token, userId: data.userId };
+        return data.token;
     } catch (error) {
         console.error('Error getting DirectLine token:', error);
         throw error;
@@ -1885,9 +1885,55 @@ function getScrollableTranscript(container) { return container?.querySelector('.
 function updateSidebar(memories) { const sidebar = document.querySelector(".sidebar"); if (!sidebar) { return; } let tempPrepopulatedChats = {}; let hasValidChatsInUpdate = false; const updatedChatIds = new Set(); if (memories && typeof memories === 'object' && Object.keys(memories).length > 0) { const conversationIds = Object.keys(memories); conversationIds.forEach(convId => { updatedChatIds.add(convId); try { if (!memories[convId]) { return; } const memoryDataStr = memories[convId]; const memoryData = (typeof memoryDataStr === 'string') ? JSON.parse(memoryDataStr) : memoryDataStr; const transcript = memoryData.memory || ""; const title = memoryData.title ? memoryData.title.trim() : ""; const activities = parseMemory(transcript); const hasTitle = title.length > 0; const hasUserMessages = activities.some(act => act.from.role === 'user'); if (hasTitle || hasUserMessages) { hasValidChatsInUpdate = true; tempPrepopulatedChats[convId] = transcript; let label = "Untitled Chat"; if (hasTitle && title !== "New Chat...") { label = truncateTitle(title); } else if (hasUserMessages) { const firstUserActivity = activities.find(a => a.from.role === "user"); label = firstUserActivity?.text ? truncateTitle(firstUserActivity.text.split('\n')[0]) : "Chat " + convId.substring(convId.length - 5); } else { label = "Chat " + convId.substring(convId.length - 5); } addchatTab(convId, label); } } catch (e) { console.error("Failed to process memory for sidebar update:", convId, e); } }); }
 Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const noChatsMsg = sidebar.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebar.querySelectorAll('.chat-tab').length; if (currentTabCount === 0 && !noChatsMsg) { const headerElement = sidebar.querySelector('.sidebar-header'); if (headerElement) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; headerElement.insertAdjacentElement('afterend', msg); } } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } initialSidebarLoaded = true; }
 function toggleSidebar() { const sidebar = document.querySelector(".sidebar"); sidebar?.classList.toggle('open'); }
-// Rate limiting is now handled by bot backend
+// Function to log user questions and check rate limit
+async function logUserQuestion(conversationId, userId) {
+  try {
+    const response = await fetch('/api/bot-logging/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        conversationid: conversationId,
+        userid: userId,
+        submitTimestamp: new Date().toISOString()
+      })
+    });
+    
+    if (response.status === 429) {
+      const data = await response.json();
+      alert(`You have reached your monthly limit of ${data.limit} questions. Your limit will reset on ${new Date(data.resetDate).toLocaleDateString()}.`);
+      return false; // Block the message
+    }
+    
+    if (!response.ok) {
+      console.error('Failed to log question:', response.status);
+    }
+    
+    return true; // Allow the message
+  } catch (error) {
+    console.error('Error logging question:', error);
+    return true; // Allow the message on error
+  }
+}
 
 function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatch, getState }) => next => action => { if ((action.type === "WEB_CHAT/SEND_MESSAGE" || action.type === "DIRECT_LINE/POST_ACTIVITY") && action.payload?.activity?.type === "message") { const token = getAuthToken(); if (token) { if (!action.payload.activity.channelData) action.payload.activity.channelData = {}; action.payload.activity.channelData.token = token; action.payload.activity.channelData.subscription = subscriptionData; } if (!action.payload.activity.from) action.payload.activity.from = {}; if (!action.payload.activity.from.role) action.payload.activity.from.role = 'user'; 
+  
+  // Rate limiting check for user messages
+  if (action.payload.activity.from.role === 'user' && subscriptionData?.userId) {
+    logUserQuestion(action.payload.activity.conversation?.id || currentchat, subscriptionData.userId).then(allowed => {
+      if (!allowed) {
+        console.log('Message blocked due to rate limit');
+        return; // Don't continue processing
+      }
+      return next(action); // Continue with the message
+    }).catch(error => {
+      console.error('Rate limit check failed:', error);
+      return next(action); // Continue on error
+    });
+    return; // Exit here to wait for async check
+  }
+  
 } if ((action.type === 'DIRECT_LINE/INCOMING_ACTIVITY' && action.payload?.activity?.type === 'message') || action.type === 'WEB_CHAT/SEND_MESSAGE_FULFILLED') { const container = document.getElementById('webchat_' + currentchat); if(container) scrollToBottom(container); } if (action.type === 'DIRECT_LINE/CONNECT_FULFILLED') { if (!isInjectingHistory) { const welcomeActivity = { type: 'message', id: `welcome_${action.payload.directLine.conversationId}_${Date.now()}`, timestamp: new Date(1).toISOString(), channelId: 'webchat', from: { id: 'bot', name: 'FDI Chatbot', role: 'bot' }, text: 'Hi! I am Tia, the FDI Chatbot!' }; dispatch({ type: 'DIRECT_LINE/INCOMING_ACTIVITY', payload: { activity: welcomeActivity } }); }
 dispatch({ type: 'WEB_CHAT/SEND_EVENT', payload: { name: 'webchat/join', value: { language: window.navigator.language } } }); } return next(action); }); }
 function endCurrentDirectLine() { if (currentDirectLineSubscription) { currentDirectLineSubscription.unsubscribe(); currentDirectLineSubscription = null; } if (window.directLine) { window.directLine.end(); window.directLine = null; } }
@@ -1917,8 +1963,8 @@ if (!account) {
     alert("Please sign in to start a new chat.");
     return;
 }
-const tokenData = await getDirectLineToken(account.username);
-    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: tokenData.token, userId: tokenData.userId }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
+const token = await getDirectLineToken(account.username);
+    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
     currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
@@ -2030,8 +2076,8 @@ async function newchat() {
         alert("Please sign in to start a new chat.");
         return;
     }
-    const tokenData = await getDirectLineToken(account.username);
-    window.directLine = window.WebChat.createDirectLine({ token: tokenData.token, userId: tokenData.userId }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
+    const token = await getDirectLineToken(account.username);
+    window.directLine = window.WebChat.createDirectLine({ token: token }); } catch(e) { alert("Error starting new chat connection."); console.error("Error creating DirectLine for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     const store = createWebChatStore();
     try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); } catch(e) { alert("Error displaying new chat interface."); console.error("Error rendering WebChat for new chat:", e); if (tempTabElement) tempTabElement.remove(); delete chats[tempChatId]; container.remove(); currentchat = null; return; }
     applyCurrentFontSize(container);

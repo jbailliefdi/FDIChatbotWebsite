@@ -32,38 +32,6 @@ module.exports = async function (context, req) {
         const action = req.params.action;
         const method = req.method;
 
-        if (method === 'POST' && action === 'check-rate-limit') {
-            // Check and increment rate limit
-            const { userId } = req.body;
-            
-            if (!userId) {
-                context.res.status = 400;
-                context.res.body = { error: 'Missing required field: userId' };
-                return;
-            }
-
-            try {
-                context.log('=== RATE LIMIT CHECK (BOT BACKEND) ===');
-                context.log('User ID for rate limit:', userId);
-                const rateLimitResult = await checkAndUpdateRateLimit(userId);
-                context.log('Rate limit result:', rateLimitResult);
-                
-                if (rateLimitResult.allowed) {
-                    context.res.status = 200;
-                    context.res.body = rateLimitResult;
-                } else {
-                    context.res.status = 429;
-                    context.res.body = rateLimitResult;
-                }
-                return;
-            } catch (rateLimitError) {
-                context.log.error('Rate limit check failed:', rateLimitError.message);
-                context.res.status = 500;
-                context.res.body = { error: 'Rate limit check failed' };
-                return;
-            }
-        }
-
         if (method === 'POST' && action === 'create') {
             // Create new question log
             const { conversationid, userid, submitTimestamp, modelChoices } = req.body;
@@ -200,7 +168,7 @@ module.exports = async function (context, req) {
 
         // Invalid action
         context.res.status = 400;
-        context.res.body = { error: 'Invalid action. Supported actions: check-rate-limit, create, update-response, update-errors, update-models, update-tokens' };
+        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens' };
         
     } catch (error) {
         context.log.error('Error in bot logging API:', error.message);
