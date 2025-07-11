@@ -1903,17 +1903,23 @@ async function logUserQuestion(conversationId, userId) {
     if (response.status === 429) {
       const data = await response.json();
       alert(`You have reached your monthly limit of ${data.limit} questions. Your limit will reset on ${new Date(data.resetDate).toLocaleDateString()}.`);
-      return false; // Block the message
+      return { allowed: false };
     }
     
     if (!response.ok) {
       console.error('Failed to log question:', response.status);
+      return { allowed: true, questionId: null };
     }
     
-    return true; // Allow the message
+    // Extract question ID from successful response
+    const data = await response.json();
+    const questionId = data.questionid;
+    console.log('Question logged with ID:', questionId);
+    
+    return { allowed: true, questionId: questionId };
   } catch (error) {
     console.error('Error logging question:', error);
-    return true; // Allow the message on error
+    return { allowed: true, questionId: null };
   }
 }
 
@@ -1925,11 +1931,18 @@ function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatc
     if (!action.payload.activity.channelData) action.payload.activity.channelData = {};
     action.payload.activity.channelData.rateLimitChecked = true;
     
-    logUserQuestion(action.payload.activity.conversation?.id || currentchat, subscriptionData.user.id).then(allowed => {
-      if (!allowed) {
+    logUserQuestion(action.payload.activity.conversation?.id || currentchat, subscriptionData.user.id).then(result => {
+      if (!result.allowed) {
         console.log('Message blocked due to rate limit');
         return; // Don't continue processing
       }
+      
+      // Add question ID to channel data so Python bot can find it
+      if (result.questionId) {
+        action.payload.activity.channelData.questionId = result.questionId;
+        console.log('Added question ID to channel data:', result.questionId);
+      }
+      
       // Continue with the message by dispatching it again
       dispatch(action);
     }).catch(error => {
