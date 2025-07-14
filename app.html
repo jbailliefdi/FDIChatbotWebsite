@@ -1601,7 +1601,6 @@ async function verifyUserAndInitialize(account) {
                 showTrialWelcomeMessage();
             }
         } else {
-            console.log("User exists but access denied:", result.message);
             
             let message = result.message;
             if (result.organization?.status === 'trial_expired') {
@@ -1618,7 +1617,6 @@ async function verifyUserAndInitialize(account) {
             updateAuthUI();
         }
     } else {
-        console.log("User not found in system. Showing subscription overlay.");
         showSubscriptionOverlay();
         updateAuthUI();
     }
@@ -1632,7 +1630,7 @@ function showTrialWelcomeMessage() {
                 text: `🎉 Welcome to your TIA Professional trial! You have full access to all features for the next 3 days. Ask me anything about tax - I'm here to help make your work easier!`,
                 timestamp: new Date().toISOString()
             }).subscribe(
-                id => console.log("Trial welcome message sent"),
+                id => {},
                 error => console.error("Error sending trial welcome message:", error)
             );
         }
@@ -1983,7 +1981,7 @@ function goToHomepage() {
 /**********************
  * Chatbot & Web Chat Setup
  **********************/
-let currentchat = null; const chats = {}; let fontSize = 16; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
+let currentchat = null; const chats = {}; let fontSize = 18; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
 async function getDirectLineToken(email) {
     try {
         const response = await fetch('/api/get-directline-token', {
@@ -2053,7 +2051,6 @@ async function logUserQuestion(conversationId, userId) {
     // Extract question ID from successful response
     const data = await response.json();
     const questionId = data.questionid;
-    console.log('Question logged with ID:', questionId);
     
     return { allowed: true, questionId: questionId };
   } catch (error) {
@@ -2072,14 +2069,12 @@ function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatc
     
     logUserQuestion(action.payload.activity.conversation?.id || currentchat, subscriptionData.user.id).then(result => {
       if (!result.allowed) {
-        console.log('Message blocked due to rate limit');
         return; // Don't continue processing
       }
       
       // Add question ID to channel data so Python bot can find it
       if (result.questionId) {
         action.payload.activity.channelData.questionId = result.questionId;
-        console.log('Added question ID to channel data:', result.questionId);
       }
       
       // Continue with the message by dispatching it again
@@ -2097,7 +2092,6 @@ dispatch({ type: 'WEB_CHAT/SEND_EVENT', payload: { name: 'webchat/join', value: 
 function endCurrentDirectLine() { if (currentDirectLineSubscription) { currentDirectLineSubscription.unsubscribe(); currentDirectLineSubscription = null; } if (window.directLine) { window.directLine.end(); window.directLine = null; } }
 
 async function loadExistingChat(chatId, memoryStr) {
-    console.log("loadExistingChat called for chatId:", chatId);
     isInjectingHistory = true;
     const mainWebchatArea = document.getElementById("webchat"); 
     if (!mainWebchatArea) { console.error("Main webchat area not found in loadExistingChat"); return; }
@@ -2124,13 +2118,9 @@ if (!account) {
     hideLoadingOverlay();
     return;
 }
-console.log("Getting DirectLine token for existing chat:", chatId, "user:", account.username);
 const token = await getDirectLineToken(account.username);
-console.log("DirectLine token retrieved successfully for existing chat:", chatId);
     // Create a NEW DirectLine connection instead of trying to resume old conversation
     window.directLine = window.WebChat.createDirectLine({ token: token }); 
-    console.log("DirectLine created for existing chat with new connection:", chatId);
-    console.log("DirectLine object:", window.directLine);
 } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; hideLoadingOverlay(); return; }
     
     // Don't render WebChat immediately - wait for connection to be established
@@ -2153,7 +2143,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
         }); 
         scrollToBottom(container); 
         isInjectingHistory = false; 
-        console.log("History injected for chat:", chatId); 
+ 
     };
     
     let authSent = false;
@@ -2162,10 +2152,8 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
     const connectionTimeout = setTimeout(() => {
         if (!webChatRendered) {
             console.error("DirectLine connection timeout for existing chat:", chatId);
-            console.log("Attempting to render WebChat anyway...");
             try {
                 window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
-                console.log("WebChat rendered for existing chat after timeout:", chatId);
                 webChatRendered = true;
                 hideLoadingOverlay();
                 
@@ -2192,21 +2180,8 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
     }, 3000); // 3 second timeout
     
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
-        console.log("DirectLine connection status for existing chat:", chatId, "Status:", status);
-        
-        // Log detailed status information
-        const statusNames = {
-            0: "Uninitialized",
-            1: "Connecting", 
-            2: "Online",
-            3: "ExpiredToken",
-            4: "FailedToConnect",
-            5: "Ended"
-        };
-        console.log("Connection status name:", statusNames[status] || "Unknown");
-        
         if (status === 1) {
-            console.log("DirectLine is connecting...");
+            // DirectLine is connecting
         } else if (status === 2 && !authSent) {
             authSent = true;
             clearTimeout(connectionTimeout); // Clear the timeout since connection succeeded
@@ -2216,7 +2191,6 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
             if (!webChatRendered) {
                 try {
                     window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
-                    console.log("WebChat rendered for existing chat after connection:", chatId);
                     webChatRendered = true;
                     hideLoadingOverlay();
                     
@@ -2256,7 +2230,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
                     }, 
                     from: { id: 'user-client', role: 'user' } 
                 }).subscribe({ 
-                    next: id => { console.log("mapOldConversation event sent", id); }, 
+                    next: id => {}, 
                     error: err => { console.error("Error sending mapOldConversation event:", err); } 
                 });
             }
@@ -2275,7 +2249,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
                         subscription: subscriptionData 
                     } 
                 }).subscribe(
-                    id => console.log("signin/verifyState with hint sent from loadExistingChat, client ID:", id), 
+                    id => {}, 
                     error => console.error("Error sending signin/verifyState with hint from loadExistingChat:", error)
                 );
             } else { 
@@ -2367,7 +2341,7 @@ function addchatTab(chatId, newLabel) {
     if (existingButton) { const currentButtonLabel = existingButton.textContent; if ((currentButtonLabel === "New Chat..." || currentButtonLabel === "Untitled Chat" || currentButtonLabel.startsWith("Chat ")) && newLabel && newLabel.trim() !== "" && newLabel !== "New Chat...") { existingButton.textContent = newLabel; existingButton.setAttribute("title", newLabel); } return existingTabElement;
     } else { const tabElement = createChatTabElement(chatId, newLabel); const sidebarContent = sidebar.querySelector('.sidebar-content'); const noChatsMsg = sidebarContent?.querySelector('.sidebar-no-chats-message'); if (noChatsMsg) noChatsMsg.remove(); if (sidebarContent) { sidebarContent.appendChild(tabElement); } else { sidebar.appendChild(tabElement); } chats[chatId] = tabElement; return tabElement; }
 }
-function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const sidebarContent = sidebar?.querySelector('.sidebar-content'); const currentTabCount = sidebarContent?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebarContent?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg && sidebarContent) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; sidebarContent.appendChild(msg); } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => console.log("deleteChat event sent for", chatId), error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); } }
+function deleteChat(chatId) { if (!chatId) return; try { const chatTabContainer = chats[chatId]; if (chatTabContainer) chatTabContainer.remove(); else { const tabElementDOM = document.getElementById(`chat-${chatId}`); if (tabElementDOM?.parentElement?.classList.contains('chat-tab')) tabElementDOM.parentElement.remove(); } const container = document.getElementById("webchat_" + chatId); if (container) container.remove(); delete chats[chatId]; delete prepopulatedChats[chatId]; if (currentchat === chatId || (window.directLine && window.directLine.conversationId === chatId) ) { endCurrentDirectLine(); currentchat = null; const remainingChatIds = Object.keys(chats); if (remainingChatIds.length > 0) { showchat(remainingChatIds[0]); } else { newchat(); } } const sidebar = document.querySelector(".sidebar"); const sidebarContent = sidebar?.querySelector('.sidebar-content'); const currentTabCount = sidebarContent?.querySelectorAll('.chat-tab').length ?? 0; const noChatsMsg = sidebarContent?.querySelector('.sidebar-no-chats-message'); if (currentTabCount === 0 && !noChatsMsg && sidebarContent) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; sidebarContent.appendChild(msg); } if (window.directLine && window.directLine.connectionStatus$.value === 2) { window.directLine.postActivity({ type: "event", name: "deleteChat", from: { id: "user-client", role: "user" }, value: { conversationId: chatId } }).subscribe( id => {}, error => console.error("Error sending deleteChat event:", error) ); } } catch (error) { if (currentchat === chatId) currentchat = null; alert(`Error deleting chat.`); console.error("Error in deleteChat:", error); } }
 
 // --- PDF Saving, Font Size, Dark Mode (Unchanged) ---
 const addPdfPage = (docInstance, topMargin) => { docInstance.addPage(); return topMargin; };
