@@ -2016,10 +2016,57 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
     };
     
     let authSent = false;
+    
+    // Add a timeout to handle stuck connections
+    const connectionTimeout = setTimeout(() => {
+        if (!webChatRendered) {
+            console.error("DirectLine connection timeout for existing chat:", chatId);
+            console.log("Attempting to render WebChat anyway...");
+            try {
+                window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
+                console.log("WebChat rendered for existing chat after timeout:", chatId);
+                webChatRendered = true;
+                
+                currentDirectLineSubscription = window.directLine.activity$.subscribe({ 
+                    next: activity => { 
+                        if (activity.type === 'event' && activity.name === 'updateSidebar') { 
+                            updateSidebar(activity.value); 
+                        } 
+                        if (activity.type === 'message') { 
+                            scrollToBottom(container); 
+                        } 
+                    }, 
+                    error: error => { console.error("Error in DirectLine activity subscription:", error); }, 
+                    complete: () => {} 
+                });
+                
+                setTimeout(injectHistory, 500);
+            } catch(e) {
+                console.error("Error rendering WebChat after timeout:", e);
+                alert("Error loading chat. Please try refreshing.");
+            }
+        }
+    }, 10000); // 10 second timeout
+    
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
         console.log("DirectLine connection status for existing chat:", chatId, "Status:", status);
-        if (status === 2 && !authSent) {
+        
+        // Log detailed status information
+        const statusNames = {
+            0: "Uninitialized",
+            1: "Connecting", 
+            2: "Online",
+            3: "ExpiredToken",
+            4: "FailedToConnect",
+            5: "Ended"
+        };
+        console.log("Connection status name:", statusNames[status] || "Unknown");
+        
+        if (status === 1) {
+            console.log("DirectLine is connecting...");
+        } else if (status === 2 && !authSent) {
             authSent = true;
+            clearTimeout(connectionTimeout); // Clear the timeout since connection succeeded
             const actualDlConversationId = window.directLine.conversationId;
             
             // Render WebChat only after connection is established
@@ -2092,6 +2139,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
             }
             connSub.unsubscribe();
         } else if (status === 3 || status === 4 || status === 5) { 
+            clearTimeout(connectionTimeout); // Clear timeout on error
             connSub.unsubscribe(); 
             isInjectingHistory = false; 
             console.error(`Failed to connect to existing chat "${chatId}". Status: ${status}.`); 
