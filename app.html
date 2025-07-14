@@ -1981,7 +1981,7 @@ function goToHomepage() {
 /**********************
  * Chatbot & Web Chat Setup
  **********************/
-let currentchat = null; const chats = {}; let fontSize = 18; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
+let currentchat = null; const chats = {}; let fontSize = 20; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
 async function getDirectLineToken(email) {
     try {
         const response = await fetch('/api/get-directline-token', {
@@ -2151,7 +2151,6 @@ const token = await getDirectLineToken(account.username);
     // Add a timeout to handle stuck connections
     const connectionTimeout = setTimeout(() => {
         if (!webChatRendered) {
-            console.error("DirectLine connection timeout for existing chat:", chatId);
             try {
                 window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                 webChatRendered = true;
@@ -2285,7 +2284,7 @@ const token = await getDirectLineToken(account.username);
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
     applyCurrentFontSize(container);
     scrollToBottom(container);
-    setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); } else { console.warn("Textarea not found to focus in showchat for container:", container); } }, 150);
+    setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); }}, 150);
 }
 async function newchat() {
     if (!userData?.accessGranted) { showSubscriptionOverlay(); return; }
