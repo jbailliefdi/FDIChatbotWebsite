@@ -2123,7 +2123,10 @@ console.log("Getting DirectLine token for existing chat:", chatId, "user:", acco
 const token = await getDirectLineToken(account.username);
 console.log("DirectLine token retrieved successfully for existing chat:", chatId);
     // Create a NEW DirectLine connection instead of trying to resume old conversation
-    window.directLine = window.WebChat.createDirectLine({ token: token }); 
+    window.directLine = window.WebChat.createDirectLine({ 
+        token: token,
+        userId: account.username || 'user'
+    }); 
     console.log("DirectLine created for existing chat with new connection:", chatId);
     console.log("DirectLine object:", window.directLine);
     
