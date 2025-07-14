@@ -2123,21 +2123,9 @@ console.log("Getting DirectLine token for existing chat:", chatId, "user:", acco
 const token = await getDirectLineToken(account.username);
 console.log("DirectLine token retrieved successfully for existing chat:", chatId);
     // Create a NEW DirectLine connection instead of trying to resume old conversation
-    window.directLine = window.WebChat.createDirectLine({ 
-        token: token,
-        userId: account.username || 'user'
-    }); 
+    window.directLine = window.WebChat.createDirectLine({ token: token }); 
     console.log("DirectLine created for existing chat with new connection:", chatId);
     console.log("DirectLine object:", window.directLine);
-    
-    // Force DirectLine to start connecting by accessing the activity stream
-    console.log("Forcing DirectLine connection by subscribing to activity stream");
-    const triggerSub = window.directLine.activity$.subscribe({
-        next: () => {},
-        error: () => {},
-        complete: () => {}
-    });
-    setTimeout(() => triggerSub.unsubscribe(), 100); // Unsubscribe after triggering
 } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; hideLoadingOverlay(); return; }
     
     // Don't render WebChat immediately - wait for connection to be established
