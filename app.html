@@ -2300,6 +2300,29 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
     if (!container) {
         if (prepopulatedChats.hasOwnProperty(chatId)) { showLoadingOverlay("Loading chat..."); try { loadExistingChat(chatId, prepopulatedChats[chatId]); container = document.getElementById("webchat_" + chatId); if (!container) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error(`Container for ${chatId} still not found after loadExistingChat.`); currentchat = previousChatId; return; } } catch (error) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error("Error in loadExistingChat:", error); currentchat = previousChatId; return; }
         } else { console.warn(`Chat ID ${chatId} not found in prepopulatedChats.`); alert(`Cannot show chat: ${chatId}.`); currentchat = previousChatId; if (Object.keys(chats).length > 0) { showchat(Object.keys(chats)[0]); } else { newchat(); } return; }
+    } else {
+        // Container exists, but check if DirectLine connection is still alive and pointing to the right conversation
+        if (!window.directLine || window.directLine.connectionStatus$.value !== 2 || 
+            (window.directLine.conversationId && window.directLine.conversationId !== chatId)) {
+            console.log("DirectLine connection dead or wrong conversation for cached chat, recreating...");
+            showLoadingOverlay("Reconnecting chat...");
+            
+            // Recreate the DirectLine connection for this cached chat
+            try {
+                if (prepopulatedChats.hasOwnProperty(chatId)) {
+                    loadExistingChat(chatId, prepopulatedChats[chatId]);
+                } else {
+                    hideLoadingOverlay();
+                    alert("Cannot reconnect to chat. Please refresh the page.");
+                    return;
+                }
+            } catch (error) {
+                hideLoadingOverlay();
+                console.error("Error reconnecting to cached chat:", error);
+                alert("Error reconnecting to chat. Please refresh the page.");
+                return;
+            }
+        }
     }
     container.style.display = "flex";
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${chatId}`); });
