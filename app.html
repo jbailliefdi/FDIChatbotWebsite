@@ -2107,6 +2107,7 @@ async function loadExistingChat(chatId, memoryStr) {
     if (!account || !token) {
         alert("Please sign in to access chat history.");
         isInjectingHistory = false;
+        hideLoadingOverlay();
         return;
     }
     
@@ -2115,6 +2116,7 @@ async function loadExistingChat(chatId, memoryStr) {
 if (!account) {
     alert("Please sign in to start a new chat.");
     isInjectingHistory = false;
+    hideLoadingOverlay();
     return;
 }
 console.log("Getting DirectLine token for existing chat:", chatId, "user:", account.username);
@@ -2124,7 +2126,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
     window.directLine = window.WebChat.createDirectLine({ token: token }); 
     console.log("DirectLine created for existing chat with new connection:", chatId);
     console.log("DirectLine object:", window.directLine);
-} catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
+} catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; hideLoadingOverlay(); return; }
     
     // Don't render WebChat immediately - wait for connection to be established
     const store = createWebChatStore();
@@ -2160,6 +2162,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
                 window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                 console.log("WebChat rendered for existing chat after timeout:", chatId);
                 webChatRendered = true;
+                hideLoadingOverlay();
                 
                 currentDirectLineSubscription = window.directLine.activity$.subscribe({ 
                     next: activity => { 
@@ -2178,6 +2181,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
             } catch(e) {
                 console.error("Error rendering WebChat after timeout:", e);
                 alert("Error loading chat. Please try refreshing.");
+                hideLoadingOverlay();
             }
         }
     }, 10000); // 10 second timeout
@@ -2209,6 +2213,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
                     window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                     console.log("WebChat rendered for existing chat after connection:", chatId);
                     webChatRendered = true;
+                    hideLoadingOverlay();
                     
                     // Set up activity subscription after WebChat is rendered
                     currentDirectLineSubscription = window.directLine.activity$.subscribe({ 
@@ -2230,6 +2235,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
                     alert("Error displaying chat interface. Please try refreshing.");
                     console.error("Error rendering WebChat for existing chat:", e);
                     isInjectingHistory = false;
+                    hideLoadingOverlay();
                     return;
                 }
             }
@@ -2292,7 +2298,7 @@ console.log("DirectLine token retrieved successfully for existing chat:", chatId
     currentchat = chatId;
     let container = document.getElementById("webchat_" + chatId);
     if (!container) {
-        if (prepopulatedChats.hasOwnProperty(chatId)) { showLoadingOverlay("Loading chat..."); try { loadExistingChat(chatId, prepopulatedChats[chatId]); container = document.getElementById("webchat_" + chatId); if (!container) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error(`Container for ${chatId} still not found after loadExistingChat.`); currentchat = previousChatId; return; } hideLoadingOverlay(); } catch (error) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error("Error in loadExistingChat:", error); currentchat = previousChatId; return; }
+        if (prepopulatedChats.hasOwnProperty(chatId)) { showLoadingOverlay("Loading chat..."); try { loadExistingChat(chatId, prepopulatedChats[chatId]); container = document.getElementById("webchat_" + chatId); if (!container) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error(`Container for ${chatId} still not found after loadExistingChat.`); currentchat = previousChatId; return; } } catch (error) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error("Error in loadExistingChat:", error); currentchat = previousChatId; return; }
         } else { console.warn(`Chat ID ${chatId} not found in prepopulatedChats.`); alert(`Cannot show chat: ${chatId}.`); currentchat = previousChatId; if (Object.keys(chats).length > 0) { showchat(Object.keys(chats)[0]); } else { newchat(); } return; }
     }
     container.style.display = "flex";
