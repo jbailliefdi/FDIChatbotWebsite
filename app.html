@@ -1980,15 +1980,24 @@ async function loadExistingChat(chatId, memoryStr) {
     const account = msalInstance.getActiveAccount();
 if (!account) {
     alert("Please sign in to start a new chat.");
+    isInjectingHistory = false;
     return;
 }
+console.log("Getting DirectLine token for existing chat:", chatId, "user:", account.username);
 const token = await getDirectLineToken(account.username);
-    window.directLine = window.WebChat.createDirectLine({ conversationId: chatId, token: token }); console.log("DirectLine created for existing chat:", chatId); } catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
-    const store = createWebChatStore();
-    try { window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container); console.log("WebChat rendered for existing chat:", chatId); } catch(e) { alert("Error displaying chat interface. Please try refreshing."); console.error("Error rendering WebChat for existing chat:", e); isInjectingHistory = false; return; }
-    currentDirectLineSubscription = window.directLine.activity$.subscribe({ next: activity => { if (activity.type === 'event' && activity.name === 'updateSidebar') { updateSidebar(activity.value); } if (activity.type === 'message') { scrollToBottom(container); } }, error: error => { console.error("Error in DirectLine activity subscription:", error); }, complete: () => {} });
+console.log("DirectLine token retrieved successfully for existing chat:", chatId);
+    // Create a NEW DirectLine connection instead of trying to resume old conversation
+    window.directLine = window.WebChat.createDirectLine({ token: token }); 
+    console.log("DirectLine created for existing chat with new connection:", chatId);
+    console.log("DirectLine object:", window.directLine);
+} catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; return; }
     
-    const historyInjectionTimeout = setTimeout(() => { 
+    // Don't render WebChat immediately - wait for connection to be established
+    const store = createWebChatStore();
+    let webChatRendered = false;
+    
+    // Function to inject history after WebChat is ready
+    const injectHistory = () => {
         const activities = parseMemory(memoryStr); 
         const historyActivities = activities.filter(act => !act.id?.startsWith('welcome_')); 
         const historyBaseTime = Date.now() - (24 * 60 * 60 * 1000); 
@@ -2004,13 +2013,45 @@ const token = await getDirectLineToken(account.username);
         scrollToBottom(container); 
         isInjectingHistory = false; 
         console.log("History injected for chat:", chatId); 
-    }, 250);
+    };
     
     let authSent = false;
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
+        console.log("DirectLine connection status for existing chat:", chatId, "Status:", status);
         if (status === 2 && !authSent) {
             authSent = true;
             const actualDlConversationId = window.directLine.conversationId;
+            
+            // Render WebChat only after connection is established
+            if (!webChatRendered) {
+                try {
+                    window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
+                    console.log("WebChat rendered for existing chat after connection:", chatId);
+                    webChatRendered = true;
+                    
+                    // Set up activity subscription after WebChat is rendered
+                    currentDirectLineSubscription = window.directLine.activity$.subscribe({ 
+                        next: activity => { 
+                            if (activity.type === 'event' && activity.name === 'updateSidebar') { 
+                                updateSidebar(activity.value); 
+                            } 
+                            if (activity.type === 'message') { 
+                                scrollToBottom(container); 
+                            } 
+                        }, 
+                        error: error => { console.error("Error in DirectLine activity subscription:", error); }, 
+                        complete: () => {} 
+                    });
+                    
+                    // Inject history after WebChat is rendered and connection is established
+                    setTimeout(injectHistory, 250);
+                } catch(e) {
+                    alert("Error displaying chat interface. Please try refreshing.");
+                    console.error("Error rendering WebChat for existing chat:", e);
+                    isInjectingHistory = false;
+                    return;
+                }
+            }
             
             // Send mapping event first if needed
             if (actualDlConversationId && actualDlConversationId !== chatId) {
@@ -2051,10 +2092,12 @@ const token = await getDirectLineToken(account.username);
             }
             connSub.unsubscribe();
         } else if (status === 3 || status === 4 || status === 5) { 
-            clearTimeout(historyInjectionTimeout); 
             connSub.unsubscribe(); 
             isInjectingHistory = false; 
             console.error(`Failed to connect to existing chat "${chatId}". Status: ${status}.`); 
+            console.error("DirectLine token used:", token ? "Token exists" : "No token");
+            console.error("Account info:", account ? account.username : "No account");
+            console.error("DirectLine object state:", window.directLine);
             alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`); 
         }
     });
