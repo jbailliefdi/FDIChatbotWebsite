@@ -11,7 +11,8 @@
       "Bash(rg:*)",
       "Bash(ls:*)",
       "Bash(python test:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }
