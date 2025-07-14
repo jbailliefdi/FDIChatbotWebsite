@@ -1466,12 +1466,38 @@ function showDeleteOverlay(chatId, label) {
     if (overlay && message) {
         message.textContent = `Are you sure you want to delete "${label}"? This action cannot be undone.`;
         overlay.classList.add('visible');
+        
+        // Add keyboard event listener
+        const handleKeyDown = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                confirmDelete();
+                document.removeEventListener('keydown', handleKeyDown);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                hideDeleteOverlay();
+                document.removeEventListener('keydown', handleKeyDown);
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyDown);
+        
+        // Store the handler so we can remove it later
+        overlay._keydownHandler = handleKeyDown;
     }
 }
 
 function hideDeleteOverlay() {
     const overlay = document.getElementById('delete-overlay');
-    if (overlay) overlay.classList.remove('visible');
+    if (overlay) {
+        overlay.classList.remove('visible');
+        
+        // Remove keyboard event listener if it exists
+        if (overlay._keydownHandler) {
+            document.removeEventListener('keydown', overlay._keydownHandler);
+            overlay._keydownHandler = null;
+        }
+    }
     chatToDelete = null;
     chatLabelToDelete = null;
 }
@@ -1978,39 +2004,9 @@ async function getDirectLineToken(email) {
     }
 }; let isInjectingHistory = false; window.directLine = null; let currentDirectLineSubscription = null; const webChatStyleOptions = { bubbleBorderRadius: 18, bubbleFromUserBorderRadius: 18, botAvatarImage: "FDi_Logo_Device_Transparent_Outer.png", userAvatarImage: "Unknown.png", botAvatarInitials: "TIA", sendBoxTextWrap: true, hideUploadButton: true, sendBoxButtonAlignment: 'end', };
 function getScrollableTranscript(container) { return container?.querySelector('.webchat__basic-transcript__scrollable') || container?.querySelector('.webchat__basic-transcript'); } function scrollToBottom(container) { setTimeout(() => { const scrollable = getScrollableTranscript(container); if (scrollable) { scrollable.scrollTop = scrollable.scrollHeight; } else { console.warn("Could not find scrollable element in scrollToBottom for container:", container); } }, 250); } function parseMemory(memoryStr) { const activities = []; if (!memoryStr) return activities; const lines = memoryStr.split("\n"); let currentActivity = null; const regex = /^(User(?: Query)?|Bot(?: Answer)?)\s*\d*\s*:\s*(.*)$/i; lines.forEach(line => { const trimmed = line.trim(); if (!trimmed) return; const match = trimmed.match(regex); if (match) { if (currentActivity) activities.push(currentActivity); const marker = match[1].toLowerCase(); const text = match[2]; const isUser = marker.startsWith("user"); const from = isUser ? { id: "user", name: "User", role: "user" } : { id: "bot", name: "FDI Chatbot", role: "bot" }; currentActivity = { type: "message", from: from, text: text.trim(), timestamp: new Date(Date.now() - ((lines.length - activities.length) * 100)).toISOString() }; } else if (currentActivity) { currentActivity.text += "\n" + trimmed; } }); if (currentActivity) activities.push(currentActivity); activities.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); return activities; } function truncateTitle(title) { if (title.length > 25) { return title.slice(0, 22) + "..."; } return title; }
-function updateSidebar(memories) { const sidebar = document.querySelector(".sidebar"); if (!sidebar) { return; } let tempPrepopulatedChats = {}; let hasValidChatsInUpdate = false; const updatedChatIds = new Set(); let paginationInfo = null; if (memories && typeof memories === 'object' && Object.keys(memories).length > 0) { const conversationIds = Object.keys(memories); conversationIds.forEach(convId => { if (convId === '__pagination__') { try { paginationInfo = JSON.parse(memories[convId]); } catch (e) { console.error("Failed to parse pagination info:", e); } return; } updatedChatIds.add(convId); try { if (!memories[convId]) { return; } const memoryDataStr = memories[convId]; const memoryData = (typeof memoryDataStr === 'string') ? JSON.parse(memoryDataStr) : memoryDataStr; const transcript = memoryData.memory || ""; const title = memoryData.title ? memoryData.title.trim() : ""; const activities = parseMemory(transcript); const hasTitle = title.length > 0; const hasUserMessages = activities.some(act => act.from.role === 'user'); if (hasTitle || hasUserMessages) { hasValidChatsInUpdate = true; tempPrepopulatedChats[convId] = transcript; let label = "Untitled Chat"; if (hasTitle && title !== "New Chat...") { label = truncateTitle(title); } else if (hasUserMessages) { const firstUserActivity = activities.find(a => a.from.role === "user"); label = firstUserActivity?.text ? truncateTitle(firstUserActivity.text.split('\n')[0]) : "Chat " + convId.substring(convId.length - 5); } else { label = "Chat " + convId.substring(convId.length - 5); } addchatTab(convId, label); } } catch (e) { console.error("Failed to process memory for sidebar update:", convId, e); } }); }
-Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const sidebarContent = sidebar.querySelector('.sidebar-content'); const noChatsMsg = sidebarContent?.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebarContent?.querySelectorAll('.chat-tab').length || 0; if (currentTabCount === 0 && !noChatsMsg && sidebarContent) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; sidebarContent.appendChild(msg); } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } let existingLoadMoreBtn = sidebarContent?.querySelector('.load-more-btn'); if (paginationInfo && paginationInfo.hasMore && sidebarContent) { if (!existingLoadMoreBtn) { const loadMoreBtn = document.createElement('button'); loadMoreBtn.className = 'load-more-btn'; loadMoreBtn.textContent = `Load More (${paginationInfo.totalCount - sidebarContent.querySelectorAll('.chat-tab').length} remaining)`; loadMoreBtn.onclick = () => loadMoreConversations(paginationInfo.page + 1); sidebarContent.appendChild(loadMoreBtn); } else { existingLoadMoreBtn.textContent = `Load More (${paginationInfo.totalCount - sidebarContent.querySelectorAll('.chat-tab').length} remaining)`; existingLoadMoreBtn.onclick = () => loadMoreConversations(paginationInfo.page + 1); existingLoadMoreBtn.disabled = false; } } else if (existingLoadMoreBtn) { existingLoadMoreBtn.remove(); } initialSidebarLoaded = true; }
+function updateSidebar(memories) { const sidebar = document.querySelector(".sidebar"); if (!sidebar) { return; } let tempPrepopulatedChats = {}; let hasValidChatsInUpdate = false; const updatedChatIds = new Set(); if (memories && typeof memories === 'object' && Object.keys(memories).length > 0) { const conversationIds = Object.keys(memories); conversationIds.forEach(convId => { updatedChatIds.add(convId); try { if (!memories[convId]) { return; } const memoryDataStr = memories[convId]; const memoryData = (typeof memoryDataStr === 'string') ? JSON.parse(memoryDataStr) : memoryDataStr; const transcript = memoryData.memory || ""; const title = memoryData.title ? memoryData.title.trim() : ""; const activities = parseMemory(transcript); const hasTitle = title.length > 0; const hasUserMessages = activities.some(act => act.from.role === 'user'); if (hasTitle || hasUserMessages) { hasValidChatsInUpdate = true; tempPrepopulatedChats[convId] = transcript; let label = "Untitled Chat"; if (hasTitle && title !== "New Chat...") { label = truncateTitle(title); } else if (hasUserMessages) { const firstUserActivity = activities.find(a => a.from.role === "user"); label = firstUserActivity?.text ? truncateTitle(firstUserActivity.text.split('\n')[0]) : "Chat " + convId.substring(convId.length - 5); } else { label = "Chat " + convId.substring(convId.length - 5); } addchatTab(convId, label); } } catch (e) { console.error("Failed to process memory for sidebar update:", convId, e); } }); }
+Object.keys(tempPrepopulatedChats).forEach(id => { prepopulatedChats[id] = tempPrepopulatedChats[id]; }); const sidebarContent = sidebar.querySelector('.sidebar-content'); const noChatsMsg = sidebarContent?.querySelector('.sidebar-no-chats-message'); const currentTabCount = sidebarContent?.querySelectorAll('.chat-tab').length || 0; if (currentTabCount === 0 && !noChatsMsg && sidebarContent) { const msg = document.createElement('p'); msg.className = 'sidebar-no-chats-message'; msg.textContent = 'No previous chats found.'; sidebarContent.appendChild(msg); } else if (currentTabCount > 0 && noChatsMsg) { noChatsMsg.remove(); } initialSidebarLoaded = true; }
 function toggleSidebar() { const sidebar = document.querySelector(".sidebar"); sidebar?.classList.toggle('open'); }
-
-// Function to load more conversations
-function loadMoreConversations(page) {
-    if (!window.directLine || window.directLine.connectionStatus$.value !== 2) {
-        console.error("DirectLine not connected for load more request");
-        return;
-    }
-    
-    const loadMoreBtn = document.querySelector('.load-more-btn');
-    if (loadMoreBtn) {
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.textContent = 'Loading...';
-    }
-    
-    window.directLine.postActivity({
-        type: "event",
-        name: "loadMoreConversations",
-        from: { id: "user-client", role: "user" },
-        value: { page: page }
-    }).subscribe(
-        id => console.log("loadMoreConversations event sent for page", page),
-        error => {
-            console.error("Error sending loadMoreConversations event:", error);
-            if (loadMoreBtn) {
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.textContent = 'Load More';
-            }
-        }
-    );
-}
 
 // Function to show loading overlay
 function showLoadingOverlay(text = "Loading chat...") {
