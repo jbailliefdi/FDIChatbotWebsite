@@ -1588,6 +1588,9 @@ async function verifyUserAndInitialize(account) {
     };
 
     if (loadingOverlay) loadingOverlay.classList.remove('visible');
+    
+    // Hide initializing overlay when authentication is complete
+    hideInitializingOverlay();
 
     if (result.userExists) {
         if (result.accessGranted) {
@@ -1874,10 +1877,14 @@ async function signIn() {
         return;
     }
     
+    // Show initializing overlay
+    showInitializingOverlay();
+    
     const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; 
     try { 
         await msalInstance.loginRedirect(loginRequest); 
     } catch (error) { 
+        hideInitializingOverlay();
         alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); 
         console.error("Sign-in error:", error);
     } 
@@ -1929,6 +1936,31 @@ function showAuthLoadingOverlay() {
 
 function hideAuthLoadingOverlay() {
     const overlay = document.getElementById('auth-loading-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+}
+
+function showInitializingOverlay() {
+    let overlay = document.getElementById('initializing-overlay');
+    if (!overlay) {
+        // Create the overlay if it doesn't exist
+        overlay = document.createElement('div');
+        overlay.id = 'initializing-overlay';
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-modal">
+                <div class="spinner"></div>
+                <p>Initializing...</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    overlay.classList.add('visible');
+}
+
+function hideInitializingOverlay() {
+    const overlay = document.getElementById('initializing-overlay');
     if (overlay) {
         overlay.classList.remove('visible');
     }
@@ -2176,7 +2208,7 @@ const token = await getDirectLineToken(account.username);
                 hideLoadingOverlay();
             }
         }
-    }, 3000); // 3 second timeout
+    }, 1000); // 1 second timeout
     
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
         if (status === 1) {
@@ -2417,18 +2449,21 @@ window.onload = async () => {
                 } else {
                     console.error("MSAL silent token acquisition error:", error);
                     clearAuthToken();
+                    hideInitializingOverlay();
                     updateAuthUI();
                 }
             }
         } else {
             console.log("No MSAL account found. User needs to sign in.");
             clearAuthToken();
+            hideInitializingOverlay();
             updateAuthUI();
             // Optional: show overlay with a message to sign in, but current UI is clear.
         }
     } catch (msalError) {
         console.error("MSAL error during startup:", msalError);
         clearAuthToken();
+        hideInitializingOverlay();
         updateAuthUI();
     }
     
