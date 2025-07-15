@@ -408,11 +408,7 @@
       justify-self: end; 
     }
     
-    #dashboardBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
-  background: #229954;
-}
+    /* Dashboard button styles removed */
 
     #user-status { 
       font-size: 0.9rem; 
@@ -1234,15 +1230,7 @@ footer.chat-footer.show {
         display: none;
       }
 
-      #dashboardBtn {
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  margin-right: 8px;
-}
-
-#dashboardBtn span {
-  display: none;
-}
+      /* Dashboard button mobile styles removed */
       
       .chat-header .logo-container {
         grid-column: 2 / 3;
@@ -1365,9 +1353,7 @@ footer.chat-footer.show {
 </div>
       <div class="login-container" id="auth-container">
   <span id="user-status">User not signed in</span>
-<button id="dashboardBtn" onclick="goToDashboard()" style="display: none; margin-right: 10px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s;">
-  <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
-</button>
+<!-- Dashboard button removed -->
   <button id="authBtn" onclick="handleAuth()">Sign In</button>
 </div>
     </header>
@@ -1687,10 +1673,10 @@ function handleTrialUrlParams() {
         }, 1000);
     }
 }
-    function goToDashboard() {
+    /* function goToDashboard() {
     window.open('/dashboard', '_blank');
 }
-window.goToDashboard = goToDashboard;
+window.goToDashboard = goToDashboard; */ // Dashboard function removed
 
 function initializeChat() {
     // This function now centralizes the start of the chat experience
@@ -1753,7 +1739,7 @@ function updateFooterVisibility() {
 function updateAuthUI() {
     const authBtn = document.getElementById("authBtn");
     const userStatus = document.getElementById("user-status");
-    const dashboardBtn = document.getElementById("dashboardBtn");
+    /* const dashboardBtn = document.getElementById("dashboardBtn"); */ // Dashboard button removed
     if (!authBtn || !userStatus) return;
 
     // Check if MSAL is initialized and has the required methods
@@ -1761,7 +1747,7 @@ function updateAuthUI() {
         authBtn.textContent = "Loading...";
         authBtn.disabled = true;
         userStatus.textContent = "Initialising TIA...";
-        if (dashboardBtn) dashboardBtn.style.display = "none";
+        /* if (dashboardBtn) dashboardBtn.style.display = "none"; */ // Dashboard button removed
         return;
     }
 
@@ -1776,25 +1762,20 @@ function updateAuthUI() {
         authBtn.textContent = "Error";
         authBtn.disabled = true;
         userStatus.textContent = "Authentication error";
-        if (dashboardBtn) dashboardBtn.style.display = "none";
+        /* if (dashboardBtn) dashboardBtn.style.display = "none"; */ // Dashboard button removed
         return;
     }
     if (account) {
         authBtn.textContent = "Sign Out";
         
-        // Show/hide dashboard button based on admin role
-        if (userData && userData.userRole === 'admin') {
-            if (dashboardBtn) dashboardBtn.style.display = "inline-flex";
-        } else {
-            if (dashboardBtn) dashboardBtn.style.display = "none";
-        }
+        // Dashboard button functionality removed
         
         // Subscription display removed for deployment without Cosmos DB
         userStatus.innerHTML = `${account.name || account.username}`;
     } else {
         authBtn.textContent = "Sign In";
         userStatus.textContent = "User not signed in";
-        if (dashboardBtn) dashboardBtn.style.display = "none";
+        /* if (dashboardBtn) dashboardBtn.style.display = "none"; */ // Dashboard button removed
     }
     
     // Add this line to update footer visibility
@@ -2511,8 +2492,8 @@ window.onload = async () => {
 <div id="loading-overlay" class="loading-overlay">
   <div class="loading-modal">
     <div class="loading-spinner"></div>
-    <h3>Verifying Subscription...</h3>
-    <p>Please wait while we check your account status.</p>
+    <h3>Initializing...</h3>
+    <p>Please wait while we set up your chat session.</p>
   </div>
 </div>
 <!-- Error Overlay -->
