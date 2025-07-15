@@ -2062,95 +2062,8 @@ async function logUserQuestion(conversationId, userId) {
   }
 }
 
-// Function to reactivate a historical chat when user tries to send a message
-async function reactivateHistoricalChat(chatId) {
-    console.log(`Reactivating historical chat: ${chatId}`);
-    
-    const account = msalInstance.getActiveAccount();
-    if (!account) {
-        alert("Please sign in to continue the conversation.");
-        return false;
-    }
-    
-    try {
-        // Get new DirectLine token
-        const token = await getDirectLineToken(account.username);
-        
-        // Create new DirectLine connection for this chat
-        const directLine = window.WebChat.createDirectLine({ token: token });
-        chatDirectLines[chatId] = directLine;
-        window.directLine = directLine;
-        
-        // Set up activity subscription
-        const subscription = directLine.activity$.subscribe({
-            next: activity => {
-                if (activity.type === 'event' && activity.name === 'updateSidebar') {
-                    updateSidebar(activity.value);
-                }
-                if (activity.type === 'message') {
-                    const container = document.getElementById('webchat_' + chatId);
-                    if (container) scrollToBottom(container);
-                }
-            },
-            error: error => {
-                console.error("Error in DirectLine activity subscription:", error);
-            },
-            complete: () => {}
-        });
-        
-        chatSubscriptions[chatId] = subscription;
-        currentDirectLineSubscription = subscription;
-        
-        // Send context to the bot about resuming this conversation
-        directLine.connectionStatus$.subscribe(status => {
-            if (status === 2) { // Connected
-                directLine.postActivity({
-                    type: "event",
-                    name: "resumeConversation",
-                    from: { id: "user-client", role: "user" },
-                    value: { 
-                        conversationId: chatId,
-                        context: prepopulatedChats[chatId] || ""
-                    }
-                }).subscribe(
-                    id => console.log(`Resume conversation event sent for chat ${chatId}`),
-                    error => console.error("Error sending resume conversation event:", error)
-                );
-            }
-        });
-        
-        return true;
-    } catch (error) {
-        console.error("Error reactivating historical chat:", error);
-        alert("Error connecting to chat. Please try refreshing.");
-        return false;
-    }
-}
 
-function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatch, getState }) => next => action => { 
-    // Check if user is trying to send a message to a historical chat without active DirectLine
-    if ((action.type === "WEB_CHAT/SEND_MESSAGE" || action.type === "DIRECT_LINE/POST_ACTIVITY") && action.payload?.activity?.type === "message") {
-        const chatDirectLine = chatDirectLines[currentchat];
-        if (!chatDirectLine || !chatDirectLine.connectionStatus$ || chatDirectLine.connectionStatus$.value !== 2) {
-            console.log(`Attempting to send message to inactive chat ${currentchat}, reactivating...`);
-            reactivateHistoricalChat(currentchat).then(success => {
-                if (success) {
-                    console.log(`Chat ${currentchat} reactivated, resending message`);
-                    // Resend the message after reactivation
-                    setTimeout(() => {
-                        if (window.directLine && window.directLine.connectionStatus$.value === 2) {
-                            window.directLine.postActivity(action.payload.activity).subscribe(
-                                id => console.log("Message sent after reactivation"),
-                                error => console.error("Error sending message after reactivation:", error)
-                            );
-                        }
-                    }, 1000);
-                }
-            });
-            return next(action); // Continue with original action
-        }
-        
-        const token = getAuthToken(); if (token) { if (!action.payload.activity.channelData) action.payload.activity.channelData = {}; action.payload.activity.channelData.token = token; action.payload.activity.channelData.subscription = subscriptionData; } if (!action.payload.activity.from) action.payload.activity.from = {}; if (!action.payload.activity.from.role) action.payload.activity.from.role = 'user'; 
+function createWebChatStore() { return window.WebChat.createStore({}, ({ dispatch, getState }) => next => action => { if ((action.type === "WEB_CHAT/SEND_MESSAGE" || action.type === "DIRECT_LINE/POST_ACTIVITY") && action.payload?.activity?.type === "message") { const token = getAuthToken(); if (token) { if (!action.payload.activity.channelData) action.payload.activity.channelData = {}; action.payload.activity.channelData.token = token; action.payload.activity.channelData.subscription = subscriptionData; } if (!action.payload.activity.from) action.payload.activity.from = {}; if (!action.payload.activity.from.role) action.payload.activity.from.role = 'user'; 
   
   // Rate limiting check for user messages - only for user messages, not retries
   if (action.payload.activity.from.role === 'user' && subscriptionData?.user?.id && !action.payload.activity.channelData?.rateLimitChecked) {
@@ -2206,7 +2119,19 @@ async function loadExistingChat(chatId, memoryStr) {
     if (!mainWebchatArea) { console.error("Main webchat area not found in loadExistingChat"); return; }
     const containerId = "webchat_" + chatId; 
     let container = document.getElementById(containerId);
-    if (!container) { container = document.createElement("div"); container.id = containerId; container.style.display = "none"; container.style.minHeight = "100%"; mainWebchatArea.appendChild(container); } else { container.innerHTML = ''; }
+    if (!container) { 
+        container = document.createElement("div"); 
+        container.id = containerId; 
+        container.style.display = "none"; 
+        container.style.minHeight = "100%"; 
+        mainWebchatArea.appendChild(container); 
+    } else { 
+        // Clear the existing container content to reload fresh
+        container.innerHTML = ''; 
+    }
+    
+    // End any existing DirectLine connection for this chat
+    endChatDirectLine(chatId);
     endCurrentDirectLine();
     
     // Check authentication before proceeding
@@ -2385,70 +2310,6 @@ const token = await getDirectLineToken(account.username);
 
 }
 
-// Helper function to re-initialize DirectLine for existing chats
-async function reinitializeDirectLineForExistingChat(chatId, container) {
-    console.log(`Reinitializing DirectLine for existing chat: ${chatId}`);
-    
-    // End current DirectLine connection for this specific chat
-    endChatDirectLine(chatId);
-    
-    // Check authentication
-    const account = msalInstance.getActiveAccount();
-    if (!account) {
-        alert("Please sign in to access the chat.");
-        return false;
-    }
-    
-    try {
-        // Get new DirectLine token
-        const token = await getDirectLineToken(account.username);
-        
-        // Create new DirectLine connection for this specific chat
-        const directLine = window.WebChat.createDirectLine({ token: token });
-        chatDirectLines[chatId] = directLine;
-        window.directLine = directLine; // Set as current for compatibility
-        
-        // Set up activity subscription for this chat - but DON'T re-render WebChat
-        const subscription = directLine.activity$.subscribe({
-            next: activity => {
-                if (activity.type === 'event' && activity.name === 'updateSidebar') {
-                    updateSidebar(activity.value);
-                }
-                if (activity.type === 'message') {
-                    scrollToBottom(container);
-                }
-            },
-            error: error => {
-                console.error("Error in DirectLine activity subscription:", error);
-            },
-            complete: () => {}
-        });
-        
-        chatSubscriptions[chatId] = subscription;
-        currentDirectLineSubscription = subscription;
-        
-        // Send a reconnection event to the bot to let it know we're back
-        directLine.connectionStatus$.subscribe(status => {
-            if (status === 2) { // Connected
-                directLine.postActivity({
-                    type: "event",
-                    name: "reconnect",
-                    from: { id: "user-client", role: "user" },
-                    value: { conversationId: chatId }
-                }).subscribe(
-                    id => console.log(`Reconnection event sent for chat ${chatId}`),
-                    error => console.error("Error sending reconnection event:", error)
-                );
-            }
-        });
-        
-        return true;
-    } catch (error) {
-        console.error("Error reinitializing DirectLine:", error);
-        alert("Error connecting to chat. Please try refreshing.");
-        return false;
-    }
-}
 
 function showchat(chatId) {
     const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in showchat"); return; }
@@ -2461,16 +2322,19 @@ function showchat(chatId) {
         if (prepopulatedChats.hasOwnProperty(chatId)) { showLoadingOverlay("Loading chat..."); try { loadExistingChat(chatId, prepopulatedChats[chatId]); container = document.getElementById("webchat_" + chatId); if (!container) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error(`Container for ${chatId} still not found after loadExistingChat.`); currentchat = previousChatId; return; } } catch (error) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error("Error in loadExistingChat:", error); currentchat = previousChatId; return; }
         } else { console.warn(`Chat ID ${chatId} not found in prepopulatedChats.`); alert(`Cannot show chat: ${chatId}.`); currentchat = previousChatId; if (Object.keys(chats).length > 0) { showchat(Object.keys(chats)[0]); } else { newchat(); } return; }
     } else {
-        // Container exists - just switch to it and set the correct DirectLine
-        // For existing chats, we don't need to reinitialize DirectLine as they're historical
-        const chatDirectLine = chatDirectLines[chatId];
-        if (chatDirectLine) {
-            // Use the existing DirectLine connection for this chat
-            setCurrentDirectLine(chatId);
-        } else {
-            // No DirectLine connection exists, which is normal for historical chats
-            // Historical chats don't need active DirectLine connections to display
-            console.log(`No DirectLine connection for historical chat ${chatId}, which is normal`);
+        // Container exists - always reload the existing chat with fresh DirectLine connection
+        console.log(`Reloading existing chat ${chatId} with fresh DirectLine connection`);
+        showLoadingOverlay("Reconnecting to chat...");
+        
+        // Use loadExistingChat to reload the chat with fresh connection
+        try {
+            loadExistingChat(chatId, prepopulatedChats[chatId] || "");
+        } catch (error) {
+            hideLoadingOverlay();
+            alert("Error reconnecting to chat. Please try refreshing.");
+            console.error("Error in loadExistingChat for existing container:", error);
+            currentchat = previousChatId;
+            return;
         }
     }
     
