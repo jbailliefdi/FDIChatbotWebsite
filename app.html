@@ -2304,14 +2304,15 @@ const token = await getDirectLineToken(account.username);
             console.error("DirectLine token used:", token ? "Token exists" : "No token");
             console.error("Account info:", account ? account.username : "No account");
             console.error("DirectLine object state:", window.directLine);
-            alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`); 
+            alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`);
+            hideLoadingOverlay(); 
         }
     });
 
 }
 
 
-function showchat(chatId) {
+async function showchat(chatId) {
     const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in showchat"); return; }
     if (currentchat === chatId && document.getElementById("webchat_" + chatId)?.style.display !== 'none') { const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); } return; }
     const containers = mainWebchatArea.querySelectorAll(":scope > div[id^='webchat_']"); containers.forEach(container => { container.style.display = "none"; });
@@ -2328,7 +2329,8 @@ function showchat(chatId) {
         
         // Use loadExistingChat to reload the chat with fresh connection
         try {
-            loadExistingChat(chatId, prepopulatedChats[chatId] || "");
+            await loadExistingChat(chatId, prepopulatedChats[chatId] || "");
+            // loadExistingChat handles hideLoadingOverlay() internally
         } catch (error) {
             hideLoadingOverlay();
             alert("Error reconnecting to chat. Please try refreshing.");
@@ -2338,12 +2340,17 @@ function showchat(chatId) {
         }
     }
     
-    container.style.display = "flex";
+    // Get the container again after loadExistingChat may have recreated it
+    container = document.getElementById("webchat_" + chatId);
+    if (container) {
+        container.style.display = "flex";
+        applyCurrentFontSize(container);
+        scrollToBottom(container);
+        setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); }}, 150);
+    }
+    
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${chatId}`); });
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
-    applyCurrentFontSize(container);
-    scrollToBottom(container);
-    setTimeout(() => { const textarea = container.querySelector('.webchat__send-box-text-box__textarea'); if (textarea) { textarea.focus(); }}, 150);
 }
 async function newchat() {
     if (!userData?.accessGranted) { showSubscriptionOverlay(); return; }
