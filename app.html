@@ -2114,18 +2114,21 @@ function setCurrentDirectLine(chatId) {
 }
 
 async function loadExistingChat(chatId, memoryStr) {
+    console.log(`[DEBUG] loadExistingChat called for chatId: ${chatId}`);
     isInjectingHistory = true;
     const mainWebchatArea = document.getElementById("webchat"); 
     if (!mainWebchatArea) { console.error("Main webchat area not found in loadExistingChat"); return; }
     const containerId = "webchat_" + chatId; 
     let container = document.getElementById(containerId);
     if (!container) { 
+        console.log(`[DEBUG] Creating new container for ${chatId}`);
         container = document.createElement("div"); 
         container.id = containerId; 
         container.style.display = "none"; 
         container.style.minHeight = "100%"; 
         mainWebchatArea.appendChild(container); 
     } else { 
+        console.log(`[DEBUG] Clearing existing container for ${chatId}`);
         // Clear the existing container content to reload fresh
         container.innerHTML = ''; 
     }
@@ -2138,26 +2141,31 @@ async function loadExistingChat(chatId, memoryStr) {
     const account = msalInstance.getActiveAccount();
     const token = getAuthToken();
     if (!account || !token) {
+        console.error("[DEBUG] Authentication failed in loadExistingChat");
         alert("Please sign in to access chat history.");
         isInjectingHistory = false;
         hideLoadingOverlay();
         return;
     }
+    console.log(`[DEBUG] Authentication successful for ${account.username}`);
     
     try { 
-    const account = msalInstance.getActiveAccount();
-if (!account) {
-    alert("Please sign in to start a new chat.");
-    isInjectingHistory = false;
-    hideLoadingOverlay();
-    return;
-}
-const token = await getDirectLineToken(account.username);
-    // Create a NEW DirectLine connection for this specific chat
-    const directLine = window.WebChat.createDirectLine({ token: token });
-    chatDirectLines[chatId] = directLine;
-    window.directLine = directLine; // Set as current for compatibility
-} catch(e) { alert("Error connecting to existing chat. Please try refreshing."); console.error("Error creating DirectLine for existing chat:", e); isInjectingHistory = false; hideLoadingOverlay(); return; }
+        console.log(`[DEBUG] Getting DirectLine token for ${account.username}`);
+        const dlToken = await getDirectLineToken(account.username);
+        console.log(`[DEBUG] DirectLine token received: ${dlToken ? 'Yes' : 'No'}`);
+        
+        // Create a NEW DirectLine connection for this specific chat
+        const directLine = window.WebChat.createDirectLine({ token: dlToken });
+        chatDirectLines[chatId] = directLine;
+        window.directLine = directLine; // Set as current for compatibility
+        console.log(`[DEBUG] DirectLine connection created for ${chatId}`);
+    } catch(e) { 
+        console.error(`[DEBUG] Error creating DirectLine for existing chat ${chatId}:`, e);
+        alert("Error connecting to existing chat. Please try refreshing."); 
+        isInjectingHistory = false; 
+        hideLoadingOverlay(); 
+        return; 
+    }
     
     // Don't render WebChat immediately - wait for connection to be established
     const store = createWebChatStore();
@@ -2186,8 +2194,10 @@ const token = await getDirectLineToken(account.username);
     
     // Add a timeout to handle stuck connections
     const connectionTimeout = setTimeout(() => {
+        console.log(`[DEBUG] Connection timeout reached for ${chatId}`);
         if (!webChatRendered) {
             try {
+                console.log(`[DEBUG] Timeout: Rendering WebChat for ${chatId}`);
                 window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                 webChatRendered = true;
                 hideLoadingOverlay();
@@ -2207,9 +2217,10 @@ const token = await getDirectLineToken(account.username);
                 chatSubscriptions[chatId] = subscription;
                 currentDirectLineSubscription = subscription;
                 
+                console.log(`[DEBUG] Timeout: Injecting history for ${chatId}`);
                 setTimeout(injectHistory, 500);
             } catch(e) {
-                console.error("Error rendering WebChat after timeout:", e);
+                console.error(`[DEBUG] Timeout error rendering WebChat for ${chatId}:`, e);
                 alert("Error loading chat. Please try refreshing.");
                 hideLoadingOverlay();
             }
@@ -2217,9 +2228,11 @@ const token = await getDirectLineToken(account.username);
     }, 3000); // 3 second timeout
     
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
+        console.log(`[DEBUG] DirectLine connection status: ${status}`);
         if (status === 1) {
-            // DirectLine is connecting
+            console.log(`[DEBUG] DirectLine is connecting for ${chatId}`);
         } else if (status === 2 && !authSent) {
+            console.log(`[DEBUG] DirectLine connected for ${chatId}`);
             authSent = true;
             clearTimeout(connectionTimeout); // Clear the timeout since connection succeeded
             const actualDlConversationId = window.directLine.conversationId;
@@ -2227,9 +2240,11 @@ const token = await getDirectLineToken(account.username);
             // Render WebChat only after connection is established
             if (!webChatRendered) {
                 try {
+                    console.log(`[DEBUG] Rendering WebChat for ${chatId}`);
                     window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                     webChatRendered = true;
                     hideLoadingOverlay();
+                    console.log(`[DEBUG] WebChat rendered successfully for ${chatId}`);
                     
                     // Set up activity subscription after WebChat is rendered
                     const subscription = window.directLine.activity$.subscribe({ 
@@ -2248,10 +2263,11 @@ const token = await getDirectLineToken(account.username);
                     currentDirectLineSubscription = subscription;
                     
                     // Inject history after WebChat is rendered and connection is established
+                    console.log(`[DEBUG] Injecting history for ${chatId}`);
                     setTimeout(injectHistory, 250);
                 } catch(e) {
+                    console.error(`[DEBUG] Error rendering WebChat for ${chatId}:`, e);
                     alert("Error displaying chat interface. Please try refreshing.");
-                    console.error("Error rendering WebChat for existing chat:", e);
                     isInjectingHistory = false;
                     hideLoadingOverlay();
                     return;
@@ -2297,11 +2313,12 @@ const token = await getDirectLineToken(account.username);
             }
             connSub.unsubscribe();
         } else if (status === 3 || status === 4 || status === 5) { 
+            console.log(`[DEBUG] DirectLine connection failed for ${chatId}. Status: ${status}`);
             clearTimeout(connectionTimeout); // Clear timeout on error
             connSub.unsubscribe(); 
             isInjectingHistory = false; 
             console.error(`Failed to connect to existing chat "${chatId}". Status: ${status}.`); 
-            console.error("DirectLine token used:", token ? "Token exists" : "No token");
+            console.error("DirectLine token used:", dlToken ? "Token exists" : "No token");
             console.error("Account info:", account ? account.username : "No account");
             console.error("DirectLine object state:", window.directLine);
             alert(`Failed to connect to chat "${chatId}". Status: ${status}. Try refreshing or starting a new chat.`);
