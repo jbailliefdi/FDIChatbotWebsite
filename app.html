@@ -2131,6 +2131,8 @@ async function loadExistingChat(chatId, memoryStr) {
         console.log(`[DEBUG] Clearing existing container for ${chatId}`);
         // Clear the existing container content to reload fresh
         container.innerHTML = ''; 
+        container.style.display = "none";
+        container.style.minHeight = "100%";
     }
     
     // End any existing DirectLine connection for this chat
@@ -2200,7 +2202,6 @@ async function loadExistingChat(chatId, memoryStr) {
                 console.log(`[DEBUG] Timeout: Rendering WebChat for ${chatId}`);
                 window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                 webChatRendered = true;
-                hideLoadingOverlay();
                 
                 const subscription = window.directLine.activity$.subscribe({ 
                     next: activity => { 
@@ -2217,8 +2218,16 @@ async function loadExistingChat(chatId, memoryStr) {
                 chatSubscriptions[chatId] = subscription;
                 currentDirectLineSubscription = subscription;
                 
-                console.log(`[DEBUG] Timeout: Injecting history for ${chatId}`);
-                setTimeout(injectHistory, 500);
+                // Wait for WebChat to be fully initialized before hiding loading and injecting history
+                setTimeout(() => {
+                    console.log(`[DEBUG] Timeout: WebChat should be fully initialized for ${chatId}`);
+                    console.log(`[DEBUG] Timeout: Container innerHTML length: ${container.innerHTML.length}`);
+                    console.log(`[DEBUG] Timeout: Container has input: ${container.querySelector('input, textarea') ? 'Yes' : 'No'}`);
+                    hideLoadingOverlay();
+                    
+                    console.log(`[DEBUG] Timeout: Injecting history for ${chatId}`);
+                    setTimeout(injectHistory, 100);
+                }, 500);
             } catch(e) {
                 console.error(`[DEBUG] Timeout error rendering WebChat for ${chatId}:`, e);
                 alert("Error loading chat. Please try refreshing.");
@@ -2243,7 +2252,6 @@ async function loadExistingChat(chatId, memoryStr) {
                     console.log(`[DEBUG] Rendering WebChat for ${chatId}`);
                     window.WebChat.renderWebChat({ directLine: window.directLine, store: store, styleOptions: webChatStyleOptions }, container);
                     webChatRendered = true;
-                    hideLoadingOverlay();
                     console.log(`[DEBUG] WebChat rendered successfully for ${chatId}`);
                     
                     // Set up activity subscription after WebChat is rendered
@@ -2262,9 +2270,17 @@ async function loadExistingChat(chatId, memoryStr) {
                     chatSubscriptions[chatId] = subscription;
                     currentDirectLineSubscription = subscription;
                     
-                    // Inject history after WebChat is rendered and connection is established
-                    console.log(`[DEBUG] Injecting history for ${chatId}`);
-                    setTimeout(injectHistory, 250);
+                    // Wait for WebChat to be fully initialized before hiding loading and injecting history
+                    setTimeout(() => {
+                        console.log(`[DEBUG] WebChat should be fully initialized for ${chatId}`);
+                        console.log(`[DEBUG] Container innerHTML length: ${container.innerHTML.length}`);
+                        console.log(`[DEBUG] Container has input: ${container.querySelector('input, textarea') ? 'Yes' : 'No'}`);
+                        hideLoadingOverlay();
+                        
+                        // Inject history after WebChat is fully ready
+                        console.log(`[DEBUG] Injecting history for ${chatId}`);
+                        setTimeout(injectHistory, 100);
+                    }, 500);
                 } catch(e) {
                     console.error(`[DEBUG] Error rendering WebChat for ${chatId}:`, e);
                     alert("Error displaying chat interface. Please try refreshing.");
