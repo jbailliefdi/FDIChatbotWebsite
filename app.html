@@ -2128,11 +2128,14 @@ async function loadExistingChat(chatId, memoryStr) {
         container.style.minHeight = "100%"; 
         mainWebchatArea.appendChild(container); 
     } else { 
-        console.log(`[DEBUG] Clearing existing container for ${chatId}`);
-        // Clear the existing container content to reload fresh
-        container.innerHTML = ''; 
-        container.style.display = "none";
-        container.style.minHeight = "100%";
+        console.log(`[DEBUG] Removing and recreating container for ${chatId}`);
+        // Remove the existing container completely and create a new one
+        container.remove();
+        container = document.createElement("div"); 
+        container.id = containerId; 
+        container.style.display = "none"; 
+        container.style.minHeight = "100%"; 
+        mainWebchatArea.appendChild(container);
     }
     
     // End any existing DirectLine connection for this chat
