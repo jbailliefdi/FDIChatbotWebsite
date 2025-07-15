@@ -1588,9 +1588,6 @@ async function verifyUserAndInitialize(account) {
     };
 
     if (loadingOverlay) loadingOverlay.classList.remove('visible');
-    
-    // Hide initializing overlay when authentication is complete
-    hideInitializingOverlay();
 
     if (result.userExists) {
         if (result.accessGranted) {
@@ -1771,7 +1768,7 @@ function updateAuthUI() {
     if (!msalInstance || typeof msalInstance.getActiveAccount !== 'function') {
         authBtn.textContent = "Loading...";
         authBtn.disabled = true;
-        userStatus.textContent = "Initializing...";
+        userStatus.textContent = "Initialising TIA...";
         if (dashboardBtn) dashboardBtn.style.display = "none";
         return;
     }
@@ -1877,14 +1874,10 @@ async function signIn() {
         return;
     }
     
-    // Show initializing overlay
-    showInitializingOverlay();
-    
     const loginRequest = { scopes: ["openid", "profile", "User.Read"] }; 
     try { 
         await msalInstance.loginRedirect(loginRequest); 
     } catch (error) { 
-        hideInitializingOverlay();
         alert("Failed to start the sign-in process. Please check browser console and ensure redirects aren't blocked."); 
         console.error("Sign-in error:", error);
     } 
@@ -1941,31 +1934,6 @@ function hideAuthLoadingOverlay() {
     }
 }
 
-function showInitializingOverlay() {
-    let overlay = document.getElementById('initializing-overlay');
-    if (!overlay) {
-        // Create the overlay if it doesn't exist
-        overlay = document.createElement('div');
-        overlay.id = 'initializing-overlay';
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div class="loading-modal">
-                <div class="spinner"></div>
-                <p>Initializing...</p>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-    }
-    overlay.classList.add('visible');
-}
-
-function hideInitializingOverlay() {
-    const overlay = document.getElementById('initializing-overlay');
-    if (overlay) {
-        overlay.classList.remove('visible');
-    }
-}
-
 
 function postSignInEvent() {
     const token = getAuthToken();
@@ -2013,7 +1981,7 @@ function goToHomepage() {
 /**********************
  * Chatbot & Web Chat Setup
  **********************/
-let currentchat = null; const chats = {}; let fontSize = 20; let prepopulatedChats = {}; let initialSidebarLoaded = false; // Remove DIRECT_LINE_TOKEN constant and add:
+let currentchat = null; const chats = {}; let fontSize = 18; let prepopulatedChats = {}; let initialSidebarLoaded = false; 
 async function getDirectLineToken(email) {
     try {
         const response = await fetch('/api/get-directline-token', {
@@ -2208,7 +2176,7 @@ const token = await getDirectLineToken(account.username);
                 hideLoadingOverlay();
             }
         }
-    }, 1000); // 1 second timeout
+    }, 3000); // 3 second timeout
     
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
         if (status === 1) {
@@ -2300,7 +2268,74 @@ const token = await getDirectLineToken(account.username);
         }
     });
 
-}function showchat(chatId) {
+}
+
+// Helper function to re-initialize DirectLine for existing chats
+async function reinitializeDirectLineForExistingChat(chatId, container) {
+    console.log(`Reinitializing DirectLine for existing chat: ${chatId}`);
+    
+    // End current DirectLine connection
+    endCurrentDirectLine();
+    
+    // Check authentication
+    const account = msalInstance.getActiveAccount();
+    if (!account) {
+        alert("Please sign in to access the chat.");
+        return false;
+    }
+    
+    try {
+        // Get new DirectLine token
+        const token = await getDirectLineToken(account.username);
+        
+        // Create new DirectLine connection
+        window.directLine = window.WebChat.createDirectLine({ token: token });
+        
+        // Set up WebChat with existing container
+        const store = createWebChatStore();
+        const styleOptions = {
+            bubbleBorderRadius: 18,
+            bubbleFromUserBorderRadius: 18,
+            botAvatarImage: "FDi_Logo_Device_Transparent_Outer.png",
+            userAvatarImage: "Unknown.png",
+            botAvatarInitials: "TIA",
+            sendBoxTextWrap: true,
+            hideUploadButton: true,
+            sendBoxButtonAlignment: 'end'
+        };
+        
+        // Re-render WebChat in the existing container
+        window.WebChat.renderWebChat({
+            directLine: window.directLine,
+            store: store,
+            styleOptions: styleOptions
+        }, container);
+        
+        // Set up activity subscription for this chat
+        currentDirectLineSubscription = window.directLine.activity$.subscribe({
+            next: activity => {
+                if (activity.type === 'event' && activity.name === 'updateSidebar') {
+                    updateSidebar(activity.value);
+                }
+                if (activity.type === 'message') {
+                    scrollToBottom(container);
+                }
+            },
+            error: error => {
+                console.error("Error in DirectLine activity subscription:", error);
+            },
+            complete: () => {}
+        });
+        
+        return true;
+    } catch (error) {
+        console.error("Error reinitializing DirectLine:", error);
+        alert("Error connecting to chat. Please try refreshing.");
+        return false;
+    }
+}
+
+function showchat(chatId) {
     const mainWebchatArea = document.getElementById("webchat"); if (!mainWebchatArea) { console.error("Main webchat area not found in showchat"); return; }
     if (currentchat === chatId && document.getElementById("webchat_" + chatId)?.style.display !== 'none') { const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); } return; }
     const containers = mainWebchatArea.querySelectorAll(":scope > div[id^='webchat_']"); containers.forEach(container => { container.style.display = "none"; });
@@ -2310,7 +2345,33 @@ const token = await getDirectLineToken(account.username);
     if (!container) {
         if (prepopulatedChats.hasOwnProperty(chatId)) { showLoadingOverlay("Loading chat..."); try { loadExistingChat(chatId, prepopulatedChats[chatId]); container = document.getElementById("webchat_" + chatId); if (!container) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error(`Container for ${chatId} still not found after loadExistingChat.`); currentchat = previousChatId; return; } } catch (error) { hideLoadingOverlay(); alert("Error loading chat. Please try refreshing."); console.error("Error in loadExistingChat:", error); currentchat = previousChatId; return; }
         } else { console.warn(`Chat ID ${chatId} not found in prepopulatedChats.`); alert(`Cannot show chat: ${chatId}.`); currentchat = previousChatId; if (Object.keys(chats).length > 0) { showchat(Object.keys(chats)[0]); } else { newchat(); } return; }
+    } else {
+        // Container exists - check if DirectLine is active and re-initialize if needed
+        const isDirectLineActive = window.directLine && window.directLine.connectionStatus$ && window.directLine.connectionStatus$.value === 2;
+        
+        if (!isDirectLineActive) {
+            console.log(`DirectLine not active for chat ${chatId}, reinitializing...`);
+            showLoadingOverlay("Reconnecting to chat...");
+            
+            // Use async function to reinitialize DirectLine
+            reinitializeDirectLineForExistingChat(chatId, container).then(success => {
+                hideLoadingOverlay();
+                if (success) {
+                    console.log(`DirectLine reinitialized successfully for chat ${chatId}`);
+                } else {
+                    console.error(`Failed to reinitialize DirectLine for chat ${chatId}`);
+                    currentchat = previousChatId;
+                    return;
+                }
+            }).catch(error => {
+                hideLoadingOverlay();
+                console.error("Error in DirectLine reinitialization:", error);
+                currentchat = previousChatId;
+                return;
+            });
+        }
     }
+    
     container.style.display = "flex";
     document.querySelectorAll('.sidebar .chat-tab button').forEach(button => { button.classList.toggle('active', button.id === `chat-${chatId}`); });
     const sidebar = document.querySelector(".sidebar"); if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) { toggleSidebar(); }
@@ -2449,21 +2510,18 @@ window.onload = async () => {
                 } else {
                     console.error("MSAL silent token acquisition error:", error);
                     clearAuthToken();
-                    hideInitializingOverlay();
                     updateAuthUI();
                 }
             }
         } else {
             console.log("No MSAL account found. User needs to sign in.");
             clearAuthToken();
-            hideInitializingOverlay();
             updateAuthUI();
             // Optional: show overlay with a message to sign in, but current UI is clear.
         }
     } catch (msalError) {
         console.error("MSAL error during startup:", msalError);
         clearAuthToken();
-        hideInitializingOverlay();
         updateAuthUI();
     }
     

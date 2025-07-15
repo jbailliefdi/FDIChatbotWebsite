@@ -67,7 +67,7 @@
             cursor: pointer;
         }
 
-        .nav-link:hover, .nav-link.active {
+        .nav-link:hover, .nav-link.Active {
             background: #34495e;
             border-right: 3px solid #3498db;
         }
@@ -120,7 +120,7 @@
             display: none;
         }
 
-        .page-content.active {
+        .page-content.Active {
             display: block;
         }
 
@@ -236,7 +236,7 @@
             font-weight: 500;
         }
 
-        .status-active {
+        .status-Active {
             background: #d4edda;
             color: #155724;
         }
@@ -585,7 +585,7 @@
             
             <ul class="nav-menu">
                 <li class="nav-item">
-                    <a class="nav-link active" data-page="users">
+                    <a class="nav-link Active" data-page="users">
                         <i class="fas fa-users"></i>
                         Users & Teams
                     </a>
@@ -614,7 +614,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <!-- Users & Teams Page -->
-            <div id="usersPage" class="page-content active">
+            <div id="usersPage" class="page-content Active">
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Users & Teams</h1>
@@ -1027,7 +1027,7 @@
                 
                 return {
                     isAdmin: data.userRole === 'admin',
-                    hasAccess: data.active,
+                    hasAccess: data.Active,
                     user: { 
                         email: account.username, 
                         role: data.userRole,
@@ -1110,7 +1110,7 @@
         if (urlParams.get('upgrade') === 'success') {
             // Show success message and refresh data
             setTimeout(() => {
-                showSuccess('Plan upgraded successfully! Your new license count is now active.');
+                showSuccess('Plan upgraded successfully! Your new license count is now Active.');
                 loadDashboardData();
             }, 1000);
             
@@ -1224,13 +1224,13 @@ function updatePlanPreview() {
     
     updateBtn.disabled = false;
     
-    // Show warning if reducing licenses below active users
-    const activeUsers = organizationUsers.filter(u => u.status === 'active').length;
+    // Show warning if reducing licenses below Active users
+    const activeUsers = organizationUsers.filter(u => u.status === 'Active').length;
     
     if (newLicenses < activeUsers) {
         warningDiv.style.display = 'block';
         document.getElementById('warningText').textContent = 
-            ` You have ${activeUsers} active users. Reducing to ${newLicenses} license${newLicenses > 1 ? 's' : ''} will require deactivating ${activeUsers - newLicenses} user${activeUsers - newLicenses > 1 ? 's' : ''}.`;
+            ` You have ${activeUsers} Active users. Reducing to ${newLicenses} license${newLicenses > 1 ? 's' : ''} will require deactivating ${activeUsers - newLicenses} user${activeUsers - newLicenses > 1 ? 's' : ''}.`;
     } else {
         warningDiv.style.display = 'none';
     }
@@ -1329,17 +1329,17 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
         function showPage(pageId) {
             // Hide all pages
             document.querySelectorAll('.page-content').forEach(page => {
-                page.classList.remove('active');
+                page.classList.remove('Active');
             });
 
             // Show selected page
-            document.getElementById(pageId + 'Page').classList.add('active');
+            document.getElementById(pageId + 'Page').classList.add('Active');
 
             // Update navigation
             document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
+                link.classList.remove('Active');
             });
-            document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+            document.querySelector(`[data-page="${pageId}"]`).classList.add('Active');
 
             currentPage = pageId;
 
@@ -1558,17 +1558,17 @@ async function cancelPendingDowngrade() {
             });
             
             const isCurrentUser = currentUser && user.id === currentUser.id;
-            const isOnlyAdmin = user.role === 'admin' && organizationUsers.filter(u => u.role === 'admin' && u.status === 'active').length <= 1;
+            const isOnlyAdmin = user.role === 'admin' && organizationUsers.filter(u => u.role === 'admin' && u.status === 'Active').length <= 1;
             
             return `
                 <tr>
                     <td>
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div class="user-avatar" style="width: 32px; height: 32px; font-size: 0.8rem; ${user.status !== 'active' ? 'background: #95a5a6;' : ''}">${initials}</div>
-                            <div style="${user.status !== 'active' ? 'color: #666;' : ''}">${user.firstName} ${user.lastName}</div>
+                            <div class="user-avatar" style="width: 32px; height: 32px; font-size: 0.8rem; ${user.status !== 'Active' ? 'background: #95a5a6;' : ''}">${initials}</div>
+                            <div style="${user.status !== 'Active' ? 'color: #666;' : ''}">${user.firstName} ${user.lastName}</div>
                         </div>
                     </td>
-                    <td style="${user.status !== 'active' ? 'color: #666;' : ''}">${user.email}</td>
+                    <td style="${user.status !== 'Active' ? 'color: #666;' : ''}">${user.email}</td>
                     <td><span class="role-badge ${user.role === 'admin' ? 'role-admin' : ''}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span></td>
                     <td><span class="status-badge status-${user.status}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
                     <td>${joinDate}</td>
@@ -1584,8 +1584,8 @@ async function cancelPendingDowngrade() {
         function createUserActions(user, isCurrentUser, isOnlyAdmin) {
             let actions = '';
             
-            if (user.status === 'active') {
-                // Role management buttons (only for active users and if current user is admin)
+            if (user.status === 'Active') {
+                // Role management buttons (only for Active users and if current user is admin)
                 if (!isCurrentUser && currentUser.role === 'admin') {
                     if (user.role === 'user') {
                         actions += `<button class="action-btn primary" onclick="promoteToAdmin('${user.id}')">Make Admin</button>`;
@@ -1698,7 +1698,7 @@ async function cancelPendingDowngrade() {
                 const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'active' })
+                    body: JSON.stringify({ status: 'Active' })
                 });
                 
                 if (response.ok) {
@@ -1877,7 +1877,7 @@ function updateTrialBillingInfo() {
                 <td>${new Date().toLocaleDateString('en-GB')}</td>
                 <td>Free Trial Started</td>
                 <td>£0.00</td>
-                <td><span class="status-badge status-active">Active</span></td>
+                <td><span class="status-badge status-Active">Active</span></td>
                 <td>-</td>
             </tr>
         `;
@@ -1965,7 +1965,7 @@ function updateBillingInfo(data) {
         if (data.invoices && data.invoices.length > 0) {
             billingTable.innerHTML = data.invoices.map(invoice => {
                 const invoiceDate = new Date(invoice.date).toLocaleDateString('en-GB');
-                const statusClass = invoice.status === 'paid' ? 'status-active' : 
+                const statusClass = invoice.status === 'paid' ? 'status-Active' : 
                                   invoice.status === 'open' ? 'status-trialing' : 'status-deactivated';
                 
                 return `
@@ -1993,7 +1993,7 @@ function updateBillingInfo(data) {
                     <td>${trialStart.toLocaleDateString('en-GB')}</td>
                     <td>Free Trial Started - ${data.organization.licenseCount} licenses</td>
                     <td>£0.00</td>
-                    <td><span class="status-badge status-active">Active</span></td>
+                    <td><span class="status-badge status-Active">Active</span></td>
                     <td>-</td>
                 </tr>
             `;
