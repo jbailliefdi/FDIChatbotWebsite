@@ -2229,15 +2229,15 @@ async function loadExistingChat(chatId, memoryStr) {
                     hideLoadingOverlay();
                     
                     console.log(`[DEBUG] Timeout: Injecting history for ${chatId}`);
-                    setTimeout(injectHistory, 100);
-                }, 500);
+                    setTimeout(injectHistory, 50);
+                }, 300);
             } catch(e) {
                 console.error(`[DEBUG] Timeout error rendering WebChat for ${chatId}:`, e);
                 alert("Error loading chat. Please try refreshing.");
                 hideLoadingOverlay();
             }
         }
-    }, 3000); // 3 second timeout
+    }, 1500); // 1.5 second timeout
     
     const connSub = window.directLine.connectionStatus$.subscribe(status => {
         console.log(`[DEBUG] DirectLine connection status: ${status}`);
@@ -2282,8 +2282,8 @@ async function loadExistingChat(chatId, memoryStr) {
                         
                         // Inject history after WebChat is fully ready
                         console.log(`[DEBUG] Injecting history for ${chatId}`);
-                        setTimeout(injectHistory, 100);
-                    }, 500);
+                        setTimeout(injectHistory, 50);
+                    }, 300);
                 } catch(e) {
                     console.error(`[DEBUG] Error rendering WebChat for ${chatId}:`, e);
                     alert("Error displaying chat interface. Please try refreshing.");
