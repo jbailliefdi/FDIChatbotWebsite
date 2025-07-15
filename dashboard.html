@@ -1225,12 +1225,12 @@ function updatePlanPreview() {
     updateBtn.disabled = false;
     
     // Show warning if reducing licenses below Active users
-    const activeUsers = organizationUsers.filter(u => u.status === 'Active').length;
+    const activeUsers = organizationUsers.filter(u => u.status === 'active').length;
     
     if (newLicenses < activeUsers) {
         warningDiv.style.display = 'block';
         document.getElementById('warningText').textContent = 
-            ` You have ${activeUsers} Active users. Reducing to ${newLicenses} license${newLicenses > 1 ? 's' : ''} will require deactivating ${activeUsers - newLicenses} user${activeUsers - newLicenses > 1 ? 's' : ''}.`;
+            ` You have ${activeUsers} active users. Reducing to ${newLicenses} license${newLicenses > 1 ? 's' : ''} will require deactivating ${activeUsers - newLicenses} user${activeUsers - newLicenses > 1 ? 's' : ''}.`;
     } else {
         warningDiv.style.display = 'none';
     }
@@ -1558,17 +1558,17 @@ async function cancelPendingDowngrade() {
             });
             
             const isCurrentUser = currentUser && user.id === currentUser.id;
-            const isOnlyAdmin = user.role === 'admin' && organizationUsers.filter(u => u.role === 'admin' && u.status === 'Active').length <= 1;
+            const isOnlyAdmin = user.role === 'admin' && organizationUsers.filter(u => u.role === 'admin' && u.status === 'active').length <= 1;
             
             return `
                 <tr>
                     <td>
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div class="user-avatar" style="width: 32px; height: 32px; font-size: 0.8rem; ${user.status !== 'Active' ? 'background: #95a5a6;' : ''}">${initials}</div>
-                            <div style="${user.status !== 'Active' ? 'color: #666;' : ''}">${user.firstName} ${user.lastName}</div>
+                            <div class="user-avatar" style="width: 32px; height: 32px; font-size: 0.8rem; ${user.status !== 'active' ? 'background: #95a5a6;' : ''}">${initials}</div>
+                            <div style="${user.status !== 'active' ? 'color: #666;' : ''}">${user.firstName} ${user.lastName}</div>
                         </div>
                     </td>
-                    <td style="${user.status !== 'Active' ? 'color: #666;' : ''}">${user.email}</td>
+                    <td style="${user.status !== 'active' ? 'color: #666;' : ''}">${user.email}</td>
                     <td><span class="role-badge ${user.role === 'admin' ? 'role-admin' : ''}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span></td>
                     <td><span class="status-badge status-${user.status}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
                     <td>${joinDate}</td>
@@ -1584,7 +1584,7 @@ async function cancelPendingDowngrade() {
         function createUserActions(user, isCurrentUser, isOnlyAdmin) {
             let actions = '';
             
-            if (user.status === 'Active') {
+            if (user.status === 'active') {
                 // Role management buttons (only for Active users and if current user is admin)
                 if (!isCurrentUser && currentUser.role === 'admin') {
                     if (user.role === 'user') {
@@ -1698,7 +1698,7 @@ async function cancelPendingDowngrade() {
                 const response = await fetch(`/api/organization/${currentOrganization.id}/users/${userId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'Active' })
+                    body: JSON.stringify({ status: 'active' })
                 });
                 
                 if (response.ok) {
