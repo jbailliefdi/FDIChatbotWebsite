@@ -674,25 +674,23 @@
                         </div>
                     </div>
 
-                    <div class="pricing-summary">
-                        <div class="price-display" id="totalPrice">£0</div>
-                        <div class="price-details" id="priceDetails">3-day free trial for up to 3 users • Card required</div>
-        <div class="price-details" id="priceDetails">Card required</div>
-
-<div class="trial-info" id="trialInfo" style="display: none;">
-    <i class="fas fa-gift"></i><strong>3-User Free Trial</strong> - Full access to all features. Cancel anytime.
+                  <div class="pricing-summary">
+    <div class="price-display" id="totalPrice">£0</div>
+    <div class="price-details" id="priceDetails">3-day free trial for up to 3 users • Card required</div>
+    
+    <div class="trial-info" id="trialInfo" style="display: none;">
+        <i class="fas fa-gift"></i><strong>3-User Free Trial</strong> - Full access to all features. Cancel anytime.
+    </div>
+    
+    <div class="license-selector" id="licenseSelectorContainer" style="display: flex;">
+        <label for="licenseCount">Number of users:</label>
+        <div class="license-input">
+            <button type="button" onclick="updateLicenses(-1)">-</button>
+            <input type="number" id="licenseCount" value="1" min="1" max="3" onchange="updatePrice()">
+            <button type="button" onclick="updateLicenses(1)">+</button>
+        </div>
+    </div>
 </div>
-                        
-                        <div class="license-selector" id="licenseSelectorContainer" style="display: flex;">
-                            <label for="licenseCount">Number of users:</label>
-                            <div class="license-input">
-                                <button type="button" onclick="updateLicenses(-1)">-</button>
-                                <input type="number" id="licenseCount" value="3" min="1" max="3" onchange="updatePrice()">
-                                <button type="button" onclick="updateLicenses(1)">+</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Signup Form -->
                 <form id="signupForm" class="signup-form">
@@ -879,6 +877,9 @@
 
                 // Remove existing classes
                 field.classList.remove('valid', 'invalid');
+                
+                // *** FIX: Only modify the icon if it is a real validation icon ***
+                // This prevents the script from changing the '+' button.
                 if (icon && icon.classList.contains('validation-icon')) {
                     icon.classList.remove('valid', 'invalid', 'fa-check-circle', 'fa-exclamation-circle');
                 }
@@ -886,23 +887,21 @@
                 if (result.isValid) {
                     field.classList.add('valid');
                     field.setAttribute('aria-invalid', 'false');
-                    if (icon) {
+                    if (icon && icon.classList.contains('validation-icon')) {
                         icon.classList.add('valid', 'fa-check-circle');
                     }
                     if (errorDiv) {
                         errorDiv.className = 'validation-message success';
-                        // Use textContent instead of innerHTML for safety
                         errorDiv.textContent = result.message || '';
                     }
                 } else {
                     field.classList.add('invalid');
                     field.setAttribute('aria-invalid', 'true');
-                    if (icon) {
+                    if (icon && icon.classList.contains('validation-icon')) {
                         icon.classList.add('invalid', 'fa-exclamation-circle');
                     }
                     if (errorDiv) {
                         errorDiv.className = 'validation-message error';
-                        // Use textContent instead of innerHTML for safety
                         errorDiv.textContent = result.message;
                     }
                 }
