@@ -794,6 +794,7 @@
         </div>
     </footer>
 
+   
     <script>
         // Form Validation System
         class FormValidator {
@@ -838,6 +839,17 @@
                 if (licenseField) {
                     licenseField.addEventListener('input', (e) => this.handleLicenseCountChange(e));
                 }
+                
+                // *** FIX 1: Initialize the validation state for all fields on load. ***
+                // This ensures that fields with default values (like licenseCount) are validated from the start.
+                Object.keys(this.validators).forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        // We set the initial state without showing UI errors for empty fields.
+                        this.fieldStates[fieldName] = this.validators[fieldName](field.value);
+                    }
+                });
+                this.updateSubmitButton(); // This will now correctly evaluate the whole form initially.
             }
 
             debounceValidation(fieldName, event) {
@@ -1041,8 +1053,11 @@
                     return { isValid: false, message: 'License count must be at least 1' };
                 }
                 
-                if (currentPlan === 'trial' && num > 5) {
-                    return { isValid: false, message: 'Trial is limited to 5 users' };
+                const currentPlanOption = document.querySelector('.toggle-option.active').id;
+                const plan = currentPlanOption.replace('Option', '');
+
+                if (plan === 'trial' && num > 3) { // Use the max value from your HTML
+                    return { isValid: false, message: 'Trial is limited to 3 users' };
                 }
                 
                 if (num > 1000) {
@@ -1256,14 +1271,19 @@
             const licenseInput = document.getElementById('licenseCount');
             if (plan === 'trial') {
                 licenseInput.max = 3;
-                licenseInput.value = 1; 
+                if (parseInt(licenseInput.value) > 3) {
+                    licenseInput.value = 3; // Cap the value if it's too high
+                }
             } else {
                 licenseInput.max = 500;
-                licenseInput.value = 1; // Reset to 1 for paid plans
             }
             
             updatePrice();
             updateButtonText();
+            // Manually re-validate license count in case limits changed
+            if (formValidator) {
+                formValidator.validateField('licenseCount', licenseInput.value);
+            }
         }
 
         function updateButtonText() {
@@ -1288,32 +1308,34 @@
             if (newValue >= minValue && newValue <= maxValue) { 
                 input.value = newValue; 
                 updatePrice(); 
+                // *** FIX 2: Manually trigger validation when using +/- buttons ***
+                if (formValidator) {
+                    formValidator.validateField('licenseCount', input.value);
+                }
             }
         }
 
         function updatePrice() {
-    const licenseInput = document.getElementById('licenseCount');
-    let licenseCount = parseInt(licenseInput.value) || 1;
-    
-    // Validate and reset if outside allowed range
-    const minValue = 1;
-    const maxValue = currentPlan === 'trial' ? 3 : 500;
-    
-    if (licenseCount < minValue || licenseCount > maxValue) {
-        licenseCount = 1;
-        licenseInput.value = 1;
-    }
-    
-    let subtotal, priceText, billingNote;
+            const licenseInput = document.getElementById('licenseCount');
+            let licenseCount = parseInt(licenseInput.value) || 1;
             
+            // Validate and reset if outside allowed range
+            const minValue = 1;
+            const maxValue = currentPlan === 'trial' ? 3 : 500;
+            
+            if (licenseCount < minValue) { licenseCount = minValue; }
+            if (licenseCount > maxValue) { licenseCount = maxValue; }
+            licenseInput.value = licenseCount; // Ensure the input reflects the capped value
+            
+            let subtotal, priceText, billingNote;
             
             if (currentPlan === 'annual') {
                 subtotal = licenseCount * 550; // £550 per user per year
                 priceText = 'per year • Save £50 per user';
                 billingNote = 'Billed annually. Equivalent to £45.83/month per user.';
-            } else {
+            } else { // Covers both 'trial' and 'monthly' pricing logic
                 subtotal = licenseCount * pricePerLicense; // £50 monthly
-                priceText = currentPlan === 'trial' ? `for 3 days, then £${subtotal}/month` : 'per month • No setup fees';
+                priceText = currentPlan === 'trial' ? `for 3 days, then £${subtotal.toFixed(2)}/month` : 'per month • No setup fees';
                 billingNote = currentPlan === 'trial' ? `After your 3-day trial, your plan will renew automatically. Cancel anytime.` : 'You will be redirected to Stripe for secure payment.';
             }
             
@@ -1327,37 +1349,26 @@
             if (currentPlan === 'trial') {
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.add('show');
-                trialInfo.innerHTML = '<i class="fas fa-gift"></i><strong>3-User Free Trial</strong> - Full access to all features. Cancel anytime.';
                 orderSummary.className = 'order-summary trial-summary';
                 document.getElementById('totalPrice').textContent = '£0';
-                document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal}/month`;
+                document.getElementById('priceDetails').textContent = `for 3 days, then £${subtotal.toFixed(2)}/month`;
                 document.getElementById('summaryPrice').textContent = 'Free Trial';
-                
                 document.getElementById('totalDue').textContent = '£0.00';
                 document.getElementById('billingNote').textContent = `After your 3-day trial, your plan will renew at £${total.toFixed(2)}/month. Cancel anytime.`;
                 securityText.textContent = 'Secure checkout powered by Stripe';
-            } else if (currentPlan === 'annual') {
+            } else { // 'monthly' or 'annual'
                 licenseSelector.style.display = 'flex';
                 trialInfo.classList.remove('show');
                 orderSummary.className = 'order-summary';
-                document.getElementById('totalPrice').textContent = `£${subtotal}`;
+                document.getElementById('totalPrice').textContent = `£${subtotal.toFixed(2)}`;
                 document.getElementById('priceDetails').textContent = priceText;
                 document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
                 document.getElementById('totalDue').textContent = `£${total.toFixed(2)}`;
                 document.getElementById('billingNote').textContent = billingNote;
                 securityText.textContent = 'Secure checkout powered by Stripe';
-           } else { // monthly
-                licenseSelector.style.display = 'flex';
-                trialInfo.classList.remove('show');
-                orderSummary.className = 'order-summary';
-                document.getElementById('totalPrice').textContent = `£${subtotal}`;
-                document.getElementById('priceDetails').textContent = priceText;
-                document.getElementById('summaryPrice').textContent = `£${subtotal.toFixed(2)}`;
-                document.getElementById('totalDue').textContent = `£${total.toFixed(2)}`;
-                document.getElementById('billingNote').textContent = billingNote;
-                securityText.textContent = 'Secure checkout powered by Stripe';
-}
+            }
         }
+
 
         function showAlert(message, type = 'error') {
             const alertBox = document.getElementById('alertMessage');
@@ -1451,6 +1462,6 @@
             updatePrice();
             updateButtonText();
         });
-          </script>
+    </script>
 </body>
 </html>
