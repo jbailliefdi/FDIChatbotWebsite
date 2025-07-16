@@ -125,8 +125,14 @@ module.exports = async function (context, req) {
                 const proratedChargePerLicense = Math.round(pricePerLicense * proratedFraction);
                 const totalImmediateCharge = proratedChargePerLicense * additionalLicenses;
 
-                // Get the base URL for redirects
-                const origin = req.headers.origin || req.headers.referer || 'https://kind-mud-048fffa03.6.azurestaticapps.net';
+                // Get the base URL for redirects with security validation
+                const { validateOriginWithFallback } = require('../utils/security');
+                const allowedOrigins = [
+                    'https://kind-mud-048fffa03.6.azurestaticapps.net',
+                    'https://fdichatbot.com'
+                ];
+                const requestOrigin = req.headers.origin || req.headers.referer;
+                const origin = validateOriginWithFallback(requestOrigin, allowedOrigins, 'https://kind-mud-048fffa03.6.azurestaticapps.net');
                 
                 // Create Stripe Checkout session for transparent payment
                 const session = await stripe.checkout.sessions.create({

@@ -6,6 +6,7 @@
     <title>TIA - Organization Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
+    <script src="/js/security.js"></script>
     <style>
         * {
             margin: 0;
@@ -430,6 +431,80 @@
             margin: 1rem 0;
         }
 
+        /* Form Validation Styles */
+        .form-group {
+            position: relative;
+        }
+
+        .form-group input.valid {
+            border-color: #4CAF50;
+            background-color: #f8fff8;
+        }
+
+        .form-group input.invalid {
+            border-color: #f44336;
+            background-color: #fff8f8;
+        }
+
+        .validation-message {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .validation-message.error {
+            color: #f44336;
+            display: block;
+        }
+
+        .validation-message.success {
+            color: #4CAF50;
+            display: block;
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+        }
+
+        .validation-icon.valid {
+            color: #4CAF50;
+        }
+
+        .validation-icon.invalid {
+            color: #f44336;
+        }
+
+        .form-errors {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .form-errors.show {
+            display: block;
+        }
+
+        .form-errors ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+
+        .form-errors li {
+            margin: 0.25rem 0;
+        }
+
         /* Modal Styles */
         .modal {
             display: none;
@@ -757,21 +832,33 @@
                 <button class="close-btn" onclick="hideInviteModal()">×</button>
             </div>
             
+            <!-- Form Validation Errors -->
+            <div class="form-errors" id="inviteFormErrors">
+                <h4><i class="fas fa-exclamation-triangle"></i> Please fix the following errors:</h4>
+                <ul id="inviteFormErrorsList"></ul>
+            </div>
+            
             <form id="inviteForm">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="inviteFirstName">First Name</label>
-                        <input type="text" id="inviteFirstName" name="firstName" required placeholder="John">
+                        <input type="text" id="inviteFirstName" name="firstName" required placeholder="John" maxlength="50">
+                        <i class="fas validation-icon"></i>
+                        <div class="validation-message" id="inviteFirstNameError"></div>
                     </div>
                     <div class="form-group">
                         <label for="inviteLastName">Last Name</label>
-                        <input type="text" id="inviteLastName" name="lastName" required placeholder="Smith">
+                        <input type="text" id="inviteLastName" name="lastName" required placeholder="Smith" maxlength="50">
+                        <i class="fas validation-icon"></i>
+                        <div class="validation-message" id="inviteLastNameError"></div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="inviteEmail">Email Address</label>
-                    <input type="email" id="inviteEmail" name="email" required placeholder="john.smith@company.com">
+                    <input type="email" id="inviteEmail" name="email" required placeholder="john.smith@company.com" maxlength="100">
+                    <i class="fas validation-icon"></i>
+                    <div class="validation-message" id="inviteEmailError"></div>
                 </div>
                 
                 <div class="form-group">
@@ -923,18 +1010,258 @@
     </div>
 
     <script>
-        // MSAL Configuration
-        const msalConfig = {
-            auth: {
-                clientId: "2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2",
-                authority: "https://login.microsoftonline.com/common",
-                redirectUri: window.location.origin + "/dashboard.html",
-            },
-            cache: {
-                cacheLocation: "localStorage",
-                storeAuthStateInCookie: false,
+        // Dashboard Form Validation
+        class DashboardFormValidator {
+            constructor() {
+                this.validators = {
+                    inviteFirstName: this.validateName.bind(this),
+                    inviteLastName: this.validateName.bind(this),
+                    inviteEmail: this.validateEmail.bind(this)
+                };
+                this.fieldStates = {};
+                this.debounceTimers = {};
+                this.init();
             }
-        };
+
+            init() {
+                // Add event listeners for real-time validation
+                Object.keys(this.validators).forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        field.addEventListener('input', (e) => this.debounceValidation(fieldName, e));
+                        field.addEventListener('blur', (e) => this.validateField(fieldName, e.target.value));
+                        field.addEventListener('focus', (e) => this.clearFieldError(fieldName));
+                        
+                        // Auto-capitalize names
+                        if (fieldName.includes('Name')) {
+                            field.addEventListener('blur', (e) => {
+                                const value = e.target.value.trim();
+                                if (value) {
+                                    e.target.value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            debounceValidation(fieldName, event) {
+                clearTimeout(this.debounceTimers[fieldName]);
+                this.debounceTimers[fieldName] = setTimeout(() => {
+                    this.validateField(fieldName, event.target.value);
+                }, 300);
+            }
+
+            validateField(fieldName, value) {
+                const validator = this.validators[fieldName];
+                if (validator) {
+                    const result = validator(value);
+                    this.updateFieldUI(fieldName, result);
+                    this.fieldStates[fieldName] = result;
+                    return result;
+                }
+                return { isValid: true, message: '' };
+            }
+
+            updateFieldUI(fieldName, result) {
+                const field = document.getElementById(fieldName);
+                const errorDiv = document.getElementById(fieldName + 'Error');
+                const icon = field.nextElementSibling;
+
+                // Remove existing classes
+                field.classList.remove('valid', 'invalid');
+                if (icon && icon.classList.contains('validation-icon')) {
+                    icon.classList.remove('valid', 'invalid', 'fa-check-circle', 'fa-exclamation-circle');
+                }
+
+                if (result.isValid) {
+                    field.classList.add('valid');
+                    field.setAttribute('aria-invalid', 'false');
+                    if (icon) {
+                        icon.classList.add('valid', 'fa-check-circle');
+                    }
+                    if (errorDiv) {
+                        errorDiv.className = 'validation-message success';
+                        // Use textContent for safety
+                        errorDiv.textContent = result.message || '';
+                    }
+                } else {
+                    field.classList.add('invalid');
+                    field.setAttribute('aria-invalid', 'true');
+                    if (icon) {
+                        icon.classList.add('invalid', 'fa-exclamation-circle');
+                    }
+                    if (errorDiv) {
+                        errorDiv.className = 'validation-message error';
+                        // Use textContent for safety
+                        errorDiv.textContent = result.message;
+                    }
+                }
+            }
+
+            clearFieldError(fieldName) {
+                const errorDiv = document.getElementById(fieldName + 'Error');
+                if (errorDiv && errorDiv.classList.contains('error')) {
+                    errorDiv.style.display = 'none';
+                }
+            }
+
+            validateName(value) {
+                const trimmed = value.trim();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Name is required' };
+                }
+                
+                if (trimmed.length < 1) {
+                    return { isValid: false, message: 'Name is required' };
+                }
+                
+                if (trimmed.length > 50) {
+                    return { isValid: false, message: 'Name must be less than 50 characters' };
+                }
+                
+                // Only allow letters, spaces, hyphens, and apostrophes
+                const namePattern = /^[a-zA-Z\s\-']+$/;
+                if (!namePattern.test(trimmed)) {
+                    return { isValid: false, message: 'Name can only contain letters, spaces, hyphens, and apostrophes' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateEmail(value) {
+                const trimmed = value.trim().toLowerCase();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Email address is required' };
+                }
+                
+                if (trimmed.length > 100) {
+                    return { isValid: false, message: 'Email address must be less than 100 characters' };
+                }
+                
+                // Enhanced email validation
+                const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (!emailPattern.test(trimmed)) {
+                    return { isValid: false, message: 'Please enter a valid email address' };
+                }
+                
+                // Check for valid domain
+                const domain = trimmed.split('@')[1];
+                if (!domain || domain.length < 4) {
+                    return { isValid: false, message: 'Please enter a valid email domain' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateInviteForm() {
+                const errors = [];
+                let isValid = true;
+                
+                // Validate required fields
+                const requiredFields = ['inviteFirstName', 'inviteLastName', 'inviteEmail'];
+                
+                requiredFields.forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        const result = this.validateField(fieldName, field.value);
+                        if (!result.isValid) {
+                            errors.push(result.message);
+                            isValid = false;
+                        }
+                    }
+                });
+                
+                this.showFormErrors(errors, 'invite');
+                return isValid;
+            }
+
+            showFormErrors(errors, formType = 'invite') {
+                const errorContainer = document.getElementById(formType + 'FormErrors');
+                const errorsList = document.getElementById(formType + 'FormErrorsList');
+                
+                if (errors.length > 0) {
+                    // Clear existing errors
+                    errorsList.innerHTML = '';
+                    
+                    // Add errors safely using DOM manipulation
+                    errors.forEach(error => {
+                        const li = document.createElement('li');
+                        li.textContent = error;
+                        errorsList.appendChild(li);
+                    });
+                    
+                    errorContainer.classList.add('show');
+                } else {
+                    errorContainer.classList.remove('show');
+                }
+            }
+
+            sanitizeInput(input) {
+                if (typeof input !== 'string') return input;
+                return input.replace(/[<>"'%;()&+${}[\]\\]/g, '').trim();
+            }
+
+            clearValidation(formType = 'invite') {
+                const errorContainer = document.getElementById(formType + 'FormErrors');
+                if (errorContainer) {
+                    errorContainer.classList.remove('show');
+                }
+                
+                Object.keys(this.validators).forEach(fieldName => {
+                    if (fieldName.startsWith(formType)) {
+                        const field = document.getElementById(fieldName);
+                        if (field) {
+                            field.classList.remove('valid', 'invalid');
+                            const errorDiv = document.getElementById(fieldName + 'Error');
+                            if (errorDiv) {
+                                errorDiv.style.display = 'none';
+                            }
+                            const icon = field.nextElementSibling;
+                            if (icon && icon.classList.contains('validation-icon')) {
+                                icon.classList.remove('valid', 'invalid', 'fa-check-circle', 'fa-exclamation-circle');
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize dashboard form validator
+        let dashboardValidator;
+        
+        // MSAL Configuration - fetch from server
+        let msalConfig;
+        let myMSALObj;
+        
+        // Fetch auth config from server
+        fetch('/api/get-auth-config')
+            .then(response => response.json())
+            .then(config => {
+                msalConfig = {
+                    auth: {
+                        clientId: config.clientId,
+                        authority: "https://login.microsoftonline.com/common",
+                        redirectUri: window.location.origin + "/dashboard.html",
+                    },
+                    cache: {
+                        cacheLocation: "localStorage",
+                        storeAuthStateInCookie: false,
+                    }
+                };
+
+                // Initialize MSAL after config is loaded
+                initializeMSAL();
+                
+                // Initialize dashboard validator
+                dashboardValidator = new DashboardFormValidator();
+            })
+            .catch(error => {
+                console.error('Error loading auth config:', error);
+                showError('Failed to load authentication configuration.');
+            });
 
         let msalInstance;
         let currentUser = null;
@@ -944,9 +1271,21 @@
         let currentPage = 'users';
         let currentBillingData = null;
 
-        // Initialize MSAL
+        // Initialize MSAL function
+        function initializeMSAL() {
+            try {
+                msalInstance = new msal.PublicClientApplication(msalConfig);
+                // Start the authentication process
+                checkAdminAuth();
+            } catch (e) {
+                console.error("MSAL Initialization Failed:", e);
+                showError("Authentication system failed to initialize. Please refresh the page.");
+            }
+        }
+
+        // Placeholder for msalInstance initialization
         try {
-            msalInstance = new msal.PublicClientApplication(msalConfig);
+            // This will be replaced by initializeMSAL() once config is loaded
         } catch (e) {
             console.error("MSAL Initialization Failed:", e);
             showError("Authentication system failed to initialize. Please refresh the page.");
@@ -1207,11 +1546,21 @@ function updatePlanPreview() {
     
     // Handle price difference display and button text
     if (difference > 0) {
-        diffElement.innerHTML = `<span style="color: #e74c3c;">+£${difference}/${billingPeriod} (immediate charge will be pro-rated`;
+        // Create span element safely
+        const spanElement = document.createElement('span');
+        spanElement.style.color = '#e74c3c';
+        spanElement.textContent = `+£${difference}/${billingPeriod} (immediate charge will be pro-rated`;
+        diffElement.innerHTML = '';
+        diffElement.appendChild(spanElement);
         updateBtn.textContent = 'Upgrade Plan (Pay Now)';
         updateBtn.className = 'btn btn-primary';
     } else if (difference < 0) {
-        diffElement.innerHTML = `<span style="color: #27ae60;">£${Math.abs(difference)}/${billingPeriod} savings (starts next billing cycle)</span>`;
+        // Create span element safely
+        const spanElement = document.createElement('span');
+        spanElement.style.color = '#27ae60';
+        spanElement.textContent = `£${Math.abs(difference)}/${billingPeriod} savings (starts next billing cycle)`;
+        diffElement.innerHTML = '';
+        diffElement.appendChild(spanElement);
         updateBtn.textContent = 'Schedule Downgrade';
         updateBtn.className = 'btn btn-warning';
     } else {
@@ -1437,7 +1786,13 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
         const now = new Date();
         const daysRemaining = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
 
-        trialBannerEl.innerHTML = `<i class="fas fa-gift"></i> You are on a free trial with ${usage.total} licenses. Your trial ends in ${daysRemaining} day(s).`;
+        // Create trial banner content safely
+        trialBannerEl.innerHTML = '';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-gift';
+        const textNode = document.createTextNode(` You are on a free trial with ${usage.total} licenses. Your trial ends in ${daysRemaining} day(s).`);
+        trialBannerEl.appendChild(icon);
+        trialBannerEl.appendChild(textNode);
         trialBannerEl.style.display = 'block';
         planDetailsEl.textContent = `After the trial, your plan will become TIA Professional (${billingPeriod}ly billing).`;
         document.querySelector('.license-card').style.borderLeftColor = '#3498db';
@@ -1466,7 +1821,14 @@ document.getElementById('managePlanModal').addEventListener('click', function(e)
                 </div>
             `;
         } else {
-            planDetailsEl.innerHTML = `Professional Plan - £${totalPrice}/${billingPeriod} - Status: <span class="status-badge status-${organization.status}">${organization.status}</span>`;
+            // Create plan details content safely
+            planDetailsEl.innerHTML = '';
+            const textNode1 = document.createTextNode(`Professional Plan - £${totalPrice}/${billingPeriod} - Status: `);
+            const statusSpan = document.createElement('span');
+            statusSpan.className = `status-badge status-${organization.status}`;
+            statusSpan.textContent = organization.status;
+            planDetailsEl.appendChild(textNode1);
+            planDetailsEl.appendChild(statusSpan);
         }
         
         document.querySelector('.license-card').style.borderLeftColor = '#27ae60';
@@ -2066,6 +2428,11 @@ async function openBillingPortal() {
         function hideInviteModal() {
             document.getElementById('inviteModal').classList.remove('show');
             document.getElementById('inviteForm').reset();
+            
+            // Clear validation states
+            if (dashboardValidator) {
+                dashboardValidator.clearValidation('invite');
+            }
         }
 
         // Shareable Link Modal Functions
@@ -2217,14 +2584,20 @@ async function openBillingPortal() {
         document.getElementById('inviteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Validate form before submission
+            if (!dashboardValidator.validateInviteForm()) {
+                return;
+            }
+            
             if (!currentOrganization || !currentUser) {
                 showError("Authentication required");
                 return;
             }
             
-            const firstName = document.getElementById('inviteFirstName').value;
-            const lastName = document.getElementById('inviteLastName').value;
-            const email = document.getElementById('inviteEmail').value;
+            // Sanitize form data
+            const firstName = dashboardValidator.sanitizeInput(document.getElementById('inviteFirstName').value);
+            const lastName = dashboardValidator.sanitizeInput(document.getElementById('inviteLastName').value);
+            const email = dashboardValidator.sanitizeInput(document.getElementById('inviteEmail').value.toLowerCase());
             const role = document.getElementById('inviteRole').value;
             
             try {

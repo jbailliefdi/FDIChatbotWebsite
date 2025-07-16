@@ -7,6 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Stripe.js -->
     <script src="https://js.stripe.com/v3/"></script>
+    <script src="/js/security.js"></script>
     <style>
         * {
             margin: 0;
@@ -445,6 +446,164 @@
         .footer-contact a { color: #667eea; text-decoration: none; }
         .footer-contact a:hover { text-decoration: underline; }
 
+        /* Form Validation Styles */
+        .form-group {
+            position: relative;
+        }
+
+        .form-group input.valid {
+            border-color: #4CAF50;
+            background-color: #f8fff8;
+        }
+
+        .form-group input.invalid {
+            border-color: #f44336;
+            background-color: #fff8f8;
+        }
+
+        .validation-message {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .validation-message.error {
+            color: #f44336;
+            display: block;
+        }
+
+        .validation-message.success {
+            color: #4CAF50;
+            display: block;
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+        }
+
+        .validation-icon.valid {
+            color: #4CAF50;
+        }
+
+        .validation-icon.invalid {
+            color: #f44336;
+        }
+
+        .character-count {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+
+        .character-count.warning {
+            color: #ff9800;
+        }
+
+        .character-count.error {
+            color: #f44336;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input.invalid:focus {
+            border-color: #f44336;
+            box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+        }
+
+        .form-group input.valid:focus {
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        /* Real-time validation feedback */
+        .validation-progress {
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .validation-progress-bar {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .validation-progress-bar.low {
+            background-color: #f44336;
+        }
+
+        .validation-progress-bar.medium {
+            background-color: #ff9800;
+        }
+
+        .validation-progress-bar.high {
+            background-color: #4CAF50;
+        }
+
+        /* License count validation */
+        .license-input input.invalid {
+            border-color: #f44336;
+        }
+
+        .license-warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .license-warning .fas {
+            margin-right: 0.5rem;
+        }
+
+        /* Form submission states */
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .form-errors {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .form-errors.show {
+            display: block;
+        }
+
+        .form-errors ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+
+        .form-errors li {
+            margin: 0.25rem 0;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container { padding: 1rem 10px; }
@@ -490,6 +649,12 @@
 
                 <!-- Alert Messages -->
                 <div id="alertMessage" class="alert"></div>
+                
+                <!-- Form Validation Errors -->
+                <div class="form-errors" id="formErrors">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Please fix the following errors:</h4>
+                    <ul id="formErrorsList"></ul>
+                </div>
 
                 <!-- Plan Selection -->
                 <div class="plan-selection">
@@ -533,28 +698,43 @@
                 <form id="signupForm" class="signup-form">
                     <div class="form-group">
                         <label for="companyName">Company Name <span class="required">*</span></label>
-                        <input type="text" id="companyName" name="companyName" required>
+                        <input type="text" id="companyName" name="companyName" required maxlength="100" autocomplete="organization" aria-describedby="companyNameError companyNameCount" aria-invalid="false">
+                        <i class="fas validation-icon" aria-hidden="true"></i>
+                        <div class="validation-message" id="companyNameError" role="alert" aria-live="polite"></div>
+                        <div class="character-count" id="companyNameCount" aria-live="polite">0/100</div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">First Name <span class="required">*</span></label>
-                            <input type="text" id="firstName" name="firstName" required>
+                            <input type="text" id="firstName" name="firstName" required maxlength="50" autocomplete="given-name" aria-describedby="firstNameError firstNameCount" aria-invalid="false">
+                            <i class="fas validation-icon" aria-hidden="true"></i>
+                            <div class="validation-message" id="firstNameError" role="alert" aria-live="polite"></div>
+                            <div class="character-count" id="firstNameCount" aria-live="polite">0/50</div>
                         </div>
                         <div class="form-group">
                             <label for="lastName">Last Name <span class="required">*</span></label>
-                            <input type="text" id="lastName" name="lastName" required>
+                            <input type="text" id="lastName" name="lastName" required maxlength="50" autocomplete="family-name" aria-describedby="lastNameError lastNameCount" aria-invalid="false">
+                            <i class="fas validation-icon" aria-hidden="true"></i>
+                            <div class="validation-message" id="lastNameError" role="alert" aria-live="polite"></div>
+                            <div class="character-count" id="lastNameCount" aria-live="polite">0/50</div>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="email">Business Email <span class="required">*</span></label>
-                        <input type="email" id="email" name="email" required>
+                        <input type="email" id="email" name="email" required maxlength="100" autocomplete="email" aria-describedby="emailError emailCount" aria-invalid="false">
+                        <i class="fas validation-icon" aria-hidden="true"></i>
+                        <div class="validation-message" id="emailError" role="alert" aria-live="polite"></div>
+                        <div class="character-count" id="emailCount" aria-live="polite">0/100</div>
                     </div>
 
                     <div class="form-group">
                         <label for="phone">Phone Number</label>
-                        <input type="tel" id="phone" name="phone">
+                        <input type="tel" id="phone" name="phone" maxlength="20" autocomplete="tel" aria-describedby="phoneError phoneCount" aria-invalid="false">
+                        <i class="fas validation-icon" aria-hidden="true"></i>
+                        <div class="validation-message" id="phoneError" role="alert" aria-live="polite"></div>
+                        <div class="character-count" id="phoneCount" aria-live="polite">0/20</div>
                     </div>
 
                     <!-- Order Summary -->
@@ -622,8 +802,485 @@
     </footer>
 
     <script>
-        // Initialize Stripe
-        const stripe = Stripe('pk_test_51Rd9XV05l0vgWgqFAbx3JkDuK07OlqDTYuQFDP0lph1PjQwrgP893eyVafqERyOm7098XJkWhpUica4bb0dcx7sh0031RJG2Wq');
+        // Form Validation System
+        class FormValidator {
+            constructor() {
+                this.validators = {
+                    companyName: this.validateCompanyName.bind(this),
+                    firstName: this.validateFirstName.bind(this),
+                    lastName: this.validateLastName.bind(this),
+                    email: this.validateEmail.bind(this),
+                    phone: this.validatePhone.bind(this),
+                    licenseCount: this.validateLicenseCount.bind(this)
+                };
+                this.isFormValid = false;
+                this.fieldStates = {};
+                this.debounceTimers = {};
+                this.init();
+            }
+
+            init() {
+                // Add event listeners for real-time validation
+                Object.keys(this.validators).forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        field.addEventListener('input', (e) => this.debounceValidation(fieldName, e));
+                        field.addEventListener('blur', (e) => this.validateField(fieldName, e.target.value));
+                        field.addEventListener('focus', (e) => this.clearFieldError(fieldName));
+                        
+                        // Special handling for phone number formatting
+                        if (fieldName === 'phone') {
+                            field.addEventListener('input', (e) => {
+                                e.target.value = this.formatPhoneNumber(e.target.value);
+                            });
+                        }
+                        
+                        // Special handling for names - capitalize first letter
+                        if (fieldName === 'firstName' || fieldName === 'lastName') {
+                            field.addEventListener('blur', (e) => {
+                                const value = e.target.value.trim();
+                                if (value) {
+                                    e.target.value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+                                }
+                            });
+                        }
+                    }
+                });
+                
+                // Add license count validation warnings
+                const licenseField = document.getElementById('licenseCount');
+                if (licenseField) {
+                    licenseField.addEventListener('input', (e) => this.handleLicenseCountChange(e));
+                }
+            }
+
+            debounceValidation(fieldName, event) {
+                clearTimeout(this.debounceTimers[fieldName]);
+                this.debounceTimers[fieldName] = setTimeout(() => {
+                    this.validateField(fieldName, event.target.value);
+                }, 300);
+                this.updateCharacterCount(fieldName, event.target.value);
+            }
+
+            validateField(fieldName, value) {
+                const validator = this.validators[fieldName];
+                if (validator) {
+                    const result = validator(value);
+                    this.updateFieldUI(fieldName, result);
+                    this.fieldStates[fieldName] = result;
+                    this.updateSubmitButton();
+                    return result;
+                }
+                return { isValid: true, message: '' };
+            }
+
+            updateFieldUI(fieldName, result) {
+                const field = document.getElementById(fieldName);
+                const errorDiv = document.getElementById(fieldName + 'Error');
+                const icon = field.nextElementSibling;
+
+                // Remove existing classes
+                field.classList.remove('valid', 'invalid');
+                if (icon && icon.classList.contains('validation-icon')) {
+                    icon.classList.remove('valid', 'invalid', 'fa-check-circle', 'fa-exclamation-circle');
+                }
+
+                if (result.isValid) {
+                    field.classList.add('valid');
+                    field.setAttribute('aria-invalid', 'false');
+                    if (icon) {
+                        icon.classList.add('valid', 'fa-check-circle');
+                    }
+                    if (errorDiv) {
+                        errorDiv.className = 'validation-message success';
+                        // Use textContent instead of innerHTML for safety
+                        errorDiv.textContent = result.message || '';
+                    }
+                } else {
+                    field.classList.add('invalid');
+                    field.setAttribute('aria-invalid', 'true');
+                    if (icon) {
+                        icon.classList.add('invalid', 'fa-exclamation-circle');
+                    }
+                    if (errorDiv) {
+                        errorDiv.className = 'validation-message error';
+                        // Use textContent instead of innerHTML for safety
+                        errorDiv.textContent = result.message;
+                    }
+                }
+            }
+
+            updateCharacterCount(fieldName, value) {
+                const countDiv = document.getElementById(fieldName + 'Count');
+                if (countDiv) {
+                    const field = document.getElementById(fieldName);
+                    const maxLength = field.getAttribute('maxlength') || 100;
+                    const currentLength = value.length;
+                    
+                    countDiv.textContent = `${currentLength}/${maxLength}`;
+                    
+                    // Update color based on length
+                    countDiv.classList.remove('warning', 'error');
+                    if (currentLength > maxLength * 0.8) {
+                        countDiv.classList.add('warning');
+                    }
+                    if (currentLength >= maxLength) {
+                        countDiv.classList.add('error');
+                    }
+                }
+            }
+
+            clearFieldError(fieldName) {
+                const errorDiv = document.getElementById(fieldName + 'Error');
+                if (errorDiv && errorDiv.classList.contains('error')) {
+                    errorDiv.style.display = 'none';
+                }
+            }
+
+            // Validation Methods
+            validateCompanyName(value) {
+                const trimmed = value.trim();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Company name is required' };
+                }
+                
+                if (trimmed.length < 2) {
+                    return { isValid: false, message: 'Company name must be at least 2 characters' };
+                }
+                
+                if (trimmed.length > 100) {
+                    return { isValid: false, message: 'Company name must be less than 100 characters' };
+                }
+                
+                // Check for dangerous characters
+                const dangerousChars = /[<>{}\[\]"'&;]/;
+                if (dangerousChars.test(trimmed)) {
+                    return { isValid: false, message: 'Company name contains invalid characters' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateFirstName(value) {
+                const trimmed = value.trim();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'First name is required' };
+                }
+                
+                if (trimmed.length < 1) {
+                    return { isValid: false, message: 'First name is required' };
+                }
+                
+                if (trimmed.length > 50) {
+                    return { isValid: false, message: 'First name must be less than 50 characters' };
+                }
+                
+                // Only allow letters, spaces, hyphens, and apostrophes
+                const namePattern = /^[a-zA-Z\s\-']+$/;
+                if (!namePattern.test(trimmed)) {
+                    return { isValid: false, message: 'First name can only contain letters, spaces, hyphens, and apostrophes' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateLastName(value) {
+                const trimmed = value.trim();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Last name is required' };
+                }
+                
+                if (trimmed.length < 1) {
+                    return { isValid: false, message: 'Last name is required' };
+                }
+                
+                if (trimmed.length > 50) {
+                    return { isValid: false, message: 'Last name must be less than 50 characters' };
+                }
+                
+                // Only allow letters, spaces, hyphens, and apostrophes
+                const namePattern = /^[a-zA-Z\s\-']+$/;
+                if (!namePattern.test(trimmed)) {
+                    return { isValid: false, message: 'Last name can only contain letters, spaces, hyphens, and apostrophes' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateEmail(value) {
+                const trimmed = value.trim().toLowerCase();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Email address is required' };
+                }
+                
+                if (trimmed.length > 100) {
+                    return { isValid: false, message: 'Email address must be less than 100 characters' };
+                }
+                
+                // Enhanced email validation
+                const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (!emailPattern.test(trimmed)) {
+                    return { isValid: false, message: 'Please enter a valid email address' };
+                }
+                
+                // Check for valid domain
+                const domain = trimmed.split('@')[1];
+                if (!domain || domain.length < 4) {
+                    return { isValid: false, message: 'Please enter a valid email domain' };
+                }
+                
+                // Business email validation (basic)
+                const commonPersonalDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com', 'icloud.com'];
+                if (commonPersonalDomains.includes(domain)) {
+                    return { isValid: true, message: 'Consider using a business email address' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validatePhone(value) {
+                const trimmed = value.trim();
+                
+                if (!trimmed) {
+                    return { isValid: true, message: '' }; // Phone is optional
+                }
+                
+                // Remove all non-digit characters for validation
+                const digitsOnly = trimmed.replace(/\D/g, '');
+                
+                if (digitsOnly.length < 10) {
+                    return { isValid: false, message: 'Phone number must be at least 10 digits' };
+                }
+                
+                if (digitsOnly.length > 15) {
+                    return { isValid: false, message: 'Phone number must be less than 15 digits' };
+                }
+                
+                // UK phone number pattern (basic)
+                const ukPhonePattern = /^(\+44|0044|0)?[1-9]\d{8,9}$/;
+                if (!ukPhonePattern.test(digitsOnly)) {
+                    return { isValid: true, message: 'Please check the phone number format' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateLicenseCount(value) {
+                const num = parseInt(value);
+                
+                if (isNaN(num)) {
+                    return { isValid: false, message: 'License count must be a number' };
+                }
+                
+                if (num < 1) {
+                    return { isValid: false, message: 'License count must be at least 1' };
+                }
+                
+                if (currentPlan === 'trial' && num > 5) {
+                    return { isValid: false, message: 'Trial is limited to 5 users' };
+                }
+                
+                if (num > 1000) {
+                    return { isValid: false, message: 'Please contact us for enterprise pricing (1000+ users)' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            // Form submission validation
+            validateForm() {
+                const errors = [];
+                let isValid = true;
+                
+                // Validate required fields
+                const requiredFields = ['companyName', 'firstName', 'lastName', 'email', 'licenseCount'];
+                
+                requiredFields.forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        const result = this.validateField(fieldName, field.value);
+                        if (!result.isValid) {
+                            errors.push(result.message);
+                            isValid = false;
+                        }
+                    }
+                });
+                
+                // Validate optional fields if they have values
+                const optionalFields = ['phone'];
+                optionalFields.forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field && field.value.trim()) {
+                        const result = this.validateField(fieldName, field.value);
+                        if (!result.isValid) {
+                            errors.push(result.message);
+                            isValid = false;
+                        }
+                    }
+                });
+                
+                this.showFormErrors(errors);
+                return isValid;
+            }
+
+            showFormErrors(errors) {
+                const errorContainer = document.getElementById('formErrors');
+                const errorsList = document.getElementById('formErrorsList');
+                
+                if (errors.length > 0) {
+                    // Clear existing errors
+                    errorsList.innerHTML = '';
+                    
+                    // Add errors safely using DOM manipulation
+                    errors.forEach(error => {
+                        const li = document.createElement('li');
+                        li.textContent = error;
+                        errorsList.appendChild(li);
+                    });
+                    
+                    errorContainer.classList.add('show');
+                } else {
+                    errorContainer.classList.remove('show');
+                }
+            }
+
+            updateSubmitButton() {
+                const submitBtn = document.getElementById('submitBtn');
+                const requiredFields = ['companyName', 'firstName', 'lastName', 'email', 'licenseCount'];
+                
+                let allValid = true;
+                requiredFields.forEach(fieldName => {
+                    const state = this.fieldStates[fieldName];
+                    if (!state || !state.isValid) {
+                        allValid = false;
+                    }
+                });
+                
+                this.isFormValid = allValid;
+                if (submitBtn) {
+                    submitBtn.disabled = !allValid;
+                }
+            }
+
+            // Input sanitization (enhanced)
+            sanitizeInput(input) {
+                if (typeof input !== 'string') return input;
+                return input.replace(/[<>"'%;()&+${}[\]\\]/g, '').trim();
+            }
+
+            // Auto-format phone number
+            formatPhoneNumber(value) {
+                const digits = value.replace(/\D/g, '');
+                if (digits.length <= 3) return digits;
+                if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+                if (digits.length <= 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+                return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+            }
+            
+            // Handle license count changes with warnings
+            handleLicenseCountChange(event) {
+                const value = parseInt(event.target.value);
+                const warningDiv = document.getElementById('licenseWarning') || this.createLicenseWarning();
+                
+                // Clear existing content
+                warningDiv.innerHTML = '';
+                
+                let message = '';
+                if (value > 100) {
+                    message = 'Large organizations may benefit from enterprise pricing. Contact us for a custom quote.';
+                } else if (value > 50) {
+                    message = 'Consider our annual plan for significant savings with larger teams.';
+                }
+                
+                if (message) {
+                    // Create icon element
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-info-circle';
+                    
+                    // Create text node
+                    const textNode = document.createTextNode(' ' + message);
+                    
+                    // Append safely
+                    warningDiv.appendChild(icon);
+                    warningDiv.appendChild(textNode);
+                    warningDiv.style.display = 'block';
+                } else {
+                    warningDiv.style.display = 'none';
+                }
+            }
+            
+            // Create license warning div if it doesn't exist
+            createLicenseWarning() {
+                const warningDiv = document.createElement('div');
+                warningDiv.id = 'licenseWarning';
+                warningDiv.className = 'license-warning';
+                warningDiv.style.display = 'none';
+                
+                const licenseContainer = document.getElementById('licenseSelectorContainer');
+                if (licenseContainer) {
+                    licenseContainer.appendChild(warningDiv);
+                }
+                
+                return warningDiv;
+            }
+            
+            // Clear all validation states
+            clearAllValidation() {
+                Object.keys(this.validators).forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        field.classList.remove('valid', 'invalid');
+                        const errorDiv = document.getElementById(fieldName + 'Error');
+                        if (errorDiv) {
+                            errorDiv.style.display = 'none';
+                        }
+                        const icon = field.nextElementSibling;
+                        if (icon && icon.classList.contains('validation-icon')) {
+                            icon.classList.remove('valid', 'invalid', 'fa-check-circle', 'fa-exclamation-circle');
+                        }
+                    }
+                });
+            }
+            
+            // Get form data with validation
+            getValidatedFormData() {
+                if (!this.validateForm()) {
+                    return null;
+                }
+                
+                return {
+                    companyName: this.sanitizeInput(document.getElementById('companyName').value),
+                    firstName: this.sanitizeInput(document.getElementById('firstName').value),
+                    lastName: this.sanitizeInput(document.getElementById('lastName').value),
+                    email: this.sanitizeInput(document.getElementById('email').value.toLowerCase()),
+                    phone: this.sanitizeInput(document.getElementById('phone').value),
+                    licenseCount: parseInt(document.getElementById('licenseCount').value)
+                };
+            }
+        }
+
+        // Initialize form validator
+        let formValidator;
+        document.addEventListener('DOMContentLoaded', () => {
+            formValidator = new FormValidator();
+        });
+
+        // Initialize Stripe - fetch key from server
+        let stripe;
+        
+        // Fetch Stripe publishable key from server
+        fetch('/api/get-stripe-config')
+            .then(response => response.json())
+            .then(config => {
+                stripe = Stripe(config.publishableKey);
+            })
+            .catch(error => {
+                console.error('Error loading Stripe config:', error);
+            });
         
         let currentPlan = 'trial'; // Default to trial
         const pricePerLicense = 50;
@@ -778,18 +1435,24 @@
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Validate form before submission
+            if (!formValidator.validateForm()) {
+                return;
+            }
+            
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
             submitBtn.disabled = true;
             submitBtn.style.display = 'none';
             loadingSpinner.style.display = 'block';
 
+            // Sanitize form data
             const formData = {
-                companyName: document.getElementById('companyName').value,
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
+                companyName: formValidator.sanitizeInput(document.getElementById('companyName').value),
+                firstName: formValidator.sanitizeInput(document.getElementById('firstName').value),
+                lastName: formValidator.sanitizeInput(document.getElementById('lastName').value),
+                email: formValidator.sanitizeInput(document.getElementById('email').value.toLowerCase()),
+                phone: formValidator.sanitizeInput(document.getElementById('phone').value),
                 planType: currentPlan,
                 licenseCount: parseInt(document.getElementById('licenseCount').value)
             };
@@ -817,6 +1480,9 @@
                 }
 
                 // Redirect to Stripe for both trial and paid plans
+                if (!stripe) {
+                    throw new Error('Payment system not initialized. Please refresh the page.');
+                }
                 const { error } = await stripe.redirectToCheckout({ sessionId: result.sessionId });
                 if (error) {
                     throw new Error(error.message);

@@ -200,8 +200,15 @@ module.exports = async function (context, req) {
             });
         }
 
-        // Get the base URL for redirects
-        const origin = req.headers.origin || req.headers.referer || 'https://your-domain.com';
+        // Get the base URL for redirects with security validation
+        const { validateOriginWithFallback } = require('../utils/security');
+        const allowedOrigins = [
+            'https://kind-mud-048fffa03.6.azurestaticapps.net',
+            'https://fdichatbot.com',
+            'https://your-domain.com'
+        ];
+        const requestOrigin = req.headers.origin || req.headers.referer;
+        const origin = validateOriginWithFallback(requestOrigin, allowedOrigins, 'https://kind-mud-048fffa03.6.azurestaticapps.net');
         
         // Create checkout session
         let sessionConfig = {

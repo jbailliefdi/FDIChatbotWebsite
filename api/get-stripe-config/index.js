@@ -7,7 +7,6 @@ module.exports = async function (context, req) {
     }
 
     applySecurityHeaders(context, req, {
-        clientId: process.env.MSAL_CLIENT_ID,
-        authority: "https://login.microsoftonline.com/common"
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
     });
 };

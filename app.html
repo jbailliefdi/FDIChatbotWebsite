@@ -1441,6 +1441,7 @@ footer.chat-footer.show {
 </div>
 
   <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+  <script src="/js/security.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
   <script>
 let userData = null; // Global state for user's data
@@ -1818,9 +1819,25 @@ function updateAuthUI() {
                 }
             }
             
-            userStatus.innerHTML = `${companyInfo}${licenseInfo}${statusInfo}<br><small>${account.username}</small>`;
+            // Create user status content safely
+            userStatus.innerHTML = '';
+            const statusText = document.createTextNode(companyInfo + licenseInfo + statusInfo);
+            const br = document.createElement('br');
+            const small = document.createElement('small');
+            small.textContent = account.username;
+            userStatus.appendChild(statusText);
+            userStatus.appendChild(br);
+            userStatus.appendChild(small);
         } else {
-             userStatus.innerHTML = `${account.name || account.username}<br><small>No active subscription</small>`;
+             // Create user status content safely
+             userStatus.innerHTML = '';
+             const nameText = document.createTextNode(account.name || account.username);
+             const br = document.createElement('br');
+             const small = document.createElement('small');
+             small.textContent = 'No active subscription';
+             userStatus.appendChild(nameText);
+             userStatus.appendChild(br);
+             userStatus.appendChild(small);
         }
     } else {
         authBtn.textContent = "Sign In";

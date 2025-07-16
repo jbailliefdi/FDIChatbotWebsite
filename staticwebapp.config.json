@@ -23,11 +23,13 @@
     }
   },
   "globalHeaders": {
-    "content-security-policy": "default-src 'self' https:; script-src 'self' https: 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; connect-src 'self' https: wss: blob:; img-src 'self' https: data: blob:; font-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'",
+    "content-security-policy": "default-src 'self'; script-src 'self' https://alcdn.msauth.net https://js.stripe.com https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; connect-src 'self' https://directline.botframework.com https://api.stripe.com https://login.microsoftonline.com https://graph.microsoft.com wss://directline.botframework.com; img-src 'self' https://fdichatbot.com https://via.placeholder.com data: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self' https://api.stripe.com; frame-ancestors 'none'; frame-src https://js.stripe.com; child-src 'none'; worker-src 'none'; manifest-src 'self'",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=(), usb=(), midi=(), speaker-selection=(), display-capture=(), fullscreen=(), web-share=()",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-DNS-Prefetch-Control": "off"
   }
 }

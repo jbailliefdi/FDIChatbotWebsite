@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { escapeHtml, sanitizeEmailHeader } = require('./security');
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.office365.com',
@@ -20,7 +21,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `You've been added to ${organizationName}'s subscription to TIA (Tax Intelligence Assistant)`,
+        subject: sanitizeEmailHeader(`You've been added to ${organizationName}'s subscription to TIA (Tax Intelligence Assistant)`),
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -29,7 +30,7 @@ async function sendInviteEmail(recipientEmail, inviteToken, organizationName, ad
                 <h2 style="color: #333; text-align: center;">You've been added to an organisation!</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    You've been added to <strong>${organizationName}</strong>'s subscription to TIA (Tax Intelligence Assistant)!
+                    You've been added to <strong>${escapeHtml(organizationName)}</strong>'s subscription to TIA (Tax Intelligence Assistant)!
                 </p>
                 
                 <p style="color: #666; font-size: 16px;">
@@ -69,7 +70,7 @@ async function sendAccountActivatedEmail(recipientEmail, organizationName, admin
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `Your TIA account has been activated - ${organizationName}`,
+        subject: sanitizeEmailHeader(`Your TIA account has been activated - ${organizationName}`),
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -78,7 +79,7 @@ async function sendAccountActivatedEmail(recipientEmail, organizationName, admin
                 <h2 style="color: #27ae60; text-align: center;">Your account has been activated!</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Great news! Your TIA (Tax Intelligence Assistant) account for <strong>${organizationName}</strong> has been activated and is now ready to use.
+                    Great news! Your TIA (Tax Intelligence Assistant) account for <strong>${escapeHtml(organizationName)}</strong> has been activated and is now ready to use.
                 </p>
                 
                 <div style="background: #d4edda; padding: 1rem; border-radius: 6px; margin: 20px 0; border: 1px solid #c3e6cb;">
@@ -99,7 +100,7 @@ async function sendAccountActivatedEmail(recipientEmail, organizationName, admin
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
                 <p style="color: #666; font-size: 14px; text-align: center;">
-                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${escapeHtml(adminEmail)}</strong>` : 'your organization admin'}.
                 </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
@@ -121,7 +122,7 @@ async function sendAccountDeactivatedEmail(recipientEmail, organizationName, adm
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `Your TIA account has been deactivated - ${organizationName}`,
+        subject: sanitizeEmailHeader(`Your TIA account has been deactivated - ${organizationName}`),
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -130,7 +131,7 @@ async function sendAccountDeactivatedEmail(recipientEmail, organizationName, adm
                 <h2 style="color: #e74c3c; text-align: center;">Your account has been deactivated</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Your TIA (Tax Intelligence Assistant) account for <strong>${organizationName}</strong> has been deactivated and you no longer have access to the system.
+                    Your TIA (Tax Intelligence Assistant) account for <strong>${escapeHtml(organizationName)}</strong> has been deactivated and you no longer have access to the system.
                 </p>
                 
                 <div style="background: #f8d7da; padding: 1rem; border-radius: 6px; margin: 20px 0; border: 1px solid #f5c6cb;">
@@ -146,7 +147,7 @@ async function sendAccountDeactivatedEmail(recipientEmail, organizationName, adm
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
                 <p style="color: #666; font-size: 14px; text-align: center;">
-                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${escapeHtml(adminEmail)}</strong>` : 'your organization admin'}.
                 </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
@@ -168,7 +169,7 @@ async function sendAdminPromotedEmail(recipientEmail, organizationName, adminEma
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `You've been promoted to administrator - ${organizationName}`,
+        subject: sanitizeEmailHeader(`You've been promoted to administrator - ${organizationName}`),
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -177,7 +178,7 @@ async function sendAdminPromotedEmail(recipientEmail, organizationName, adminEma
                 <h2 style="color: #f39c12; text-align: center;">You've been promoted to administrator!</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Congratulations! You've been promoted to administrator for <strong>${organizationName}</strong>'s TIA (Tax Intelligence Assistant) account.
+                    Congratulations! You've been promoted to administrator for <strong>${escapeHtml(organizationName)}</strong>'s TIA (Tax Intelligence Assistant) account.
                 </p>
                 
                 <div style="background: #fff3cd; padding: 1rem; border-radius: 6px; margin: 20px 0; border: 1px solid #ffeaa7;">
@@ -203,7 +204,7 @@ async function sendAdminPromotedEmail(recipientEmail, organizationName, adminEma
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
                 <p style="color: #666; font-size: 14px; text-align: center;">
-                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${escapeHtml(adminEmail)}</strong>` : 'your organization admin'}.
                 </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
@@ -225,7 +226,7 @@ async function sendAdminDemotedEmail(recipientEmail, organizationName, adminEmai
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `Your administrator privileges have been removed - ${organizationName}`,
+        subject: sanitizeEmailHeader(`Your administrator privileges have been removed - ${organizationName}`),
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -234,7 +235,7 @@ async function sendAdminDemotedEmail(recipientEmail, organizationName, adminEmai
                 <h2 style="color: #6c757d; text-align: center;">Your administrator privileges have been removed</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    Your administrator privileges for <strong>${organizationName}</strong>'s TIA (Tax Intelligence Assistant) account have been removed.
+                    Your administrator privileges for <strong>${escapeHtml(organizationName)}</strong>'s TIA (Tax Intelligence Assistant) account have been removed.
                 </p>
                 
                 <div style="background: #e2e3e5; padding: 1rem; border-radius: 6px; margin: 20px 0; border: 1px solid #d6d8db;">
@@ -260,7 +261,7 @@ async function sendAdminDemotedEmail(recipientEmail, organizationName, adminEmai
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
                 <p style="color: #666; font-size: 14px; text-align: center;">
-                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${escapeHtml(adminEmail)}</strong>` : 'your organization admin'}.
                 </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
@@ -282,7 +283,7 @@ async function sendAccountRemovedEmail(recipientEmail, organizationName, adminEm
     const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: recipientEmail,
-        subject: `You've been removed from ${organizationName}'s TIA subscription`,
+        subject: sanitizeEmailHeader(`You've been removed from ${organizationName}'s TIA subscription`),
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="text-align: center; margin-bottom: 30px;">
@@ -291,7 +292,7 @@ async function sendAccountRemovedEmail(recipientEmail, organizationName, adminEm
                 <h2 style="color: #dc3545; text-align: center;">You've been removed from the organization</h2>
                 
                 <p style="color: #666; font-size: 16px;">
-                    You have been removed from <strong>${organizationName}</strong>'s TIA (Tax Intelligence Assistant) subscription and no longer have access to the system.
+                    You have been removed from <strong>${escapeHtml(organizationName)}</strong>'s TIA (Tax Intelligence Assistant) subscription and no longer have access to the system.
                 </p>
                 
                 <div style="background: #f8d7da; padding: 1rem; border-radius: 6px; margin: 20px 0; border: 1px solid #f5c6cb;">
@@ -307,7 +308,7 @@ async function sendAccountRemovedEmail(recipientEmail, organizationName, adminEm
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                 
                 <p style="color: #666; font-size: 14px; text-align: center;">
-                    Questions? Contact ${adminEmail ? `your administrator at <strong>${adminEmail}</strong>` : 'your organization admin'}.
+                    Questions? Contact ${adminEmail ? `your administrator at <strong>${escapeHtml(adminEmail)}</strong>` : 'your organization admin'}.
                 </p>
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">

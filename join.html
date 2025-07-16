@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join Organization - TIA</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/js/security.js"></script>
     <style>
         * {
             margin: 0;
@@ -72,6 +73,76 @@
         .form-group {
             margin-bottom: 20px;
             text-align: left;
+            position: relative;
+        }
+        
+        .form-group input.valid {
+            border-color: #4CAF50;
+            background-color: #f8fff8;
+        }
+
+        .form-group input.invalid {
+            border-color: #f44336;
+            background-color: #fff8f8;
+        }
+
+        .validation-message {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .validation-message.error {
+            color: #f44336;
+            display: block;
+        }
+
+        .validation-message.success {
+            color: #4CAF50;
+            display: block;
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+        }
+
+        .validation-icon.valid {
+            color: #4CAF50;
+        }
+
+        .validation-icon.invalid {
+            color: #f44336;
+        }
+
+        .form-errors {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .form-errors.show {
+            display: block;
+        }
+
+        .form-errors ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+
+        .form-errors li {
+            margin: 0.25rem 0;
         }
 
         .form-group label {
@@ -223,21 +294,33 @@
 
             <div id="messageContainer"></div>
 
+            <!-- Form Validation Errors -->
+            <div class="form-errors" id="formErrors">
+                <h4><i class="fas fa-exclamation-triangle"></i> Please fix the following errors:</h4>
+                <ul id="formErrorsList"></ul>
+            </div>
+            
             <form id="signupForm">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="firstName">First Name</label>
-                        <input type="text" id="firstName" name="firstName" required>
+                        <input type="text" id="firstName" name="firstName" required maxlength="50">
+                        <i class="fas validation-icon"></i>
+                        <div class="validation-message" id="firstNameError"></div>
                     </div>
                     <div class="form-group">
                         <label for="lastName">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" required>
+                        <input type="text" id="lastName" name="lastName" required maxlength="50">
+                        <i class="fas validation-icon"></i>
+                        <div class="validation-message" id="lastNameError"></div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="email" id="email" name="email" required maxlength="100">
+                    <i class="fas validation-icon"></i>
+                    <div class="validation-message" id="emailError"></div>
                 </div>
 
                 <button type="submit" class="join-btn">
@@ -273,11 +356,230 @@
     </div>
 
     <script>
+        // Join Form Validation
+        class JoinFormValidator {
+            constructor() {
+                this.validators = {
+                    firstName: this.validateName.bind(this),
+                    lastName: this.validateName.bind(this),
+                    email: this.validateEmail.bind(this)
+                };
+                this.fieldStates = {};
+                this.debounceTimers = {};
+                this.init();
+            }
+
+            init() {
+                // Add event listeners for real-time validation
+                Object.keys(this.validators).forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        field.addEventListener('input', (e) => this.debounceValidation(fieldName, e));
+                        field.addEventListener('blur', (e) => this.validateField(fieldName, e.target.value));
+                        field.addEventListener('focus', (e) => this.clearFieldError(fieldName));
+                        
+                        // Auto-capitalize names
+                        if (fieldName.includes('Name')) {
+                            field.addEventListener('blur', (e) => {
+                                const value = e.target.value.trim();
+                                if (value) {
+                                    e.target.value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            debounceValidation(fieldName, event) {
+                clearTimeout(this.debounceTimers[fieldName]);
+                this.debounceTimers[fieldName] = setTimeout(() => {
+                    this.validateField(fieldName, event.target.value);
+                }, 300);
+            }
+
+            validateField(fieldName, value) {
+                const validator = this.validators[fieldName];
+                if (validator) {
+                    const result = validator(value);
+                    this.updateFieldUI(fieldName, result);
+                    this.fieldStates[fieldName] = result;
+                    this.updateSubmitButton();
+                    return result;
+                }
+                return { isValid: true, message: '' };
+            }
+
+            updateFieldUI(fieldName, result) {
+                const field = document.getElementById(fieldName);
+                const errorDiv = document.getElementById(fieldName + 'Error');
+                const icon = field.nextElementSibling;
+
+                // Remove existing classes
+                field.classList.remove('valid', 'invalid');
+                if (icon && icon.classList.contains('validation-icon')) {
+                    icon.classList.remove('valid', 'invalid', 'fa-check-circle', 'fa-exclamation-circle');
+                }
+
+                if (result.isValid) {
+                    field.classList.add('valid');
+                    field.setAttribute('aria-invalid', 'false');
+                    if (icon) {
+                        icon.classList.add('valid', 'fa-check-circle');
+                    }
+                    if (errorDiv) {
+                        errorDiv.className = 'validation-message success';
+                        // Use textContent for safety
+                        errorDiv.textContent = result.message || '';
+                    }
+                } else {
+                    field.classList.add('invalid');
+                    field.setAttribute('aria-invalid', 'true');
+                    if (icon) {
+                        icon.classList.add('invalid', 'fa-exclamation-circle');
+                    }
+                    if (errorDiv) {
+                        errorDiv.className = 'validation-message error';
+                        // Use textContent for safety
+                        errorDiv.textContent = result.message;
+                    }
+                }
+            }
+
+            clearFieldError(fieldName) {
+                const errorDiv = document.getElementById(fieldName + 'Error');
+                if (errorDiv && errorDiv.classList.contains('error')) {
+                    errorDiv.style.display = 'none';
+                }
+            }
+
+            validateName(value) {
+                const trimmed = value.trim();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Name is required' };
+                }
+                
+                if (trimmed.length < 1) {
+                    return { isValid: false, message: 'Name is required' };
+                }
+                
+                if (trimmed.length > 50) {
+                    return { isValid: false, message: 'Name must be less than 50 characters' };
+                }
+                
+                // Only allow letters, spaces, hyphens, and apostrophes
+                const namePattern = /^[a-zA-Z\s\-']+$/;
+                if (!namePattern.test(trimmed)) {
+                    return { isValid: false, message: 'Name can only contain letters, spaces, hyphens, and apostrophes' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateEmail(value) {
+                const trimmed = value.trim().toLowerCase();
+                
+                if (!trimmed) {
+                    return { isValid: false, message: 'Email address is required' };
+                }
+                
+                if (trimmed.length > 100) {
+                    return { isValid: false, message: 'Email address must be less than 100 characters' };
+                }
+                
+                // Enhanced email validation
+                const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (!emailPattern.test(trimmed)) {
+                    return { isValid: false, message: 'Please enter a valid email address' };
+                }
+                
+                // Check for valid domain
+                const domain = trimmed.split('@')[1];
+                if (!domain || domain.length < 4) {
+                    return { isValid: false, message: 'Please enter a valid email domain' };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+
+            validateForm() {
+                const errors = [];
+                let isValid = true;
+                
+                // Validate required fields
+                const requiredFields = ['firstName', 'lastName', 'email'];
+                
+                requiredFields.forEach(fieldName => {
+                    const field = document.getElementById(fieldName);
+                    if (field) {
+                        const result = this.validateField(fieldName, field.value);
+                        if (!result.isValid) {
+                            errors.push(result.message);
+                            isValid = false;
+                        }
+                    }
+                });
+                
+                this.showFormErrors(errors);
+                return isValid;
+            }
+
+            showFormErrors(errors) {
+                const errorContainer = document.getElementById('formErrors');
+                const errorsList = document.getElementById('formErrorsList');
+                
+                if (errors.length > 0) {
+                    // Clear existing errors
+                    errorsList.innerHTML = '';
+                    
+                    // Add errors safely using DOM manipulation
+                    errors.forEach(error => {
+                        const li = document.createElement('li');
+                        li.textContent = error;
+                        errorsList.appendChild(li);
+                    });
+                    
+                    errorContainer.classList.add('show');
+                } else {
+                    errorContainer.classList.remove('show');
+                }
+            }
+
+            updateSubmitButton() {
+                const submitBtn = document.querySelector('#signupForm button[type="submit"]');
+                const requiredFields = ['firstName', 'lastName', 'email'];
+                
+                let allValid = true;
+                requiredFields.forEach(fieldName => {
+                    const state = this.fieldStates[fieldName];
+                    if (!state || !state.isValid) {
+                        allValid = false;
+                    }
+                });
+                
+                if (submitBtn) {
+                    submitBtn.disabled = !allValid;
+                }
+            }
+
+            sanitizeInput(input) {
+                if (typeof input !== 'string') return input;
+                return input.replace(/[<>"'%;()&+${}[\]\\]/g, '').trim();
+            }
+        }
+
+        // Initialize form validator
+        let joinFormValidator;
+        
         let inviteToken = null;
         let organizationData = null;
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize form validator
+            joinFormValidator = new JoinFormValidator();
+            
             // Get token from URL
             const urlParams = new URLSearchParams(window.location.search);
             inviteToken = urlParams.get('token');
@@ -351,7 +653,13 @@
             const container = document.getElementById('messageContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
-            messageDiv.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}"></i> ${message}`;
+            // Create message content safely
+            messageDiv.innerHTML = '';
+            const icon = document.createElement('i');
+            icon.className = `fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}`;
+            const textNode = document.createTextNode(' ' + message);
+            messageDiv.appendChild(icon);
+            messageDiv.appendChild(textNode);
             
             container.innerHTML = '';
             container.appendChild(messageDiv);
@@ -364,6 +672,11 @@
         // Handle form submission
         document.getElementById('signupForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Validate form before submission
+            if (!joinFormValidator.validateForm()) {
+                return;
+            }
             
             const formData = new FormData(this);
             const submitButton = this.querySelector('button[type="submit"]');
@@ -379,7 +692,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         token: inviteToken,
-                        firstName: formData.get('firstName'),
+                        firstName: joinFormValidator.sanitizeInput(formData.get('firstName')),
                         lastName: formData.get('lastName'),
                         email: formData.get('email')
                     })

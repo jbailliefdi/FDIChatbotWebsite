@@ -27,7 +27,7 @@ async function validateToken(authHeader) {
     
     return new Promise((resolve, reject) => {
         jwt.verify(token, getKey, {
-            audience: process.env.MSAL_CLIENT_ID || '2bba73fd-cae6-4b9b-b0d1-cf1fd42a09d2',
+            audience: process.env.MSAL_CLIENT_ID,
             issuer: [
                 'https://login.microsoftonline.com/common/v2.0',
                 'https://sts.windows.net/common/',
