@@ -729,13 +729,6 @@
                         <div class="character-count" id="emailCount" aria-live="polite">0/100</div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="phone">Phone Number</label>
-                        <input type="tel" id="phone" name="phone" maxlength="20" autocomplete="tel" aria-describedby="phoneError phoneCount" aria-invalid="false">
-                        <i class="fas validation-icon" aria-hidden="true"></i>
-                        <div class="validation-message" id="phoneError" role="alert" aria-live="polite"></div>
-                        <div class="character-count" id="phoneCount" aria-live="polite">0/20</div>
-                    </div>
 
                     <!-- Order Summary -->
                     <div class="order-summary trial-summary" id="orderSummary">
@@ -810,7 +803,6 @@
                     firstName: this.validateFirstName.bind(this),
                     lastName: this.validateLastName.bind(this),
                     email: this.validateEmail.bind(this),
-                    phone: this.validatePhone.bind(this),
                     licenseCount: this.validateLicenseCount.bind(this)
                 };
                 this.isFormValid = false;
@@ -828,12 +820,6 @@
                         field.addEventListener('blur', (e) => this.validateField(fieldName, e.target.value));
                         field.addEventListener('focus', (e) => this.clearFieldError(fieldName));
                         
-                        // Special handling for phone number formatting
-                        if (fieldName === 'phone') {
-                            field.addEventListener('input', (e) => {
-                                e.target.value = this.formatPhoneNumber(e.target.value);
-                            });
-                        }
                         
                         // Special handling for names - capitalize first letter
                         if (fieldName === 'firstName' || fieldName === 'lastName') {
@@ -916,13 +902,7 @@
                     const field = document.getElementById(fieldName);
                     const maxLength = field.getAttribute('maxlength') || 100;
                     
-                    // For phone numbers, count only digits
-                    let currentLength;
-                    if (fieldName === 'phone') {
-                        currentLength = value.replace(/\D/g, '').length;
-                    } else {
-                        currentLength = value.length;
-                    }
+                    const currentLength = value.length;
                     
                     countDiv.textContent = `${currentLength}/${maxLength}`;
                     
@@ -1049,32 +1029,6 @@
                 return { isValid: true, message: '' };
             }
 
-            validatePhone(value) {
-                const trimmed = value.trim();
-                
-                if (!trimmed) {
-                    return { isValid: true, message: '' }; // Phone is optional
-                }
-                
-                // Remove all non-digit characters for validation
-                const digitsOnly = trimmed.replace(/\D/g, '');
-                
-                if (digitsOnly.length < 10) {
-                    return { isValid: false, message: 'Phone number must be at least 10 digits' };
-                }
-                
-                if (digitsOnly.length > 15) {
-                    return { isValid: false, message: 'Phone number must be less than 15 digits' };
-                }
-                
-                // UK phone number pattern (basic)
-                const ukPhonePattern = /^(\+44|0044|0)?[1-9]\d{8,9}$/;
-                if (!ukPhonePattern.test(digitsOnly)) {
-                    return { isValid: true, message: 'Please check the phone number format' };
-                }
-                
-                return { isValid: true, message: '' };
-            }
 
             validateLicenseCount(value) {
                 const num = parseInt(value);
@@ -1109,19 +1063,6 @@
                 requiredFields.forEach(fieldName => {
                     const field = document.getElementById(fieldName);
                     if (field) {
-                        const result = this.validateField(fieldName, field.value);
-                        if (!result.isValid) {
-                            errors.push(result.message);
-                            isValid = false;
-                        }
-                    }
-                });
-                
-                // Validate optional fields if they have values
-                const optionalFields = ['phone'];
-                optionalFields.forEach(fieldName => {
-                    const field = document.getElementById(fieldName);
-                    if (field && field.value.trim()) {
                         const result = this.validateField(fieldName, field.value);
                         if (!result.isValid) {
                             errors.push(result.message);
@@ -1179,15 +1120,6 @@
                 return input.replace(/[<>"'%;()&+${}[\]\\]/g, '').trim();
             }
 
-            // Auto-format phone number
-            formatPhoneNumber(value) {
-                const digits = value.replace(/\D/g, '');
-                if (digits.length <= 3) return digits;
-                if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
-                if (digits.length <= 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-                if (digits.length <= 15) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10)}`;
-                return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10, 15)}`;
-            }
             
             // Handle license count changes with warnings
             handleLicenseCountChange(event) {
@@ -1265,7 +1197,6 @@
                     firstName: this.sanitizeInput(document.getElementById('firstName').value),
                     lastName: this.sanitizeInput(document.getElementById('lastName').value),
                     email: this.sanitizeInput(document.getElementById('email').value.toLowerCase()),
-                    phone: this.sanitizeInput(document.getElementById('phone').value),
                     licenseCount: parseInt(document.getElementById('licenseCount').value)
                 };
             }
@@ -1460,7 +1391,6 @@
                 firstName: formValidator.sanitizeInput(document.getElementById('firstName').value),
                 lastName: formValidator.sanitizeInput(document.getElementById('lastName').value),
                 email: formValidator.sanitizeInput(document.getElementById('email').value.toLowerCase()),
-                phone: formValidator.sanitizeInput(document.getElementById('phone').value),
                 planType: currentPlan,
                 licenseCount: parseInt(document.getElementById('licenseCount').value)
             };

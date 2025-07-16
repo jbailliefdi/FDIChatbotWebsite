@@ -1272,11 +1272,40 @@
         let currentBillingData = null;
 
         // Initialize MSAL function
-        function initializeMSAL() {
+        async function initializeMSAL() {
             try {
                 msalInstance = new msal.PublicClientApplication(msalConfig);
                 // Start the authentication process
-                checkAdminAuth();
+                const isAuthenticated = await checkAdminAuth();
+                
+                if (isAuthenticated) {
+                    initializeNavigation();
+                    await loadDashboardData();
+                    
+                    // Check for upgrade success/cancel after authentication
+                    const urlParams = new URLSearchParams(window.location.search);
+                    
+                    if (urlParams.get('upgrade') === 'success') {
+                        // Show success message and refresh data
+                        setTimeout(() => {
+                            showSuccess('Plan upgraded successfully! Your new license count is now Active.');
+                            loadDashboardData();
+                        }, 1000);
+                        
+                        // Clean up URL
+                        const cleanUrl = window.location.pathname;
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    } else if (urlParams.get('upgrade') === 'cancelled') {
+                        // Show cancelled message
+                        setTimeout(() => {
+                            showError('Upgrade cancelled. Your plan remains unchanged.');
+                        }, 500);
+                        
+                        // Clean up URL
+                        const cleanUrl = window.location.pathname;
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    }
+                }
             } catch (e) {
                 console.error("MSAL Initialization Failed:", e);
                 showError("Authentication system failed to initialize. Please refresh the page.");
@@ -1435,39 +1464,7 @@
             }
         }
 
-        // Initialize dashboard
-        document.addEventListener('DOMContentLoaded', async function() {
-    const isAuthenticated = await checkAdminAuth();
-    
-    if (isAuthenticated) {
-        initializeNavigation();
-        await loadDashboardData();
-        
-        // Check for upgrade success/cancel after authentication
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        if (urlParams.get('upgrade') === 'success') {
-            // Show success message and refresh data
-            setTimeout(() => {
-                showSuccess('Plan upgraded successfully! Your new license count is now Active.');
-                loadDashboardData();
-            }, 1000);
-            
-            // Clean up URL
-            const cleanUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-        } else if (urlParams.get('upgrade') === 'cancelled') {
-            // Show cancelled message
-            setTimeout(() => {
-                showError('Upgrade cancelled. Your plan remains unchanged.');
-            }, 500);
-            
-            // Clean up URL
-            const cleanUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-        }
-    }
-});
+        // Dashboard initialization is now handled in initializeMSAL() after config is loaded
 
         // Navigation system
         function initializeNavigation() {
