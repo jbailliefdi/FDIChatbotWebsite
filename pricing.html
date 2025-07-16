@@ -915,7 +915,14 @@
                 if (countDiv) {
                     const field = document.getElementById(fieldName);
                     const maxLength = field.getAttribute('maxlength') || 100;
-                    const currentLength = value.length;
+                    
+                    // For phone numbers, count only digits
+                    let currentLength;
+                    if (fieldName === 'phone') {
+                        currentLength = value.replace(/\D/g, '').length;
+                    } else {
+                        currentLength = value.length;
+                    }
                     
                     countDiv.textContent = `${currentLength}/${maxLength}`;
                     
@@ -1178,7 +1185,8 @@
                 if (digits.length <= 3) return digits;
                 if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
                 if (digits.length <= 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-                return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+                if (digits.length <= 15) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10)}`;
+                return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10, 15)}`;
             }
             
             // Handle license count changes with warnings
