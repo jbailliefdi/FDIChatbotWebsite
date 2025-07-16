@@ -1,13 +1,14 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
+const { withRateLimitWrapper } = require('../utils/rateLimitMiddleware');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
 const organizationsContainer = database.container('organizations');
 const usersContainer = database.container('users');
 
-module.exports = async function (context, req) {
+async function stripeWebhookHandler(context, req) {
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -198,3 +199,8 @@ async function sendWelcomeEmail(user, organization) {
     // or SendGrid
     console.log(`Welcome email would be sent to ${user.email}`);
 }
+
+// Export with rate limiting protection
+module.exports = withRateLimitWrapper(stripeWebhookHandler, {
+    limitType: 'webhook' // 1000 requests per minute per IP
+});

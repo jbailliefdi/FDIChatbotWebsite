@@ -7,6 +7,39 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
     <script src="/js/security.js"></script>
+    <script>
+        // Safe HTML utility functions for dashboard
+        function safeSetContent(element, content) {
+            if (typeof content === 'string') {
+                element.textContent = content;
+            } else {
+                element.innerHTML = '';
+                element.appendChild(content);
+            }
+        }
+        
+        function createSafeElement(tag, textContent = '', className = '', styles = '') {
+            const element = document.createElement(tag);
+            if (textContent) element.textContent = textContent;
+            if (className) element.className = className;
+            if (styles) element.style.cssText = styles;
+            return element;
+        }
+        
+        function safeInnerHTML(element, htmlString) {
+            // Create a temporary element to safely parse HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = htmlString;
+            
+            // Clear the target element
+            element.innerHTML = '';
+            
+            // Move all child nodes to the target element
+            while (temp.firstChild) {
+                element.appendChild(temp.firstChild);
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -1438,19 +1471,49 @@
         }
 
         function showUnauthorizedError(message) {
-            document.body.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f7fa;">
-                    <div style="background: white; padding: 40px; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                        <i class="fas fa-shield-alt" style="font-size: 4rem; color: #e74c3c; margin-bottom: 20px;"></i>
-                        <h2 style="color: #e74c3c; margin-bottom: 20px;">Access Denied</h2>
-                        <p style="margin-bottom: 30px; color: #666;">${message || 'You do not have permission to access this dashboard. Only administrators can view this page.'}</p>
-                        <div style="display: flex; gap: 15px; justify-content: center;">
-                            <button onclick="window.location.href='/app'" style="padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">Go to TIA</button>
-                            <button onclick="signOut()" style="padding: 12px 24px; background: transparent; color: #666; border: 2px solid #ddd; border-radius: 6px; cursor: pointer;">Sign Out</button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // Create error container safely
+            document.body.innerHTML = '';
+            
+            const container = document.createElement('div');
+            container.style.cssText = 'display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f7fa;';
+            
+            const errorBox = document.createElement('div');
+            errorBox.style.cssText = 'background: white; padding: 40px; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);';
+            
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-shield-alt';
+            icon.style.cssText = 'font-size: 4rem; color: #e74c3c; margin-bottom: 20px;';
+            
+            const title = document.createElement('h2');
+            title.style.cssText = 'color: #e74c3c; margin-bottom: 20px;';
+            title.textContent = 'Access Denied';
+            
+            const messageEl = document.createElement('p');
+            messageEl.style.cssText = 'margin-bottom: 30px; color: #666;';
+            messageEl.textContent = message || 'You do not have permission to access this dashboard. Only administrators can view this page.';
+            
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = 'display: flex; gap: 15px; justify-content: center;';
+            
+            const appButton = document.createElement('button');
+            appButton.onclick = () => window.location.href = '/app';
+            appButton.style.cssText = 'padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;';
+            appButton.textContent = 'Go to TIA';
+            
+            const signOutButton = document.createElement('button');
+            signOutButton.onclick = signOut;
+            signOutButton.style.cssText = 'padding: 12px 24px; background: transparent; color: #666; border: 2px solid #ddd; border-radius: 6px; cursor: pointer;';
+            signOutButton.textContent = 'Sign Out';
+            
+            buttonContainer.appendChild(appButton);
+            buttonContainer.appendChild(signOutButton);
+            
+            errorBox.appendChild(icon);
+            errorBox.appendChild(title);
+            errorBox.appendChild(messageEl);
+            errorBox.appendChild(buttonContainer);
+            container.appendChild(errorBox);
+            document.body.appendChild(container);
         }
 
         async function signOut() {

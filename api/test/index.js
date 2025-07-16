@@ -1,4 +1,6 @@
-module.exports = async function (context, req) {
+const { withRateLimitWrapper } = require('../utils/rateLimitMiddleware');
+
+async function testHandler(context, req) {
     context.log('Test endpoint called');
     
     context.res = {
@@ -21,4 +23,9 @@ module.exports = async function (context, req) {
         url: req.url,
         timestamp: new Date().toISOString()
     };
-};
+}
+
+// Export with rate limiting protection
+module.exports = withRateLimitWrapper(testHandler, {
+    limitType: 'general' // 100 requests per minute per IP
+});

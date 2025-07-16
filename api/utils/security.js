@@ -137,6 +137,81 @@ function validateOrganizationName(orgName) {
 }
 
 /**
+ * Server-side form validation to match client-side validation
+ * @param {Object} formData - Form data to validate
+ * @returns {Object} - Validation result with errors array
+ */
+function validateFormData(formData) {
+    const errors = [];
+    
+    // Company name validation
+    if (!formData.companyName || typeof formData.companyName !== 'string') {
+        errors.push('Company name is required');
+    } else {
+        const trimmed = formData.companyName.trim();
+        if (trimmed.length < 2) {
+            errors.push('Company name must be at least 2 characters');
+        } else if (trimmed.length > 100) {
+            errors.push('Company name must be less than 100 characters');
+        } else if (/[<>{}\[\]"'&;]/.test(trimmed)) {
+            errors.push('Company name contains invalid characters');
+        }
+    }
+    
+    // First name validation
+    if (!formData.firstName || typeof formData.firstName !== 'string') {
+        errors.push('First name is required');
+    } else {
+        const trimmed = formData.firstName.trim();
+        if (trimmed.length < 1) {
+            errors.push('First name is required');
+        } else if (trimmed.length > 50) {
+            errors.push('First name must be less than 50 characters');
+        } else if (!/^[a-zA-Z\s\-']+$/.test(trimmed)) {
+            errors.push('First name can only contain letters, spaces, hyphens, and apostrophes');
+        }
+    }
+    
+    // Last name validation
+    if (!formData.lastName || typeof formData.lastName !== 'string') {
+        errors.push('Last name is required');
+    } else {
+        const trimmed = formData.lastName.trim();
+        if (trimmed.length < 1) {
+            errors.push('Last name is required');
+        } else if (trimmed.length > 50) {
+            errors.push('Last name must be less than 50 characters');
+        } else if (!/^[a-zA-Z\s\-']+$/.test(trimmed)) {
+            errors.push('Last name can only contain letters, spaces, hyphens, and apostrophes');
+        }
+    }
+    
+    // Email validation
+    if (!formData.email || typeof formData.email !== 'string') {
+        errors.push('Email address is required');
+    } else if (!validateEmail(formData.email)) {
+        errors.push('Please enter a valid email address');
+    }
+    
+    // License count validation
+    if (!formData.licenseCount || typeof formData.licenseCount !== 'number') {
+        errors.push('License count is required');
+    } else {
+        const num = parseInt(formData.licenseCount);
+        if (isNaN(num) || num < 1) {
+            errors.push('License count must be at least 1');
+        } else if (num > 1000) {
+            errors.push('Please contact us for enterprise pricing (1000+ users)');
+        }
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+/**
  * Content Security Policy nonce generator
  * @returns {string} - Random nonce for CSP
  */
@@ -256,6 +331,7 @@ module.exports = {
     validatePhone,
     validateNumeric,
     validateOrganizationName,
+    validateFormData,
     generateCSPNonce,
     safeJsonParse,
     generateRateLimitKey

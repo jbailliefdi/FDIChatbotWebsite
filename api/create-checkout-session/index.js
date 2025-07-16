@@ -1,13 +1,15 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { CosmosClient } = require('@azure/cosmos');
 const { sanitizeInput } = require('../utils/auth');
+const { withRateLimitWrapper } = require('../utils/rateLimitMiddleware');
+const { validateFormData } = require('../utils/security');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
 const usersContainer = database.container('users');
 const organizationsContainer = database.container('organizations');
 
-module.exports = async function (context, req) {
+async function createCheckoutSessionHandler(context, req) {
     context.log('Creating Stripe checkout session');
 
     if (req.method !== 'POST') {
@@ -36,6 +38,27 @@ module.exports = async function (context, req) {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
                 body: { message: 'Missing required fields: email, companyName, firstName, lastName' } 
+            };
+            return;
+        }
+
+        // Server-side validation
+        const validation = validateFormData({
+            companyName,
+            firstName,
+            lastName,
+            email,
+            licenseCount: parseInt(licenseCount) || 1
+        });
+
+        if (!validation.isValid) {
+            context.res = {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+                body: { 
+                    message: 'Validation failed',
+                    errors: validation.errors 
+                }
             };
             return;
         }
@@ -356,4 +379,9 @@ module.exports = async function (context, req) {
             }
         };
     }
-};
+}
+
+// Export with rate limiting protection
+module.exports = withRateLimitWrapper(createCheckoutSessionHandler, {
+    limitType: 'payment' // 10 requests per hour per IP
+});

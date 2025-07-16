@@ -1,12 +1,14 @@
 const { CosmosClient } = require('@azure/cosmos');
 const { v4: uuidv4 } = require('uuid');
+const { withRateLimitWrapper } = require('../utils/rateLimitMiddleware');
+const { validateFormData } = require('../utils/security');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
 const usersContainer = database.container('users');
 const organizationsContainer = database.container('organizations');
 
-module.exports = async function (context, req) {
+async function publicSignupHandler(context, req) {
     context.log('Public signup function processed a request.');
 
     try {
@@ -20,12 +22,22 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        // Server-side validation matching client-side
+        const validation = validateFormData({
+            firstName,
+            lastName, 
+            email,
+            companyName: 'N/A', // Not required for public signup
+            licenseCount: 1 // Default value
+        });
+
+        if (!validation.isValid) {
             context.res = {
                 status: 400,
-                body: { error: 'Invalid email format' }
+                body: { 
+                    error: 'Validation failed',
+                    details: validation.errors 
+                }
             };
             return;
         }
@@ -233,4 +245,9 @@ module.exports = async function (context, req) {
             body: { error: 'Internal server error' }
         };
     }
-};
+}
+
+// Export with rate limiting protection
+module.exports = withRateLimitWrapper(publicSignupHandler, {
+    limitType: 'signup' // 5 requests per hour per IP
+});

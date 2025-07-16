@@ -1,11 +1,12 @@
 const { CosmosClient } = require('@azure/cosmos');
+const { withRateLimitWrapper } = require('../utils/rateLimitMiddleware');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
 const database = cosmosClient.database('fdi-chatbot');
 const organizationsContainer = database.container('organizations');
 const usersContainer = database.container('users');
 
-module.exports = async function (context, req) {
+async function validateInviteTokenHandler(context, req) {
     context.log('Validate invite token function processed a request.');
 
     try {
@@ -134,4 +135,9 @@ module.exports = async function (context, req) {
             body: { error: 'Internal server error' }
         };
     }
-};
+}
+
+// Export with rate limiting protection
+module.exports = withRateLimitWrapper(validateInviteTokenHandler, {
+    limitType: 'auth' // 50 requests per hour per IP
+});

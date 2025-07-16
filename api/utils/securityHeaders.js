@@ -15,7 +15,7 @@ function getSecurityHeaders() {
         'Referrer-Policy': 'strict-origin-when-cross-origin',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
         'X-DNS-Prefetch-Control': 'off',
-        'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), midi=(), speaker-selection=(), display-capture=(), fullscreen=(), web-share=()',
+        'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), midi=(), display-capture=(), fullscreen=(), web-share=()',
         'X-Permitted-Cross-Domain-Policies': 'none',
         'Cross-Origin-Embedder-Policy': 'require-corp',
         'Cross-Origin-Opener-Policy': 'same-origin',
