@@ -162,7 +162,7 @@ async function updateQuestionLogTokens(questionId, userQueryTokens, botResponseT
 /**
  * Updates a question log with vector search time
  * @param {string} questionId - The question ID to update
- * @param {number} vectorSearchTime - Time taken for vector search in milliseconds
+ * @param {number} vectorSearchTime - Time in milliseconds for vector search
  */
 async function updateQuestionLogVectorSearchTime(questionId, vectorSearchTime) {
     if (!logsContainer || !questionId) {
