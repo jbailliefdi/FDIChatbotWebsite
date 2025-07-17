@@ -3,7 +3,8 @@ const {
     updateQuestionLogResponse, 
     updateQuestionLogErrors, 
     updateQuestionLogModels,
-    updateQuestionLogTokens
+    updateQuestionLogTokens,
+    updateQuestionLogVectorSearchTime
 } = require('../utils/logService');
 const { checkAndUpdateRateLimit } = require('../utils/rateLimit');
 
@@ -165,6 +166,26 @@ module.exports = async function (context, req) {
             return;
         }
 
+        if (method === 'PUT' && action === 'update-vector-search-time') {
+            // Update vector search time
+            const { questionid, vectorSearchTime } = req.body;
+            
+            if (!questionid || vectorSearchTime === undefined) {
+                context.res.status = 400;
+                context.res.body = { error: 'Missing required fields: questionid, vectorSearchTime' };
+                return;
+            }
+
+            await updateQuestionLogVectorSearchTime(questionid, vectorSearchTime);
+            
+            context.res.status = 200;
+            context.res.body = { 
+                success: true, 
+                message: 'Question log vector search time updated successfully' 
+            };
+            return;
+        }
+
         if (method === 'GET' && action === 'query') {
             // Query for recent logs
             const { conversationid, userid, limit = 10 } = req.query;
@@ -195,7 +216,7 @@ module.exports = async function (context, req) {
 
         // Invalid action
         context.res.status = 400;
-        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, query' };
+        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, update-vector-search-time, query' };
         
     } catch (error) {
         context.log.error('Error in bot logging API:', error.message);

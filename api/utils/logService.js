@@ -44,7 +44,8 @@ async function createQuestionLog(conversationId, userId, submitTimestamp, modelC
             modelChoices: modelChoices,
             errorCodes: [],
             userQueryTokens: null,
-            botResponseTokens: null
+            botResponseTokens: null,
+            vectorSearchTime: null
         };
 
         await logsContainer.items.create(logEntry);
@@ -159,6 +160,31 @@ async function updateQuestionLogTokens(questionId, userQueryTokens, botResponseT
 }
 
 /**
+ * Updates a question log with vector search time
+ * @param {string} questionId - The question ID to update
+ * @param {number} vectorSearchTime - Time taken for vector search in milliseconds
+ */
+async function updateQuestionLogVectorSearchTime(questionId, vectorSearchTime) {
+    if (!logsContainer || !questionId) {
+        console.warn('Logs container not available or questionId missing, skipping vector search time update');
+        return;
+    }
+
+    try {
+        // Get the existing log entry
+        const { resource: logEntry } = await logsContainer.item(questionId, questionId).read();
+        
+        if (logEntry) {
+            logEntry.vectorSearchTime = vectorSearchTime;
+            await logsContainer.item(questionId, questionId).replace(logEntry);
+            console.log(`Question log ${questionId} updated with vector search time: ${vectorSearchTime}ms`);
+        }
+    } catch (error) {
+        console.error('Error updating question log vector search time:', error.message);
+    }
+}
+
+/**
  * Query logs for a specific conversation and user
  * @param {string} conversationId - The conversation ID
  * @param {string} userId - The user ID
@@ -205,5 +231,6 @@ module.exports = {
     updateQuestionLogErrors,
     updateQuestionLogModels,
     updateQuestionLogTokens,
+    updateQuestionLogVectorSearchTime,
     queryLogs
 };
