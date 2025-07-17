@@ -54,7 +54,8 @@ async function createQuestionLog(conversationId, userId, submitTimestamp, modelC
             embeddingGenerationTime: null,
             rateLimitCheckTime: null,
             dbWriteTime: null,
-            tokenCountingTime: null
+            tokenCountingTime: null,
+            totalResponseTime: null
         };
 
         await logsContainer.items.create(logEntry);
@@ -83,6 +84,16 @@ async function updateQuestionLogResponse(questionId, responseTimestamp) {
         
         if (logEntry) {
             logEntry.responseTimestamp = responseTimestamp;
+            
+            // Calculate total response time if we have both timestamps
+            if (logEntry.submitTimestamp && responseTimestamp) {
+                const submitTime = new Date(logEntry.submitTimestamp);
+                const responseTime = new Date(responseTimestamp);
+                const totalResponseTime = responseTime - submitTime; // in milliseconds
+                logEntry.totalResponseTime = totalResponseTime;
+                console.log(`Calculated total response time: ${totalResponseTime}ms`);
+            }
+            
             await logsContainer.item(questionId, questionId).replace(logEntry);
             console.log(`Question log ${questionId} updated with response timestamp`);
         }
@@ -219,6 +230,8 @@ async function updateQuestionLogTimings(questionId, timingData) {
             if (timingData.rateLimitCheckTime !== undefined) logEntry.rateLimitCheckTime = timingData.rateLimitCheckTime;
             if (timingData.dbWriteTime !== undefined) logEntry.dbWriteTime = timingData.dbWriteTime;
             if (timingData.tokenCountingTime !== undefined) logEntry.tokenCountingTime = timingData.tokenCountingTime;
+            if (timingData.vectorSearchTime !== undefined) logEntry.vectorSearchTime = timingData.vectorSearchTime;
+            if (timingData.totalResponseTime !== undefined) logEntry.totalResponseTime = timingData.totalResponseTime;
             
             await logsContainer.item(questionId, questionId).replace(logEntry);
             console.log(`Question log ${questionId} updated with timings:`, timingData);
