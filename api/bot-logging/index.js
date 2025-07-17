@@ -4,7 +4,8 @@ const {
     updateQuestionLogErrors, 
     updateQuestionLogModels,
     updateQuestionLogTokens,
-    updateQuestionLogVectorSearchTime
+    updateQuestionLogVectorSearchTime,
+    updateQuestionLogTimings
 } = require('../utils/logService');
 const { checkAndUpdateRateLimit } = require('../utils/rateLimit');
 
@@ -44,10 +45,14 @@ module.exports = async function (context, req) {
             }
 
             // Check and update rate limit
+            let rateLimitCheckTime = 0;
             try {
                 context.log('=== RATE LIMIT CHECK ===');
                 context.log('User ID for rate limit:', userid);
+                const rateLimitStart = Date.now();
                 const rateLimitResult = await checkAndUpdateRateLimit(userid);
+                const rateLimitEnd = Date.now();
+                rateLimitCheckTime = rateLimitEnd - rateLimitStart;
                 context.log('Rate limit result:', rateLimitResult);
                 
                 if (!rateLimitResult.allowed) {
@@ -70,9 +75,25 @@ module.exports = async function (context, req) {
             }
 
             const currentTimestamp = submitTimestamp || new Date().toISOString();
+            const dbWriteStart = Date.now();
             const questionId = await createQuestionLog(conversationid, userid, currentTimestamp, modelChoices);
+            const dbWriteEnd = Date.now();
+            const dbWriteTime = dbWriteEnd - dbWriteStart;
             
             if (questionId) {
+                // Log the timing data for rate limit check and database write
+                const timingData = {
+                    rateLimitCheckTime: rateLimitCheckTime,
+                    dbWriteTime: dbWriteTime
+                };
+                
+                try {
+                    await updateQuestionLogTimings(questionId, timingData);
+                    context.log(`Initial timing data logged for question ${questionId}: ${JSON.stringify(timingData)}`);
+                } catch (timingError) {
+                    context.log.error('Error logging initial timing data:', timingError.message);
+                }
+                
                 context.res.status = 200;
                 context.res.body = { 
                     success: true, 
@@ -186,6 +207,26 @@ module.exports = async function (context, req) {
             return;
         }
 
+        if (method === 'PUT' && action === 'update-timings') {
+            // Update multiple timing metrics
+            const { questionid, timingData } = req.body;
+            
+            if (!questionid || !timingData || typeof timingData !== 'object') {
+                context.res.status = 400;
+                context.res.body = { error: 'Missing required fields: questionid, timingData (object)' };
+                return;
+            }
+
+            await updateQuestionLogTimings(questionid, timingData);
+            
+            context.res.status = 200;
+            context.res.body = { 
+                success: true, 
+                message: 'Question log timings updated successfully' 
+            };
+            return;
+        }
+
         if (method === 'GET' && action === 'query') {
             // Query for recent logs
             const { conversationid, userid, limit = 10 } = req.query;
@@ -216,7 +257,7 @@ module.exports = async function (context, req) {
 
         // Invalid action
         context.res.status = 400;
-        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, update-vector-search-time, query' };
+        context.res.body = { error: 'Invalid action. Supported actions: create, update-response, update-errors, update-models, update-tokens, update-vector-search-time, update-timings, query' };
         
     } catch (error) {
         context.log.error('Error in bot logging API:', error.message);

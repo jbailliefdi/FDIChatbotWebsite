@@ -45,7 +45,16 @@ async function createQuestionLog(conversationId, userId, submitTimestamp, modelC
             errorCodes: [],
             userQueryTokens: null,
             botResponseTokens: null,
-            vectorSearchTime: null
+            vectorSearchTime: null,
+            llmResponseTime: null,
+            ragProcessingTime: null,
+            queryReformulationTime: null,
+            memoryRetrievalTime: null,
+            indexLoadingTime: null,
+            embeddingGenerationTime: null,
+            rateLimitCheckTime: null,
+            dbWriteTime: null,
+            tokenCountingTime: null
         };
 
         await logsContainer.items.create(logEntry);
@@ -185,6 +194,41 @@ async function updateQuestionLogVectorSearchTime(questionId, vectorSearchTime) {
 }
 
 /**
+ * Updates a question log with multiple timing metrics
+ * @param {string} questionId - The question ID to update
+ * @param {Object} timingData - Object containing timing metrics
+ */
+async function updateQuestionLogTimings(questionId, timingData) {
+    if (!logsContainer || !questionId) {
+        console.warn('Logs container not available or questionId missing, skipping timing update');
+        return;
+    }
+
+    try {
+        // Get the existing log entry
+        const { resource: logEntry } = await logsContainer.item(questionId, questionId).read();
+        
+        if (logEntry) {
+            // Update all provided timing fields
+            if (timingData.llmResponseTime !== undefined) logEntry.llmResponseTime = timingData.llmResponseTime;
+            if (timingData.ragProcessingTime !== undefined) logEntry.ragProcessingTime = timingData.ragProcessingTime;
+            if (timingData.queryReformulationTime !== undefined) logEntry.queryReformulationTime = timingData.queryReformulationTime;
+            if (timingData.memoryRetrievalTime !== undefined) logEntry.memoryRetrievalTime = timingData.memoryRetrievalTime;
+            if (timingData.indexLoadingTime !== undefined) logEntry.indexLoadingTime = timingData.indexLoadingTime;
+            if (timingData.embeddingGenerationTime !== undefined) logEntry.embeddingGenerationTime = timingData.embeddingGenerationTime;
+            if (timingData.rateLimitCheckTime !== undefined) logEntry.rateLimitCheckTime = timingData.rateLimitCheckTime;
+            if (timingData.dbWriteTime !== undefined) logEntry.dbWriteTime = timingData.dbWriteTime;
+            if (timingData.tokenCountingTime !== undefined) logEntry.tokenCountingTime = timingData.tokenCountingTime;
+            
+            await logsContainer.item(questionId, questionId).replace(logEntry);
+            console.log(`Question log ${questionId} updated with timings:`, timingData);
+        }
+    } catch (error) {
+        console.error('Error updating question log timings:', error.message);
+    }
+}
+
+/**
  * Query logs for a specific conversation and user
  * @param {string} conversationId - The conversation ID
  * @param {string} userId - The user ID
@@ -232,5 +276,6 @@ module.exports = {
     updateQuestionLogModels,
     updateQuestionLogTokens,
     updateQuestionLogVectorSearchTime,
+    updateQuestionLogTimings,
     queryLogs
 };
